@@ -1,7 +1,17 @@
 import { createContext, useContext } from "react";
+import { action, configure } from "mobx";
+import { PersistStoreMap } from "mobx-persist-store";
+
 import { enableLogging } from "mobx-logger";
 import api from "./api";
-import { action } from "mobx";
+
+// configure({
+//   enforceActions: "always",
+//   computedRequiresReaction: true,
+//   reactionRequiresObservable: true,
+//   observableRequiresReaction: true,
+//   disableErrorBoundaries: true,
+// });
 
 import AppStore from "./stores/app";
 import BoothStore from "./stores/booths";
@@ -19,7 +29,7 @@ import { ChannelResponseType, EffectType } from "./watcher";
 
 const config = { compute: true, action: true, predicate: () => true };
 
-enableLogging(config);
+// enableLogging(config);
 
 export interface IStore {
   appStore: AppStore;

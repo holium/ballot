@@ -9,6 +9,7 @@ import {
   computed,
   toJS,
   ObservableMap,
+  flow,
 } from "mobx";
 import { makePersistable } from "mobx-persist-store";
 import { timeout } from "../utils/dev";
@@ -22,6 +23,7 @@ class BoothStore {
     state: STATE.INITIAL,
     set: action((state: STATE) => (this.loader.state = state)),
   };
+  @observable error: string = "";
   @observable booth?: BoothType;
   @observable booths_old: BoothType[] = [];
   @observable booths: ObservableMap<string, BoothType> = observable.map([], {
@@ -31,7 +33,11 @@ class BoothStore {
 
   constructor(private api: BoothsApi) {
     this.api = api;
-    makeAutoObservable(this);
+    makeAutoObservable(this, {
+      fetchAll: action,
+      joinBooth: action,
+      acceptInvite: action,
+    });
     makePersistable(this, {
       name: "BoothStore",
       properties: ["booths", "booth"],
@@ -56,45 +62,65 @@ class BoothStore {
   // ---------------- API actions ----------------
   // ---------------------------------------------
   //
-  fetchAll = action(async () => {
+
+  fetchAll = flow(function* (this: BoothStore) {
     this.loader.set(STATE.LOADING);
-    const [booths, error] = await this.api.getAll();
-    if (error) return null;
-    runInAction(() => {
-      // this.booths = booths;
-      // participants
+    try {
+      const [booths, error] = yield this.api.getAll();
       booths.forEach((booth: BoothType) => {
         this.booths.set(booth.name, this.setOurResourcePermission(booth));
-        // @ts-ignore
         store.participantStore.getParticipants(booth.name);
       });
-    });
-    this.loader.set(STATE.LOADED);
-    return this.booth;
+      this.loader.set(STATE.LOADED);
+    } catch (error) {
+      this.loader.set(STATE.ERROR);
+      this.error = error;
+    }
   });
   //
   // action: join
   //
-  joinBooth = action(async (boothName: string) => {
-    const [response, error] = await this.api.join(boothName);
-    if (error) console.log(error);
-    runInAction(() => {
+  joinBooth = flow(function* (this: BoothStore, boothKey: string) {
+    try {
+      const [response, error] = yield this.api.join(boothKey);
+      if (error) throw error;
       this.actions[`${response.action}-${response.key}`] = "waiting";
-    });
-    return response;
+    } catch (error) {
+      this.loader.set(STATE.ERROR);
+      this.error = error;
+    }
   });
+  // joinBooth2 = action(async (boothName: string) => {
+  //   const [response, error] = await this.api.join(boothName);
+  //   if (error) console.log(error);
+  //   runInAction(() => {
+  //     this.actions[`${response.action}-${response.key}`] = "waiting";
+  //   });
+  //   return response;
+  // });
   //
   // action: accept
   //
-  acceptInvite = action(async (boothName: string) => {
-    const [response, error] = await this.api.acceptInvite(boothName);
-    if (error) console.log(error);
-    this.update(boothName, { status: "pending" });
-    runInAction(() => {
+  acceptInvite = flow(function* (this: BoothStore, boothKey: string) {
+    try {
+      const [response, error] = yield this.api.acceptInvite(boothKey);
+      if (error) throw error;
+      this.update(boothKey, { status: "pending" });
       this.actions[`${response.action}-${response.key}`] = response.status;
-    });
-    return;
+    } catch (error) {
+      this.loader.set(STATE.ERROR);
+      this.error = error;
+    }
   });
+  // acceptInvite2 = action(async (boothName: string) => {
+  //   const [response, error] = await this.api.acceptInvite(boothName);
+  //   if (error) console.log(error);
+  //   this.update(boothName, { status: "pending" });
+  //   runInAction(() => {
+  //     this.actions[`${response.action}-${response.key}`] = response.status;
+  //   });
+  //   return;
+  // });
   //
   // ---------------------------------------------
   // ------------- Getters & Setters -------------

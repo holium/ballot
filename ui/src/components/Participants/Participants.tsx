@@ -22,7 +22,7 @@ export const Container = styled(Card);
 
 export type ParticipantsProps = {
   loading: boolean;
-  participants: ParticipantType[];
+  participants: any[];
   onAdd: (patp: string) => any;
   onRemove: (patp: string) => any;
   onClick?: () => any;
@@ -93,22 +93,24 @@ export const Participants: FC<ParticipantsProps> = (
             {() => {
               return (
                 <>
-                  {participants.map((ship: ParticipantType) => (
-                    <ParticipantRow
-                      loading={
-                        boothStore.checkAction(`invite-${ship.name}`) !==
-                        "success"
-                      }
-                      status={ship.status}
-                      canAdmin={hasAdmin}
-                      // loading={true}
-                      // status="pending"
-                      key={ship.name}
-                      patp={ship.name}
-                      color={ship?.metadata?.color}
-                      onRemove={onRemove}
-                    />
-                  ))}
+                  {participants
+                    .sort((a: ParticipantType, b: ParticipantType) =>
+                      a.status === b.status ? 0 : a.status == "owner" ? -1 : 1
+                    )
+                    .map((ship: ParticipantType) => (
+                      <ParticipantRow
+                        loading={
+                          boothStore.checkAction(`invite-${ship.name}`) !==
+                          "success"
+                        }
+                        status={ship.status}
+                        canAdmin={hasAdmin && ship.status !== "owner"}
+                        key={`${ship.name}-${urlParams.boothName!}`}
+                        patp={ship.name}
+                        color={ship?.metadata?.color}
+                        onRemove={onRemove}
+                      />
+                    ))}
                 </>
               );
             }}

@@ -5,6 +5,7 @@ import {
   observable,
   ObservableMap,
   runInAction,
+  toJS,
 } from "mobx";
 import { ParticipantsApi } from "./../api/participants";
 import { makePersistable } from "mobx-persist-store";
@@ -12,6 +13,7 @@ import { LoaderType, STATE } from "../types/loader";
 import { ParticipantMap, ParticipantType } from "../types/participants";
 import { timeout } from "../utils/dev";
 import { EffectType } from "../watcher";
+import { store } from "../store";
 
 class ParticipantStore {
   @observable participants: ObservableMap<string, ParticipantMap> =
@@ -60,6 +62,13 @@ class ParticipantStore {
       ),
       { deep: true }
     );
+
+    // set owner
+    const { owner } = store.boothStore.getBooth(boothKey);
+    participantMap[owner] = {
+      name: owner,
+      status: "owner",
+    };
 
     runInAction(() => {
       this.participants.set(boothKey, participantMap);

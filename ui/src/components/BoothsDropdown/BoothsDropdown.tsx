@@ -14,7 +14,7 @@ import { toJS } from "mobx";
 import { useStore } from "../../logic/store";
 
 export type BoothDrowdownProps = {
-  booths: BoothType[];
+  booths: any[];
   onNewBooth: (...args: any) => any;
   onAccept: (boothName: string) => void;
   onContextClick: (context: Partial<BoothType>) => any;

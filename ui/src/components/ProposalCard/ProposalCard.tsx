@@ -1,4 +1,4 @@
-import React, { FC } from "react";
+import React, { FC, useMemo } from "react";
 import styled from "styled-components";
 import { formatDistance } from "date-fns";
 import {
@@ -41,14 +41,19 @@ const ProposalTitle = styled(Text)`
 export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
   const { proposal, onClick, clickable, status, entity, contextMenu } = props;
   const parentRef = React.useRef();
-  const { participantStore, proposalStore } = useStore();
+  const { participantStore, proposalStore, voteStore } = useStore();
   const participantCount = participantStore.getParticipantCount(
     proposalStore.boothName!
   );
-  const voteCount = 0; // TODO when vote is functioning
+  const voteCount =
+    voteStore.countVoters(proposalStore.boothName!, proposal.key) || 0; // TODO when vote is functioning
   // const timeRemaining = formatDistance(new Date(proposal.start), new Date(), {
   //   addSuffix: true,
   // });
+  const percentage = useMemo(
+    () => Math.round((voteCount / participantCount) * 1000 * 10) / 100,
+    [voteCount, participantCount]
+  );
 
   return (
     <Flex flexDirection="column" mb="12px">
@@ -97,7 +102,7 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
             )} */}
             <KPI
               icon={<TlonIcon icon="Users" />}
-              value={`${voteCount}/${participantCount} (0%)`}
+              value={`${voteCount}/${participantCount} (${percentage}%)`}
             />
           </Flex>
         </Flex>

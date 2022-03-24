@@ -1,5 +1,4 @@
 import { ObservableMap } from "mobx";
-import { ShipType } from "../stores/ship";
 import { ChoiceType } from "./proposals";
 
 export type VoteType = {
@@ -9,10 +8,10 @@ export type VoteType = {
   signature?: string; //
   createdAt?: Date;
 };
+// export type VoteBoothMap = ObservableMap<string, VoteProposalMap>;
+// export type VoteProposalMap = ObservableMap<string, VoteMap>;
+// export type VoteMap = ObservableMap<string, VoteType>;
 
-export type VoteMap = ObservableMap<
-  string,
-  {
-    [voter: string]: VoteType;
-  }
->;
+export type VoteMap = { [key: string]: VoteType } & Object;
+
+// ObservableMap<string, ObservableMap<string, ObservableMap<string, VoteType>>>;

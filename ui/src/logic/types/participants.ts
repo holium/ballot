@@ -1,4 +1,9 @@
-type ParticipantActions = "invited" | "waiting" | "pending" | "joined";
+type ParticipantActions =
+  | "invited"
+  | "waiting"
+  | "pending"
+  | "joined"
+  | "owner";
 
 export type ParticipantType = {
   name: string;

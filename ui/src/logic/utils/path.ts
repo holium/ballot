@@ -1,8 +1,9 @@
 import { appName } from "../../app";
+import { BoothType2 } from "../store-tree/booths";
 import { BoothType } from "../types/booths";
 
 export const createPath = (
-  booth: Partial<BoothType>,
+  booth: any,
   page: "proposals" | "delegate" | string = "proposals",
   proposalId: string = "",
   subPath: string = ""

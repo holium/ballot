@@ -48,6 +48,7 @@ export const ProposalDetail: FC = observer((props: any) => {
     },
     [urlParams.proposalId!]
   );
+  console.log("result2 test ", toJS(voteStore.results));
 
   const onVote = (vote: {
     proposalId: string;

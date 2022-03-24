@@ -1,10 +1,13 @@
-import api from "../api";
 import {
   makeAutoObservable,
   action,
   observable,
   computed,
+  set,
   ObservableMap,
+  runInAction,
+  toJS,
+  get,
 } from "mobx";
 import { makePersistable } from "mobx-persist-store";
 import { LoaderType, STATE } from "../types/loader";
@@ -12,6 +15,7 @@ import { VoteMap, VoteType } from "../types/votes";
 import { VotesApi } from "../api/votes";
 import { EffectType } from "../watcher";
 import { timeout } from "../utils/dev";
+import { mapStorageAdapter } from "../utils/mobx-storage";
 
 // Three level map
 //
@@ -20,8 +24,8 @@ import { timeout } from "../utils/dev";
 //      VoteMap<'~bus', VoteType>
 //
 
-export type VoteBoothMap = ObservableMap<string, VoteProposalMap>;
-export type VoteProposalMap = ObservableMap<string, VoteMap>;
+const joinKeys = (boothKey: string, proposalKey: string) =>
+  `${boothKey}-${proposalKey}`;
 
 class VoteStore {
   @observable loaders: { [key: string]: LoaderType } = {
@@ -37,7 +41,11 @@ class VoteStore {
     },
   };
   @observable our: any = null;
-  @observable results: VoteBoothMap = observable.map([]);
+  // @observable results: VoteProposalMap = observable.map([], { deep: true });
+  @observable results: { [key: string]: VoteMap } = observable.object(
+    {},
+    { deep: true }
+  );
 
   constructor(private api: VotesApi) {
     this.api = api;
@@ -57,7 +65,7 @@ class VoteStore {
   isLoading = computed(() => this.loaders.initial.state === STATE.LOADING);
   isError = computed(() => this.loaders.initial.state === STATE.ERROR);
   isLoaded = computed(() => this.loaders.initial.state === STATE.LOADED);
-  // Custom
+  // Casting loading
   isCastingLoading = computed(
     () => this.loaders.casting.state === STATE.LOADING
   );
@@ -94,17 +102,49 @@ class VoteStore {
       boothKey,
       proposalKey
     );
-    console.log(response);
+
+    // Create observable maps
+    const newVoteMap: VoteMap = response.reduce(
+      (voteMap: VoteMap, vote: VoteType) => {
+        voteMap[vote.voter] = vote;
+        return voteMap;
+      },
+      {}
+    );
+
+    runInAction(() => {
+      set(this.results, { [joinKeys(boothKey, proposalKey)]: newVoteMap });
+    });
   });
   //
   // ---------------------------------------------
   // ------------- Getters & Setters -------------
   // ---------------------------------------------
   //
+  /**
+   * Counts the number of voters
+   *
+   * @param boothKey
+   * @param proposalKey
+   */
+  countVoters = (boothKey: string, proposalKey: string) => {
+    const voterMap: VoteMap = get(
+      this.results,
+      joinKeys(boothKey, proposalKey)
+    );
+    console.log(joinKeys(boothKey, proposalKey));
+    console.log("countVoters", toJS(this.results));
+
+    return voterMap ? Object.keys(voterMap).length : 0;
+  };
   //
   // ---------------------------------------------
   // -------------- Effect handlers --------------
   // ---------------------------------------------
+  //
+  //  effects:
+  //  - cast-vote-effect
+  //  -
   //
   onEffect = action(
     async (payload: EffectType, context?: any, action?: any) => {
@@ -138,14 +178,12 @@ class VoteStore {
       }
     }
   );
-  initialEffect = action(
-    (boothKey: string, proposalVoteKey: VoteProposalMap) => {
-      console.log(
-        `initial, vote results booth: ${boothKey}, proposalVoteMap: `,
-        proposalVoteKey
-      );
-    }
-  );
+  initialEffect = action((boothKey: string, proposalVoteKey: string) => {
+    console.log(
+      `initial, vote results booth: ${boothKey}, proposalVoteMap: `,
+      proposalVoteKey
+    );
+  });
   //
   // booth: ~zod, proposal: proposal-1647985737067, voter: ~bus {label: 'Approve'}
   //
