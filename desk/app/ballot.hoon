@@ -3056,7 +3056,7 @@
           %-  pairs:enjs:format
           :~
             ['key' s+error-key]
-            ['message' s+'cannot change proposal. poll status is {<poll-status>}.']
+            ['message' s+(crip "cannot change proposal. poll status is {<poll-status>}.")]
           ==
 
           =/  error-effect=json
