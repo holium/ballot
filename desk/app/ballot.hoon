@@ -2965,7 +2965,7 @@
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'poll-effect']
+      ['action' s+'booth-effect']
       ['context' context]
       ['effects' [%a [status-effect]~]]
     ==
@@ -3050,18 +3050,27 @@
             ['proposal-key' s+proposal-key]
           ==
 
+          =/  error-key  (crip (weld "poll-started-error-" (trip timestamp)))
+
+          =/  error-data=json
+          %-  pairs:enjs:format
+          :~
+            ['key' s+error-key]
+            ['message' s+'cannot change proposal. poll status is {<poll-status>}.']
+          ==
+
           =/  error-effect=json
           %-  pairs:enjs:format
           :~
-            ['resource' s+'error']
-            ['effect' s+'print']
-            ['data' s+'cannot change proposal. poll status is {<poll-status>}.']
+            ['resource' s+'booth']
+            ['effect' s+'error']
+            ['data' error-data]
           ==
 
           =/  effects=json
           %-  pairs:enjs:format
           :~
-            ['action' s+'error-effect']
+            ['action' s+'save-proposal-effect']
             ['context' context]
             ['effects' [%a [error-effect]~]]
           ==
