@@ -3,8 +3,7 @@ import { observer } from "mobx-react";
 import { useLocation, useNavigate, Outlet, useParams } from "react-router-dom";
 import Helmet from "react-helmet";
 import { ThemeProvider } from "styled-components";
-import { useStore } from "./logic/store";
-import { Watcher } from "./logic/watcher";
+
 import {
   theme,
   AppWindow,
@@ -19,7 +18,6 @@ import { BoothsDropdown } from "./components/BoothsDropdown";
 import { NewBoothDialog } from "./components";
 import { createPath } from "./logic/utils/path";
 import { toJS } from "mobx";
-import { mapToList } from "./logic/utils/map";
 import { useMst } from "./logic/store-tree/root";
 
 export const appName = "ballot";
@@ -30,7 +28,7 @@ export const App: FC = observer(() => {
   const urlParams = useParams();
   const [currentTheme, setCurrentTheme] = useState<string>("light");
   const { isShowing, toggle } = useDialog();
-  const { shipStore, proposalStore, onChannel } = useStore();
+
   const { store, app } = useMst();
 
   // Runs on initial load
@@ -48,24 +46,6 @@ export const App: FC = observer(() => {
         return;
       }
     });
-    // Set the currentUrl on load
-    // appStore.setCurrentUrl(location.pathname);
-    // store.fetchAll().then(() => {
-    //   // If the booth in the url param exists
-    // const urlBooth = store.getBooth(urlParams.boothName!);
-    // if (urlBooth) {
-    //   store.setBooth(store.getBooth(urlParams.boothName!)!);
-    // } else {
-    //   // use your current ship booth since we didnt find the url booth
-    //   let newPath = createPath(store.booth!, appStore.currentPage);
-    //   navigate(newPath);
-    //   appStore.setCurrentUrl(newPath, appStore.currentPage);
-    //   return;
-    // }
-    //   // Start watching
-    //   Watcher.initialize(mapToList(store.booths), onChannel);
-    //   proposalStore.initial(urlParams.boothName!); // todo remove this from here
-    // });
   }, []);
 
   const toggleTheme = () => {
@@ -115,8 +95,8 @@ export const App: FC = observer(() => {
             ),
           }}
           ship={{
-            patp: shipStore.ship!.patp,
-            color: shipStore.ship!.metadata!.color,
+            patp: app.ship!.patp,
+            color: app.ship!.metadata!.color,
             contextMenu: (
               <Button variant="secondary" onClick={() => toggleTheme()}>
                 Theme: {currentTheme}

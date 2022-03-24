@@ -8,7 +8,7 @@ export class ParticipantsApi extends BaseAPI {
   getParticipants = async (
     boothKey: string
   ): Promise<[ParticipantType[] | null, any]> => {
-    const scryUrl = `${this.baseUrl}/~/scry/ballot/booths/${boothKey}/participants.json`;
+    const scryUrl = `${this.baseUrl}/~/scry/ballot/booths/${boothKey}/participants`;
     try {
       const response = await fetch(scryUrl, {
         method: "GET",

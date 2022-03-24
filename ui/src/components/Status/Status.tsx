@@ -20,3 +20,5 @@ export const Status = (props: StatusProps) => {
     </>
   );
 };
+
+// scheduled, started, ended

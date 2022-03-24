@@ -30,41 +30,40 @@ import { ProposalType } from "../../../logic/types/proposals";
 import { createPath } from "../../../logic/utils/path";
 import { toJS } from "mobx";
 import { emptyState } from "./empty";
+import { useMst } from "../../../logic/store-tree/root";
 
 export const ProposalEditor: FC = observer(() => {
   const saveButton = React.createRef<HTMLButtonElement>();
   const navigate = useNavigate();
-  const { appStore, proposalStore, boothStore } = useStore();
+  const { store, app } = useMst();
+  // const { appStore, proposalStore, boothStore } = useStore();
   const urlParams = useParams();
 
   let body = emptyState();
-
-  useEffect(() => {
-    proposalStore.isInitial.get() &&
-      proposalStore.initial(urlParams.boothName!);
-  }, []);
 
   let proposal: any;
   let isNew = urlParams.proposalId ? false : true;
 
   // This loads the form data or not for the editor
-  if (urlParams.proposalId && proposalStore.isLoaded.get()) {
-    const hasAdmin = boothStore.hasAdmin(urlParams.boothName!);
+  if (
+    urlParams.boothName &&
+    urlParams.proposalId &&
+    store.booth?.proposalStore!.proposals.get(urlParams.proposalId)!.isLoaded
+  ) {
+    const hasAdmin = store.booth!.hasAdmin;
+    const proposalStore = store.booth!.proposalStore;
     if (!hasAdmin) {
       navigate(
         createPath(
           {
-            name: urlParams.boothName!,
+            name: urlParams.boothName,
             type: urlParams.type!,
           },
           "proposals"
         )
       );
     }
-    proposal = proposalStore.getProposal(
-      urlParams.boothName!,
-      urlParams.proposalId!
-    );
+    proposal = proposalStore.proposals.get(urlParams.proposalId)!;
   }
 
   const onBack = () => {
@@ -76,23 +75,19 @@ export const ProposalEditor: FC = observer(() => {
       "proposals"
     );
     navigate(newPath);
-    appStore.setCurrentUrl(newPath);
+    app.setCurrentUrl(newPath);
   };
 
-  const onSubmit = async () => {
-    let responseProposal: ProposalType;
+  const onSubmit = () => {
+    let responseProposal: any;
+    const proposalStore = store.booth!.proposalStore;
+
     // If editing an existing proposal
     if (urlParams.proposalId) {
-      responseProposal = await proposalStore.update(
-        proposalStore.selectedBooth!,
-        urlParams.proposalId,
-        form.actions.submit()
-      );
+      const proposal = proposalStore.proposals.get(urlParams.proposalId)!;
+      responseProposal = proposal.update(form.actions.submit());
     } else {
-      responseProposal = await proposalStore.create(
-        proposalStore.selectedBooth!,
-        form.actions.submit()
-      );
+      responseProposal = proposalStore.add(form.actions.submit());
     }
 
     if (isNew) {
@@ -107,7 +102,7 @@ export const ProposalEditor: FC = observer(() => {
         responseProposal.key
       );
       navigate(newPath);
-      appStore.setCurrentUrl(newPath);
+      app.setCurrentUrl(newPath);
     }
   };
 
@@ -121,12 +116,9 @@ export const ProposalEditor: FC = observer(() => {
     endTime,
     support,
     choices,
-  } = useMemo(
-    () => createProposalFormFields(proposal),
-    [proposalStore.isLoaded.get()]
-  );
+  } = useMemo(() => createProposalFormFields(proposal), [proposal.isLoaded]);
 
-  body = proposalStore.isLoaded.get() ? (
+  body = proposal.isLoaded ? (
     <Grid gridTemplateColumns="2fr 320px" gridColumnGap={12}>
       <Flex mb={12} flexDirection="column">
         <ListHeader

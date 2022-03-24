@@ -13,8 +13,9 @@ import participantApi from "../api/participants";
 
 import { LoaderModel } from "./common/loader";
 import { ParticipantModel } from "./participants";
-import { ProposalModel } from "./proposals";
+import { ProposalModel, ProposalStore } from "./proposals";
 import { ChannelResponseType, EffectType, Watcher } from "../watcher";
+import { rootStore } from "./root";
 
 export const BoothModel = types
   .model({
@@ -36,18 +37,20 @@ export const BoothModel = types
     ]),
     loader: types.optional(LoaderModel, { state: "initial" }),
     participantLoader: types.optional(LoaderModel, { state: "initial" }),
-    proposals: types.map(ProposalModel),
+    proposalStore: ProposalStore,
     participants: types.map(ParticipantModel),
   })
   .views((self) => ({
     get listProposals() {
-      return Array.from(self.proposals.values());
+      return Array.from(self.proposalStore.proposals.values());
     },
     get listParticipants() {
       return Array.from(self.participants.values());
     },
-    get hasAdmin() {
-      return self.permission === "owner";
+    get hasAdmin(): boolean {
+      // console.log()
+      // TODO use booth.permission (patrick fix)
+      return self.owner === rootStore.app.ship.patp;
     },
   }))
   .actions((self) => ({
@@ -61,21 +64,23 @@ export const BoothModel = types
         self.loader.error(error.toString());
       }
     }),
-    getProposals: flow(function* () {
-      self.loader.set("loading");
-      try {
-        const [response, error] = yield proposalsApi.getAll(self.key);
-        if (error) throw error;
-        self.loader.set("loaded");
-        response.forEach((proposal: any) => {
-          proposal.redacted = false; // todo fix this on backend
-          const newProposal = ProposalModel.create(proposal);
-          self.proposals.set(newProposal.key, newProposal);
-        });
-      } catch (error) {
-        self.loader.error(error.toString());
-      }
-    }),
+    // getProposals: flow(function* () {
+    //   self.loader.set("loading");
+    //   try {
+    //     const [response, error] = yield proposalsApi.getAll(self.key);
+    //     if (error) throw error;
+    //     self.loader.set("loaded");
+    //     // response could be null
+    //     Object.values(response || []).forEach((proposal: any) => {
+    //       proposal.redacted = false; // todo fix this on backend
+    //       const newProposal = ProposalModel.create(proposal);
+    //       newProposal.booth = self.key;
+    //       self.proposalStore.set(newProposal.key, newProposal);
+    //     });
+    //   } catch (error) {
+    //     self.loader.error(error.toString());
+    //   }
+    // }),
     getParticipants: flow(function* () {
       self.participantLoader.set("loading");
       try {
@@ -84,7 +89,7 @@ export const BoothModel = types
         );
         if (error) throw error;
         self.participantLoader.set("loaded");
-        response.forEach((participant: any) => {
+        Object.values(response).forEach((participant: any) => {
           const newParticipant = ParticipantModel.create(participant);
           self.participants.set(newParticipant.key, newParticipant);
         });
@@ -120,13 +125,20 @@ export const BoothStore = types
         const [response, error]: [BoothType2[], any] = yield boothApi.getAll();
         if (error) throw error;
         self.loader.set("loaded");
-        response.forEach((booth: any) => {
-          const newBooth = BoothModel.create(booth);
-          newBooth.getProposals();
+        Object.values(response).forEach((booth: any) => {
+          const newBooth = BoothModel.create({
+            ...booth,
+            meta: { ...booth.meta, color: "#000000" },
+            proposalStore: ProposalStore.create({
+              boothKey: booth.key,
+            }),
+          });
+          newBooth.proposalStore.getProposals();
+          // Initialize booth store
           newBooth.getParticipants();
           self.booths.set(newBooth.key, newBooth);
         });
-        Watcher.initialize(response, onChannel);
+        Watcher.initialize(Object.values(response), onChannel);
       } catch (error) {
         self.loader.error(error.toString());
       }

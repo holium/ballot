@@ -43,7 +43,7 @@ export class ProposalsApi extends BaseAPI {
   async update(
     boothKey: string,
     proposalKey: string,
-    proposal: Partial<ProposalType>
+    proposal: Partial<any>
   ): Promise<[any, any]> {
     const url = `${this.baseUrl}/ballot/api/booths`;
     try {
