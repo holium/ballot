@@ -413,6 +413,9 @@
 
       =/  effects  (booths-to-subscriptions booths)
 
+      %-  (slog leaf+"subscribing to /groups..." ~)
+      =/  effects  (snoc effects [%pass /group %agent [our.bowl %group-store] %watch /groups])
+
       :_  state(booths booths, participants (~(put by participants.state) booth-key booth-participants))
 
       [effects]
@@ -1763,6 +1766,9 @@
 
         =/  booth  ((om json):dejs:format (need booth))
 
+        =/  booth-ship  (so:dejs:format (~(got by booth) 'owner'))
+        =/  hostship=@p  `@p`(slav %p booth-ship)
+
         =/  action  (so:dejs:format (~(got by payload) 'action'))
         =/  resource  (so:dejs:format (~(got by payload) 'resource'))
 
@@ -1782,8 +1788,14 @@
               (send-error req 'missing data')
 
         =/  payload-data  ((om json):dejs:format (need payload-data))
-        ::  update the status of the vote to 'pending'
-        =/  payload-data  (~(put by payload-data) 'status' s+'pending')
+
+        ::  update the status of the vote to 'pending' for remote ships
+        ::    and 'recorded' if we are voting on our own ship
+        =/  payload-data
+              ?:  =(our.bowl hostship)
+                (~(put by payload-data) 'status' s+'recorded')
+              (~(put by payload-data) 'status' s+'pending')
+
         ::  add voter information
         =/  payload-data  (~(put by payload-data) 'voter' s+participant-key)
         ::  timestamp the vote
@@ -1839,23 +1851,25 @@
           ['effects' [%a [vote-effect]~]]
         ==
 
-        =/  booth-ship  (so:dejs:format (~(got by booth) 'owner'))
-        =/  hostship=@p  `@p`(slav %p booth-ship)
+        =/  effects=(list card)
+          :~  [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
+              [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
+              [%give %kick [/http-response/[p.req]]~ ~]
+              [%give %fact [/booths]~ %json !>(effects)]
+          ==
 
-        ::  wirepath includes msg queue id so that it can be correlated
-        ::    when the poke is ack'd
-        =/  destpath=path  `path`/booths/(scot %p hostship)
+        ::  no need for poke if casting ballot from our own ship. this method has already
+        ::  updated its store
+        =/  effects  ?.  =(our.bowl hostship)
+              %-  (slog leaf+"poking remote ship on wire /booths/{<(scot %p hostship)>}...")
+              (snoc effects [%pass /booths/(scot %p hostship) %agent [hostship %ballot] %poke %json !>(wire-payload)])
+
+            effects
 
         ::  no changes to state. state will change when poke ack'd
         :_  state(votes (~(put by votes.state) booth-key booth-votes))
 
-        :~
-          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-          [%give %kick [/http-response/[p.req]]~ ~]
-          [%give %fact [/booths]~ %json !>(effects)]
-          [%pass destpath %agent [hostship %ballot] %poke %json !>(wire-payload)]
-        ==
+        [effects]
 
       ++  invite-participant-api
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json) booth-key=@t]
@@ -2667,35 +2681,6 @@
         :_  this
         :~  [%give %fact ~ %json !>(action-payload)]
         ==
-        :: =/  key  (key-from-path:util i.t.path)
-
-        :: ::  we can subscribe to any booth path we want
-        :: ?:  =(our.bowl src.bowl)
-        ::   ~&  >  "ballot: client subscribed to {(spud path)}."
-        ::   `this
-
-        :: ::  other ships need to be validated against a booth's participant listing
-        :: ::   therefore run some validation on the subscriber
-
-        :: ::  does the booth actually exist
-        :: =/  booth  (~(get by booths.state) key)
-        :: ?~  booth  !!
-
-        :: :: next check if the subscriber is a participant of the booth
-        :: =/  participants  (~(get by participants.state) key)
-        :: ?~  participants  !!
-        :: =/  participants  (need participants)
-
-        :: ::  locate participant ship in booth participants store
-        :: =/  participant  (~(get by participants) `@t`(scot %p src.bowl))
-        :: ?~  participant  !!
-
-        :: ~&  >  "ballot: client subscribed to {(spud path)}."
-        :: `this
-
-      :: [%booths @ %join-requests *]
-      ::   ~&  >  "ballot: client subscribed to {(spud path)}."
-      ::   `this
 
       ::  ~lodlev-migdev - allow external agents (including UI clients) to subscribe
       ::    to the /notifications channel.
@@ -2781,8 +2766,34 @@
 
   |^
   =/  wirepath  `path`wire
+  %-  (slog leaf+"ballot: {<wirepath>} data received..." ~)
 
   ?+    wire  (on-agent:def wire sign)
+
+    :: handle updates coming in from group store
+    [%group ~]
+      ?+    -.sign  (on-agent:def wire sign)
+        %watch-ack
+          ?~  p.sign
+            %-  (slog leaf+"ballot: group subscription succeeded" ~)
+            `this
+          %-  (slog leaf+"ballot: group subscription failed" ~)
+          `this
+    ::
+        %kick
+          %-  (slog leaf+"ballot: group kicked us, resubscribing..." ~)
+          :_  this
+          :~  [%pass /group %agent [our.bowl %group-store] %watch /groups]
+          ==
+    ::
+        %fact
+          %-  (slog leaf+"ballot: received fact from group => {<p.cage.sign>}" ~)
+          ?+    p.cage.sign  (on-agent:def wire sign)
+              %group-update-0
+                =+  !<(=update:group-store q.cage.sign)
+            `this
+          ==
+      ==
 
     [%booths @ @ ~]
 
@@ -2844,16 +2855,16 @@
       ?-    -.sign
         %poke-ack
           ?~  p.sign
-            ((slog 'ballot: {<wirepath>} poke succeeded' ~) `this)
-          ((slog 'ballot: {<wirepath>} poke failed' ~) `this)
+            ((slog leaf+"ballot: {<wirepath>} poke succeeded" ~) `this)
+          ((slog leaf+"ballot: {<wirepath>} poke failed" ~) `this)
 
         %watch-ack
           ?~  p.sign
-            ((slog 'ballot: subscribed to {<wirepath>}' ~) `this)
-          ((slog 'ballot: {<wirepath>} subscription failed' ~) `this)
+            ((slog leaf+"ballot: subscribed to {<wirepath>}" ~) `this)
+          ((slog leaf+"ballot: {<wirepath>} subscription failed" ~) `this)
 
         %kick
-          %-  (slog 'ballot: {<wirepath>} got kick, resubscribing...' ~)
+          %-  (slog leaf+"ballot: {<wirepath>} got kick, resubscribing..." ~)
           :_  this
           :~  [%pass /booths/(scot %tas booth-key) %agent [src.bowl %ballot] %watch /booths/(scot %tas booth-key)]
           ==
@@ -2908,7 +2919,8 @@
   ==
   ++  count-vote
     |:  [vote=`json`~ results=`(map @t json)`~]
-    :: |=  [vote=json results=(map @t json)]
+
+    %-  (slog leaf+"count-vote called. [vote={<vote>}, results={<results>}]")
 
     =/  v  ((om json):dejs:format vote)
     =/  choice  ((om json):dejs:format (~(got by v) 'choice'))
@@ -2923,6 +2935,8 @@
 
   ++  tally-results
     |=  [booth-key=@t proposal-key=@t]
+
+    %-  (slog leaf+"tally-results called. [booth-key='{<booth-key>}', proposal-key='{<proposal-key>}']")
 
     =/  booth-proposals  (~(get by votes.state) booth-key)
     =/  booth-proposals  (need booth-proposals)
