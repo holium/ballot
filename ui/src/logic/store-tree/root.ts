@@ -3,6 +3,7 @@ import { createContext, useContext } from "react";
 import { AppModel } from "./app";
 import { BoothStore } from "./booths";
 import urbitApi from "../api";
+import { ChannelResponseModelType, EffectModelType } from "./common/effects";
 
 const RootModel = types.model("RootStore", {
   // boothsTree: types.optional(BoothStore, { loader: { state: "initial" } }),
@@ -46,4 +47,48 @@ export function useMst() {
     throw new Error("Store cannot be null, please add a context provider");
   }
   return store;
+}
+
+export function onChannel(data: ChannelResponseModelType) {
+  console.log("data => ", data);
+  if (data.response === "diff") {
+    const responseJson = data.json;
+    responseJson.effects.forEach((effect: EffectModelType) => {
+      switch (effect.resource) {
+        case "booth":
+          rootStore.store.onEffect(
+            effect,
+            responseJson.context,
+            responseJson.action
+          );
+          break;
+        case "participant":
+          // const participantStore = rootStore.store.booths.get(responseJson.context.key!)?.participantStore
+          // rootStore.store.onEffect(
+          //   effect,
+          //   responseJson.context,
+          //   responseJson.action
+          // );
+          break;
+        case "proposal":
+          // store.proposalStore.onEffect(
+          //   effect,
+          //   responseJson.context,
+          //   responseJson.action
+          // );
+          break;
+        case "vote":
+          // store.voteStore.onEffect(
+          //   effect,
+          //   responseJson.context,
+          //   responseJson.action
+          // );
+          break;
+
+        default:
+          console.log("unknown effect", effect);
+          break;
+      }
+    });
+  }
 }

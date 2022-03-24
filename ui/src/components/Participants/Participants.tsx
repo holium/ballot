@@ -14,6 +14,7 @@ import React, { FC } from "react";
 import { useParams } from "react-router-dom";
 import styled from "styled-components";
 import { useStore } from "../../logic/store";
+import { useMst } from "../../logic/store-tree/root";
 import { ParticipantType } from "../../logic/types/participants";
 import { ParticipantModal } from "./Modal/ParticipantModal";
 import { ParticipantRow } from "./ParticipantRow";
@@ -33,10 +34,10 @@ export const Participants: FC<ParticipantsProps> = (
 ) => {
   const { loading, participants, onAdd, onRemove } = props;
   const { isShowing, toggle } = useDialog();
-  const { boothStore } = useStore();
   const urlParams = useParams();
-
-  const hasAdmin = boothStore.hasAdmin(urlParams.boothName!);
+  const { store } = useMst();
+  const booth = store.booth!;
+  const hasAdmin = booth.hasAdmin;
   // console.log("rendering participants"); // todo prevent unnecessary render
   return (
     <Card
@@ -100,8 +101,7 @@ export const Participants: FC<ParticipantsProps> = (
                     .map((ship: ParticipantType) => (
                       <ParticipantRow
                         loading={
-                          boothStore.checkAction(`invite-${ship.name}`) !==
-                          "success"
+                          booth.checkAction(`invite-${ship.name}`) !== "success"
                         }
                         status={ship.status}
                         canAdmin={hasAdmin && ship.status !== "owner"}

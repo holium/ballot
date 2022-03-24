@@ -10,11 +10,13 @@ import {
   ContextMenu,
   MenuItemProps,
 } from "@holium/design-system";
+import { toJS } from "mobx";
 import { Status } from "../Status";
 import { ProposalType } from "../../logic/types/proposals";
 import { descriptiveTimeString } from "../../logic/utils/time";
 import { Author } from "../Author";
 import { useStore } from "../../logic/store";
+import { useMst } from "../../logic/store-tree/root";
 
 export type ProposalCardType = {
   proposal: ProposalType;
@@ -41,12 +43,16 @@ const ProposalTitle = styled(Text)`
 export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
   const { proposal, onClick, clickable, status, entity, contextMenu } = props;
   const parentRef = React.useRef();
-  const { participantStore, proposalStore, voteStore } = useStore();
-  const participantCount = participantStore.getParticipantCount(
-    proposalStore.boothName!
+  // const { participantStore, proposalStore, voteStore } = useStore();
+  const { store } = useMst();
+  const booth = store.booths!.get(store.activeBooth!)!;
+  console.log(
+    toJS(booth?.proposalStore.proposals.get(proposal.key)?.participantCount)
   );
+  const participantCount =
+    booth?.proposalStore.proposals.get(proposal.key)?.participantCount || 1;
   const voteCount =
-    voteStore.countVoters(proposalStore.boothName!, proposal.key) || 0; // TODO when vote is functioning
+    booth?.proposalStore.proposals.get(proposal.key)?.voteCount || 0;
   // const timeRemaining = formatDistance(new Date(proposal.start), new Date(), {
   //   addSuffix: true,
   // });

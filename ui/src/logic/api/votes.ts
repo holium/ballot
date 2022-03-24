@@ -1,6 +1,7 @@
 import { BaseAPI } from "./base";
 // import { ParticipantType } from "../types/participants";
 export class VotesApi extends BaseAPI {
+  // list call - ~/scry/ballot/booths/~zod/votes
   /**
    *
    * @param boothKey - booth key value

@@ -204,8 +204,10 @@ export const ProposalList: FC = observer(() => {
   );
   // }, [currentBooth, store.booth?.proposals, selectedOption]);
 
-  const participants = store.booth?.listParticipants || [];
-  const participantLoading = store.booth?.participantLoader.isLoading || false;
+  const participants = store.booth ? store.booth.listParticipants : [];
+  const participantLoading = store.booth
+    ? store.booth.participantStore.isLoading
+    : false;
   return (
     <CenteredPane style={{ height: "100%" }} width={1216} bordered={false}>
       <Grid
@@ -222,12 +224,14 @@ export const ProposalList: FC = observer(() => {
             participants={participants}
             onAdd={
               (patp: string) => {
-                // store.booth!.participants.
+                store.booth!.participantStore.add(patp);
               }
               // participantStore.addParticipant(currentBooth, patp)
             }
             onRemove={
-              (patp: string) => {}
+              (patp: string) => {
+                store.booth!.participantStore.remove(patp);
+              }
               // participantStore.removeParticipant(currentBooth, patp)
             }
           />

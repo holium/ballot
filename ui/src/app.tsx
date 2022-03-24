@@ -19,6 +19,7 @@ import { NewBoothDialog } from "./components";
 import { createPath } from "./logic/utils/path";
 import { toJS } from "mobx";
 import { useMst } from "./logic/store-tree/root";
+import { BoothModelType } from "./logic/store-tree/booths";
 
 export const appName = "ballot";
 
@@ -37,7 +38,7 @@ export const App: FC = observer(() => {
     store.getBooths().then(() => {
       const urlBooth = store.booths.get(urlParams.boothName!);
       if (urlBooth) {
-        store.setBooth(urlBooth);
+        store.setBooth(urlBooth.key);
       } else {
         // use your current ship booth since we didnt find the url booth
         let newPath = createPath(store.booth, app.currentPage);
@@ -72,7 +73,7 @@ export const App: FC = observer(() => {
         </Dialog>
         <AppWindow
           isStandalone
-          loadingContext={store.loader.isLoading}
+          loadingContext={store.isLoading}
           style={{ padding: "0px 16px" }}
           app={{
             icon: <Icons.Governance />,
@@ -85,11 +86,11 @@ export const App: FC = observer(() => {
                 onAccept={(boothName: string) =>
                   store.booths.get(boothName)!.acceptInvite(boothName)
                 }
-                onContextClick={(selectedBooth: any) => {
+                onContextClick={(selectedBooth: Partial<BoothModelType>) => {
                   let newPath = createPath(selectedBooth, app.currentPage);
                   navigate(newPath);
                   app.setCurrentUrl(newPath, app.currentPage);
-                  store.setBooth(selectedBooth);
+                  store.setBooth(selectedBooth.key!);
                 }}
               />
             ),
@@ -136,8 +137,7 @@ export const App: FC = observer(() => {
           ]}
           contexts={store.list}
         >
-          {store.loader.isLoaded && <Outlet />}
-          {/* <Outlet /> */}
+          {store.booth && store.booth.isLoaded && <Outlet />}
         </AppWindow>
       </OSViewPort>
     </ThemeProvider>

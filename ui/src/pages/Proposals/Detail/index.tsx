@@ -24,20 +24,21 @@ import { createPath } from "../../../logic/utils/path";
 import { descriptiveTimeString } from "../../../logic/utils/time";
 import { DetailHeader, DetailCentered, DetailBody } from "./Detail.styles";
 import { Status } from "../../../components/Status";
+import { useMst } from "../../../logic/store-tree/root";
+import {
+  ChoiceModelType,
+  ProposalModelType,
+} from "../../../logic/store-tree/proposals";
 
 export const ProposalDetail: FC = observer((props: any) => {
   const navigate = useNavigate();
   const urlParams = useParams();
-  const { appStore, participantStore, proposalStore, voteStore, shipStore } =
-    useStore();
+  const { store, app } = useMst();
   const [chosenVote, setChosenVote] = useState<Partial<ChoiceType>>({
     label: undefined,
   });
   const currentBooth = urlParams.boothName!;
-  useEffect(() => {
-    proposalStore.isInitial.get() && proposalStore.initial(currentBooth);
-    voteStore.initialVotes(currentBooth, urlParams.proposalId!);
-  }, []);
+  store.setBooth(currentBooth);
 
   const [height, setHeight] = useState(null);
   const div = useCallback(
@@ -48,17 +49,12 @@ export const ProposalDetail: FC = observer((props: any) => {
     },
     [urlParams.proposalId!]
   );
-  console.log("result2 test ", toJS(voteStore.results));
 
-  const onVote = (vote: {
-    proposalId: string;
-    chosenVote: Partial<ChoiceType>;
-  }) => {
-    voteStore.castVote(
-      proposalStore.boothName!,
-      vote.proposalId,
-      vote.chosenVote
-    );
+  const onVote = (vote: { proposalId: string; chosenVote: any }) => {
+    const proposal = store.booth!.proposalStore.proposals.get(
+      urlParams.proposalId!
+    )!;
+    proposal.castVote(vote.chosenVote);
     setChosenVote(vote.chosenVote);
   };
 
@@ -72,30 +68,30 @@ export const ProposalDetail: FC = observer((props: any) => {
       "proposals"
     );
     navigate(newPath);
-    appStore.setCurrentUrl(newPath, "proposals");
+    app.setCurrentUrl(newPath, "proposals");
   };
 
   let content;
   // If the proposal store has loaded, render the page
 
-  if (proposalStore.isLoaded.get()) {
-    let proposal: ProposalType = proposalStore.getProposal(
-      urlParams.boothName!,
+  // const proposal = booth.proposalStore.proposals.get(urlParams.proposalId!);
+  const booth = store.booth!;
+  if (store.isLoaded && booth.proposalStore.isLoaded) {
+    let proposal: ProposalModelType = booth.proposalStore.proposals.get(
       urlParams.proposalId!
     )!;
 
-    const otherVotes = 0; // this should be the total votes submitted
-    const participantAmounts =
-      participantStore.getParticipantCount(currentBooth);
+    const voteResults = proposal.voteCount; // this should be the total votes submitted
+    const participantAmounts = booth.participantStore.count;
 
     const isActive = proposal.status === "Active";
 
     // TODO implement vote result logic
-    const votes = proposal.choices.map((value: ChoiceType) => ({
+    const votes = proposal.choices.map((value: ChoiceModelType) => ({
       label: value.label,
       results:
         value.label === chosenVote.label
-          ? ((1 + otherVotes) / participantAmounts) * 100
+          ? ((1 + voteResults) / participantAmounts) * 100
           : 0,
       action: value.action,
       description: value.description,
@@ -160,7 +156,7 @@ export const ProposalDetail: FC = observer((props: any) => {
             choices={proposal.choices}
             title={proposal.title}
             // loading={args.loading}
-            currentUser={shipStore.ship}
+            currentUser={app.ship}
             strategy={proposal.strategy}
             onVote={onVote}
             chosenOption={chosenVote.label && chosenVote}

@@ -6,16 +6,19 @@ import {
   getParent,
   destroy,
   SnapshotOut,
+  IJsonPatch,
+  applyPatch,
 } from "mobx-state-tree";
 import boothApi from "../api/booths";
-import proposalsApi from "../api/proposals";
 import participantApi from "../api/participants";
 
 import { LoaderModel } from "./common/loader";
-import { ParticipantModel } from "./participants";
-import { ProposalModel, ProposalStore } from "./proposals";
-import { ChannelResponseType, EffectType, Watcher } from "../watcher";
-import { rootStore } from "./root";
+import { ParticipantStore } from "./participants";
+import { ProposalStore } from "./proposals";
+import { Watcher } from "../watcher";
+import { onChannel, rootStore } from "./root";
+import { timeout } from "../utils/dev";
+import { EffectModelType } from "./common/effects";
 
 export const BoothModel = types
   .model({
@@ -35,22 +38,30 @@ export const BoothModel = types
       "error",
       "active",
     ]),
-    loader: types.optional(LoaderModel, { state: "initial" }),
-    participantLoader: types.optional(LoaderModel, { state: "initial" }),
+    loader: LoaderModel,
     proposalStore: ProposalStore,
-    participants: types.map(ParticipantModel),
+    participantStore: ParticipantStore,
+    actionLog: types.map(types.string),
   })
   .views((self) => ({
     get listProposals() {
       return Array.from(self.proposalStore.proposals.values());
     },
     get listParticipants() {
-      return Array.from(self.participants.values());
+      return Array.from(self.participantStore.participants.values());
     },
     get hasAdmin(): boolean {
-      // console.log()
       // TODO use booth.permission (patrick fix)
       return self.owner === rootStore.app.ship.patp;
+    },
+    get isLoading() {
+      return self.loader.isLoading;
+    },
+    get isLoaded() {
+      return self.loader.isLoaded;
+    },
+    checkAction(action: string) {
+      return self.actionLog.get(action);
     },
   }))
   .actions((self) => ({
@@ -58,51 +69,33 @@ export const BoothModel = types
       try {
         const [response, error] = yield boothApi.acceptInvite(boothKey);
         if (error) throw error;
-        self.status = "pending";
-        // this.actions[`${response.action}-${response.key}`] = response.status;
+        self.actionLog.set(
+          `${response.action}-${response.key}`,
+          response.status
+        );
       } catch (error) {
         self.loader.error(error.toString());
       }
     }),
-    // getProposals: flow(function* () {
-    //   self.loader.set("loading");
-    //   try {
-    //     const [response, error] = yield proposalsApi.getAll(self.key);
-    //     if (error) throw error;
-    //     self.loader.set("loaded");
-    //     // response could be null
-    //     Object.values(response || []).forEach((proposal: any) => {
-    //       proposal.redacted = false; // todo fix this on backend
-    //       const newProposal = ProposalModel.create(proposal);
-    //       newProposal.booth = self.key;
-    //       self.proposalStore.set(newProposal.key, newProposal);
-    //     });
-    //   } catch (error) {
-    //     self.loader.error(error.toString());
-    //   }
-    // }),
-    getParticipants: flow(function* () {
-      self.participantLoader.set("loading");
-      try {
-        const [response, error] = yield participantApi.getParticipants(
-          self.key
-        );
-        if (error) throw error;
-        self.participantLoader.set("loaded");
-        Object.values(response).forEach((participant: any) => {
-          const newParticipant = ParticipantModel.create(participant);
-          self.participants.set(newParticipant.key, newParticipant);
-        });
-      } catch (error) {
-        self.participantLoader.error(error.toString());
-      }
-    }),
+    updateEffect(update: any) {
+      console.log("updateEffect in booth ", update);
+
+      const validKeys = Object.keys(update).filter((key: string) =>
+        self.hasOwnProperty(key)
+      );
+      const patches: IJsonPatch[] = validKeys.map((key: string) => ({
+        op: "replace",
+        path: `/${key}`,
+        value: update[key],
+      }));
+      applyPatch(self, patches);
+    },
     remove(item: SnapshotIn<typeof self>) {
       destroy(item);
     },
   }));
 
-export type BoothType2 = typeof BoothModel.properties;
+export type BoothModelType = Instance<typeof BoothModel>;
 
 export const BoothStore = types
   .model({
@@ -117,25 +110,37 @@ export const BoothStore = types
     get booth() {
       return self.booths.get(self.activeBooth);
     },
+    get isLoading() {
+      return self.loader.isLoading;
+    },
+    get isLoaded() {
+      return self.loader.isLoaded;
+    },
   }))
   .actions((self) => ({
     getBooths: flow(function* () {
-      console.log("getting booths");
+      self.loader.set("loading");
+      yield timeout(1000); // for dev to simulate remote request
       try {
-        const [response, error]: [BoothType2[], any] = yield boothApi.getAll();
+        const [response, error]: [BoothModelType[], any] =
+          yield boothApi.getAll();
         if (error) throw error;
         self.loader.set("loaded");
-        Object.values(response).forEach((booth: any) => {
+        Object.values(response).forEach(async (booth: any) => {
           const newBooth = BoothModel.create({
             ...booth,
             meta: { ...booth.meta, color: "#000000" },
             proposalStore: ProposalStore.create({
               boothKey: booth.key,
             }),
+            participantStore: ParticipantStore.create({
+              boothKey: booth.key,
+            }),
+            loader: { state: "loaded" },
           });
           newBooth.proposalStore.getProposals();
           // Initialize booth store
-          newBooth.getParticipants();
+          newBooth.participantStore.getParticipants();
           self.booths.set(newBooth.key, newBooth);
         });
         Watcher.initialize(Object.values(response), onChannel);
@@ -143,8 +148,8 @@ export const BoothStore = types
         self.loader.error(error.toString());
       }
     }),
-    setBooth(booth: Instance<typeof BoothModel>) {
-      self.activeBooth = booth.key;
+    setBooth(boothKey: string) {
+      self.activeBooth = boothKey;
     },
     joinBooth(booth: SnapshotIn<typeof BoothModel>) {
       console.log("will join ", booth.name);
@@ -152,51 +157,70 @@ export const BoothStore = types
     remove(item: SnapshotIn<typeof BoothModel>) {
       destroy(item);
     },
-  }));
-
-interface IBooth extends Instance<typeof BoothModel> {}
-interface IBoothSnapshotIn extends SnapshotIn<typeof BoothModel> {}
-interface IBoothSnapshotOut extends SnapshotOut<typeof BoothModel> {}
-
-function onChannel(data: ChannelResponseType) {
-  console.log("data => ", data);
-  if (data.response === "diff") {
-    const responseJson = data.json;
-    responseJson.effects.forEach((effect: EffectType) => {
-      switch (effect.resource) {
-        case "booth":
-          // store.boothStore.onEffect(
-          //   effect,
-          //   responseJson.context,
-          //   responseJson.action
-          // );
+    //
+    //
+    //
+    onEffect(payload: EffectModelType, context?: any, action?: string) {
+      switch (payload.effect) {
+        case "add":
+          this.addEffect(payload.data);
           break;
-        case "participant":
-          // store.participantStore.onEffect(
-          //   effect,
-          //   responseJson.context,
-          //   responseJson.action
-          // );
+        case "update":
+          this.updateEffect(payload.key, payload.data);
           break;
-        case "proposal":
-          // store.proposalStore.onEffect(
-          //   effect,
-          //   responseJson.context,
-          //   responseJson.action
-          // );
+        case "delete":
+          this.deleteEffect(payload.key);
           break;
-        case "vote":
-          // store.voteStore.onEffect(
-          //   effect,
-          //   responseJson.context,
-          //   responseJson.action
-          // );
-          break;
-
-        default:
-          console.log("unknown effect", effect);
+        case "initial":
+          this.initialEffect(payload);
           break;
       }
-    });
-  }
-}
+    },
+    initialEffect(payload: any) {
+      console.log("initialEffect ", payload);
+      const { booth, participants, proposals, votes } = payload.data;
+      self.booths.set(
+        booth.key,
+        BoothModel.create({
+          ...booth,
+          meta: { ...booth.meta, color: "#000000" },
+          proposalStore: ProposalStore.create({
+            boothKey: booth.key,
+          }),
+          participantStore: ParticipantStore.create({
+            boothKey: booth.key,
+          }),
+          loader: { state: "loaded" },
+        })
+      );
+      const initialBooth = self.booths.get(booth.key);
+      console.log(initialBooth);
+      // initialBooth?.participantStore.onEffect()
+      // initialBooth?.proposalStore.onEffect()
+    },
+    addEffect(booth: any) {
+      console.log("addEffect ", booth);
+      self.booths.set(
+        booth.key,
+        BoothModel.create({
+          ...booth,
+          meta: { ...booth.meta, color: "#000000" },
+          proposalStore: ProposalStore.create({
+            boothKey: booth.key,
+          }),
+          participantStore: ParticipantStore.create({
+            boothKey: booth.key,
+          }),
+          loader: { state: "loaded" },
+        })
+      );
+    },
+    updateEffect(key: string, data: any) {
+      console.log("updateEffect ", key, data);
+      const oldBooth = self.booths.get(data.key);
+      oldBooth?.updateEffect(data);
+    },
+    deleteEffect(key: string) {
+      console.log("deleteEffect ", key);
+    },
+  }));

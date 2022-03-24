@@ -12,12 +12,13 @@ import styled from "styled-components";
 import { BoothType } from "../../logic/types/booths";
 import { toJS } from "mobx";
 import { useStore } from "../../logic/store";
+import { BoothModelType } from "../../logic/store-tree/booths";
 
 export type BoothDrowdownProps = {
   booths: any[];
   onNewBooth: (...args: any) => any;
   onAccept: (boothName: string) => void;
-  onContextClick: (context: Partial<BoothType>) => any;
+  onContextClick: (context: Partial<BoothModelType>) => any;
 };
 
 const DropdownHeader = styled.div`
@@ -146,7 +147,7 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
 const ShipBooths = (props: {
   ship: BoothType;
   onAccept: (boothName: string) => void;
-  onContextClick: (context: BoothType) => any;
+  onContextClick: (context: any) => any;
 }) => {
   const { ship, onContextClick, onAccept } = props;
   const needsAccepting = ship.status === "invited" || ship.status === "pending";

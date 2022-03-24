@@ -18,6 +18,7 @@ export const createProposalForm = () => {
 };
 
 export const createProposalFormFields = (defaults: any = {}) => {
+  console.log(defaults);
   const form = createForm({
     onSubmit({ values }) {
       values.start = new Date(values.start).valueOf();

@@ -1,13 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import { BrowserRouter } from "react-router-dom";
-import { store, StoreContext } from "./logic/store";
+// import { store, StoreContext } from "./logic/store";
+import { Provider, rootStore } from "./logic/store-tree/root";
 import AppRoutes from "./routes";
 import "./index.scss";
 
 ReactDOM.render(
-  <StoreContext.Provider value={store}>
+  <Provider value={rootStore}>
     <BrowserRouter>{AppRoutes()}</BrowserRouter>
-  </StoreContext.Provider>,
+  </Provider>,
   document.getElementById("app")
 );
