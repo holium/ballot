@@ -2757,7 +2757,7 @@
         ~&  >>  "ballot: extracting votes for booth {<booth-key>}..."
         =/  booth-proposals  (~(get by votes.state) booth-key)
         ?~  booth-proposals  ``json+!>(~)
-        ``json+!>([%o booth-proposals])
+        ``json+!>([%o (need booth-proposals)])
 
       ::  ~lodlev-migdev
       ::  list of booths scry => /x/booths/[ship|group]/proposals
@@ -2771,7 +2771,7 @@
         ~&  >>  "ballot: extracting participants for booth {<key>}..."
         =/  participants  (~(get by participants.state) key)
         ?~  participants  ``json+!>(~)
-        ``json+!>((need participants))
+        ``json+!>([%o (need participants)])
   ==
 
 ::
@@ -2965,7 +2965,7 @@
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'poll-effect']
+      ['action' s+'booth-effect']
       ['context' context]
       ['effects' [%a [status-effect]~]]
     ==
@@ -3050,18 +3050,27 @@
             ['proposal-key' s+proposal-key]
           ==
 
+          =/  error-key  (crip (weld "poll-started-error-" (trip timestamp)))
+
+          =/  error-data=json
+          %-  pairs:enjs:format
+          :~
+            ['key' s+error-key]
+            ['message' s+(crip "cannot change proposal. poll status is {<poll-status>}.")]
+          ==
+
           =/  error-effect=json
           %-  pairs:enjs:format
           :~
-            ['resource' s+'error']
-            ['effect' s+'print']
-            ['data' s+'cannot change proposal. poll status is {<poll-status>}.']
+            ['resource' s+'booth']
+            ['effect' s+'error']
+            ['data' error-data]
           ==
 
           =/  effects=json
           %-  pairs:enjs:format
           :~
-            ['action' s+'error-effect']
+            ['action' s+'save-proposal-effect']
             ['context' context]
             ['effects' [%a [error-effect]~]]
           ==
