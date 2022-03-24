@@ -354,6 +354,8 @@
       =/  owner  `@t`(scot %p our.bowl)
       =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
 
+      =/  booth-key  (crip "{<our.bowl>}")
+
       =/  meta=json
       %-  pairs:enjs:format
       :~
@@ -373,8 +375,8 @@
       %-  pairs:enjs:format
       :~
         ['type' s+'ship']
-        ['key' s+(crip "{<our.bowl>}")]
-        ['name' s+(crip "{<our.bowl>}")]
+        ['key' s+booth-key]
+        ['name' s+booth-key]
         ['image' ~]
         ['owner' s+owner]
         ['created' s+timestamp]
@@ -383,7 +385,22 @@
         ['meta' meta]
       ==
 
-      =.  booths  (~(put by booths) (crip "{<our.bowl>}") booth)
+      =.  booths  (~(put by booths) booth-key booth)
+
+      =/  participant-key  (crip "{<our.bowl>}")
+      =|  booth-participants=(map @t json)
+
+      =/  participant=json
+      %-  pairs:enjs:format
+      :~
+        ['key' s+participant-key]
+        ['name' s+participant-key]
+        ['status' s+'active']
+        ['role' s+'owner']
+        ['created' s+timestamp]
+      ==
+
+      =.  booth-participants  (~(put by booth-participants) participant-key participant)
 
       ~&  >  'ballot: context initialized!'
 
@@ -396,7 +413,7 @@
 
       =/  effects  (booths-to-subscriptions booths)
 
-      :_  state(booths booths)
+      :_  state(booths booths, participants (~(put by participants.state) booth-key booth-participants))
 
       [effects]
 
