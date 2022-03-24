@@ -2776,7 +2776,7 @@
             (handle-poke-ack reaction msg-id)
         ==
 
-    [%booths @ @ %start-poll ~]
+    [%booths @ @ @ %start-poll ~]
       :: ~&  >>  [wire sign]
       =/  booth-key  (key-from-path:util i.t.wire)
       =/  proposal-key  (key-from-path:util i.t.t.wire)
@@ -2785,10 +2785,6 @@
             ?~  p.sign
                   %-  (slog leaf+"start-poll thread started successfully" ~)
                   `this
-                  :: =/  start-wire-result  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/start-poll/result
-                  :: :_  this
-                  :: :~  [%pass wirepath %agent [our.bowl %spider] %watch start-wire-result]
-                  :: ==
                 %-  (slog leaf+"start-poll failed to start" u.p.sign)
                 `this
 
@@ -2799,12 +2795,11 @@
                     %-  (slog leaf+"start-poll thread failed: {(trip p.err)}" q.err)
                     `this
                   %thread-done
-                    %-  (slog leaf+"start-poll thread done: {<q.cage.sign>}" ~)
-                    `this
+                    (on-start-poll booth-key proposal-key)
             ==
       ==
 
-    [%booths @ @ %end-poll ~]
+    [%booths @ @ @ %end-poll ~]
       :: ~&  >>  [wire sign]
       =/  booth-key  (key-from-path:util i.t.wire)
       =/  proposal-key  (key-from-path:util i.t.t.wire)
@@ -2813,7 +2808,7 @@
             ?~  p.sign
               %-  (slog leaf+"end-poll thread started successfully" ~)
               `this
-            %-  (slog leaf+"start-poll failed to start" u.p.sign)
+            %-  (slog leaf+"end-poll failed to start" u.p.sign)
             `this
 
           %fact
@@ -2823,8 +2818,7 @@
                     %-  (slog leaf+"end-poll thread failed: {(trip p.err)}" q.err)
                     `this
                   %thread-done
-                    %-  (slog leaf+"end-poll thread done: {<q.cage.sign>}" ~)
-                    `this
+                    (on-end-poll booth-key proposal-key)
             ==
       ==
 
@@ -2925,9 +2919,97 @@
 
     results
 
+  ++  on-start-poll
+    |=  [booth-key=@t proposal-key=@t]
+    ^-  (quip card _this)
+
+    %-  (slog leaf+"on-start-poll called" ~)
+    =/  context=json
+    %-  pairs:enjs:format
+    :~
+      ['booth-key' s+booth-key]
+      ['proposal-key' s+proposal-key]
+    ==
+
+    =/  status-data=json
+    %-  pairs:enjs:format
+    :~
+      ['status' s+'started']
+    ==
+
+    =/  status-effect=json
+    %-  pairs:enjs:format
+    :~
+      ['resource' s+'booth']
+      ['effect' s+'update']
+      ['data' status-data]
+    ==
+
+    =/  effects=json
+    %-  pairs:enjs:format
+    :~
+      ['action' s+'poll-effect']
+      ['context' context]
+      ['effects' [%a [status-effect]~]]
+    ==
+
+    %-  (slog leaf+"sending poll started effect to subcribers => {<effects>}..." ~)
+
+    :_  this
+    :~  [%give %fact [/booths]~ %json !>(effects)]
+    ==
+
+  ++  on-end-poll
+    |=  [booth-key=@t proposal-key=@t]
+    ^-  (quip card _this)
+
+    %-  (slog leaf+"on-end-poll called" ~)
+
+    =/  poll-results  (tally-results booth-key proposal-key)
+
+    %-  (slog leaf+"poll results are in!!! => {<poll-results>}" ~)
+
+    =/  context=json
+    %-  pairs:enjs:format
+    :~
+      ['booth-key' s+booth-key]
+      ['proposal-key' s+proposal-key]
+    ==
+
+    =/  results-data=json
+    %-  pairs:enjs:format
+    :~
+      ['status' s+'ended']
+      ['results' [%o poll-results]]
+    ==
+
+    =/  results-effect=json
+    %-  pairs:enjs:format
+    :~
+      ['resource' s+'booth']
+      ['effect' s+'update']
+      ['data' results-data]
+    ==
+
+    =/  effects=json
+    %-  pairs:enjs:format
+    :~
+      ['action' s+'booth-effect']
+      ['context' context]
+      ['effects' [%a [results-effect]~]]
+    ==
+
+    %-  (slog leaf+"sending poll results to subcribers => {<effects>}..." ~)
+
+    :_  this
+    :~  [%give %fact [/booths]~ %json !>(effects)]
+    ==
+
   ++  on-proposal-changed
     |=  [booth-key=@t payload=(map @t json)]
     ^-  (quip card _this)
+
+    =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
 
     =/  data  ((om json):dejs:format (~(got by payload) 'data'))
     =/  proposal-key  (so:dejs:format (~(got by data) 'key'))
@@ -2976,60 +3058,76 @@
     =.  effects  ~
 
     =/  poll-start-date  (~(get by poll) 'start')
-    =/  poll-start-date  ?~(poll-start-date ~ (need poll-start-date))
+    =/  poll-start-date  ?~(poll-start-date ~ (du:dejs:format (need poll-start-date)))
 
     :: ::  did the start date of the poll change?
     =/  proposal-start-date=@da  (du:dejs:format (~(got by data) 'start'))
-    =/  effects
+    =/  result=[effects=(list card) poll=(map @t json)]
           ?.  =(proposal-start-date poll-start-date)
                 %-  (slog leaf+"ballot: proposal {<proposal-key>} start date changed. rescheduling..." ~)
                 ::  get the current thread id of the end poll timer so that we can kill it and
                 ::    schedule a new timer under a new thread
                 =/  tid  (~(get by poll) 'tid-start')
-                =/  tid  ?~(tid ~ (so:dejs:format (need tid)))
-                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/start-poll
-                =/  effects  ?~(tid effects (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])]))
+                =/  tis-active  ?~(tid %.n %.y)
+                =/  tid  ?.(tis-active 't000' (so:dejs:format (need tid)))
+                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
+                =/  effects  ?.  tis-active  effects
+                      =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])])
+                      =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %leave ~])
+                      effects
                 ::  add an effect to start a new timer with the updated date/time
-                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/start-poll
                 =/  tid  `@t`(cat 3 'thread_start_' (scot %uv (sham eny.bowl)))
                 =/  targs  [~ `tid byk.bowl %booth-timer !>(proposal-start-date)]
+                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
 
                 =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %watch /thread-result/[tid]])
                 =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-start !>(targs)])
 
                 =/  poll  (~(put by poll) 'start' (sect:enjs:format proposal-start-date))
                 =/  poll  (~(put by poll) 'tid-start' s+tid)
-                =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
-                effects
-              effects
+                [effects poll]
+              %-  (slog leaf+"ballot: proposal {<proposal-key>} start date unchanged. no need to reschedule." ~)
+              [effects poll]
+
+    =/  effects  effects.result
+    =/  poll  poll.result
 
     =/  poll-end-date  (~(get by poll) 'end')
-    =/  poll-end-date  ?~(poll-end-date ~ (need poll-end-date))
+    =/  poll-end-date  ?~(poll-end-date ~ (du:dejs:format (need poll-end-date)))
 
     ::  did the end date of the poll change?
     =/  proposal-end-date=@da  (du:dejs:format (~(got by data) 'end'))
-    =/  effects
+
+    %-  (slog leaf+"ballot: {<poll-end-date>} {<proposal-end-date>}" ~)
+    =/  result=[effects=(list card) poll=(map @t json)]
           ?.  =(proposal-end-date poll-end-date)
                 %-  (slog leaf+"ballot: proposal {<proposal-key>} end date changed. rescheduling..." ~)
                 ::  get the current thread id of the end poll timer so that we can kill it and
                 ::    schedule a new timer under a new thread
                 =/  tid  (~(get by poll) 'tid-end')
-                =/  tid  ?~(tid ~ (so:dejs:format (need tid)))
-                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/end-poll
-                =/  effects  ?~(tid effects (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])]))
+                =/  tis-active  ?~(tid %.n %.y)
+                =/  tid  ?.(tis-active 't001' (so:dejs:format (need tid)))
+                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/end-poll
+                =/  effects  ?.  tis-active  effects
+                      =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])])
+                      =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %leave ~])
+                      effects
                 ::  add an effect to start a new timer with the updated date/time
-                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/end-poll
                 =/  tid  `@t`(cat 3 'thread_end_' (scot %uv (sham eny.bowl)))
                 =/  targs  [~ `tid byk.bowl %booth-timer !>(proposal-end-date)]
+                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/end-poll
 
                 =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %watch /thread-result/[tid]])
                 =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-start !>(targs)])
 
                 =/  poll  (~(put by poll) 'end' (sect:enjs:format proposal-end-date))
                 =/  poll  (~(put by poll) 'tid-end' s+tid)
-                =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
-                effects
-              effects
+                [effects poll]
+              %-  (slog leaf+"ballot: proposal {<proposal-key>} end date unchanged. no need to reschedule." ~)
+              [effects poll]
+
+    =/  poll  (~(put by poll.result) 'status' s+'scheduled')
+    =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
 
     ::  in case of scheduling change:
     ::
@@ -3044,7 +3142,7 @@
     :_  this(polls (~(put by polls.state) booth-key booth-polls))
 
     ::  send out effects to reschedule the poll
-    [effects]
+    [effects.result]
 
   ++  handle-cast-vote
     |=  [booth-key=@t payload=(map @t json)]
