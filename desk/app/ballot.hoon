@@ -3086,34 +3086,41 @@
     =/  poll-start-date  (~(get by poll) 'start')
     =/  poll-start-date  ?~(poll-start-date ~ (du:dejs:format (need poll-start-date)))
 
-    :: ::  did the start date of the poll change?
-    =/  proposal-start-date=@da  (du:dejs:format (~(got by data) 'start'))
-    =/  result=[effects=(list card) poll=(map @t json)]
-          ?.  =(proposal-start-date poll-start-date)
-                %-  (slog leaf+"ballot: proposal {<proposal-key>} start date changed. rescheduling..." ~)
-                ::  get the current thread id of the end poll timer so that we can kill it and
-                ::    schedule a new timer under a new thread
-                =/  tid  (~(get by poll) 'tid-start')
-                =/  tis-active  ?~(tid %.n %.y)
-                =/  tid  ?.(tis-active 't000' (so:dejs:format (need tid)))
-                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
-                =/  effects  ?.  tis-active  effects
-                      =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])])
-                      =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %leave ~])
-                      effects
-                ::  add an effect to start a new timer with the updated date/time
-                =/  tid  `@t`(cat 3 'thread_start_' (scot %uv (sham eny.bowl)))
-                =/  targs  [~ `tid byk.bowl %booth-timer !>(proposal-start-date)]
-                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
+    =|  result=[effects=(list card) poll=(map @t json)]
 
-                =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %watch /thread-result/[tid]])
-                =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-start !>(targs)])
+    =/  proposal-start-date  (~(get by data) 'start')
+    =.  result  ?.  ?=(~ proposal-start-date)
+      :: ::  did the start date of the poll change?
+      =/  proposal-start-date=@da  (du:dejs:format (need proposal-start-date))
+      =.  result
+            ?.  =(proposal-start-date poll-start-date)
+                  %-  (slog leaf+"ballot: proposal {<proposal-key>} start date changed. rescheduling..." ~)
+                  ::  get the current thread id of the end poll timer so that we can kill it and
+                  ::    schedule a new timer under a new thread
+                  =/  tid  (~(get by poll) 'tid-start')
+                  =/  tis-active  ?~(tid %.n %.y)
+                  =/  tid  ?.(tis-active 't000' (so:dejs:format (need tid)))
+                  =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
+                  =/  effects  ?.  tis-active  effects
+                        =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])])
+                        =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %leave ~])
+                        effects
+                  ::  add an effect to start a new timer with the updated date/time
+                  =/  tid  `@t`(cat 3 'thread_start_' (scot %uv (sham eny.bowl)))
+                  =/  targs  [~ `tid byk.bowl %booth-timer !>(proposal-start-date)]
+                  =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
 
-                =/  poll  (~(put by poll) 'start' (sect:enjs:format proposal-start-date))
-                =/  poll  (~(put by poll) 'tid-start' s+tid)
+                  =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %watch /thread-result/[tid]])
+                  =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-start !>(targs)])
+
+                  =/  poll  (~(put by poll) 'start' (sect:enjs:format proposal-start-date))
+                  =/  poll  (~(put by poll) 'tid-start' s+tid)
+                  [effects poll]
+                %-  (slog leaf+"ballot: proposal {<proposal-key>} start date unchanged. no need to reschedule." ~)
                 [effects poll]
-              %-  (slog leaf+"ballot: proposal {<proposal-key>} start date unchanged. no need to reschedule." ~)
-              [effects poll]
+          [effects.result poll.result]
+        %-  (slog leaf+"ballot: start date not found in payload. no need to reschedule poll start." ~)
+        [effects poll]
 
     =/  effects  effects.result
     =/  poll  poll.result
@@ -3121,11 +3128,11 @@
     =/  poll-end-date  (~(get by poll) 'end')
     =/  poll-end-date  ?~(poll-end-date ~ (du:dejs:format (need poll-end-date)))
 
-    ::  did the end date of the poll change?
-    =/  proposal-end-date=@da  (du:dejs:format (~(got by data) 'end'))
-
-    %-  (slog leaf+"ballot: {<poll-end-date>} {<proposal-end-date>}" ~)
-    =/  result=[effects=(list card) poll=(map @t json)]
+    =/  proposal-end-date  (~(get by data) 'end')
+    =.  result  ?.  ?=(~ proposal-end-date)
+      :: ::  did the end date of the poll change?
+      =/  proposal-end-date=@da  (du:dejs:format (need proposal-end-date))
+      =.  result
           ?.  =(proposal-end-date poll-end-date)
                 %-  (slog leaf+"ballot: proposal {<proposal-key>} end date changed. rescheduling..." ~)
                 ::  get the current thread id of the end poll timer so that we can kill it and
@@ -3151,6 +3158,9 @@
                 [effects poll]
               %-  (slog leaf+"ballot: proposal {<proposal-key>} end date unchanged. no need to reschedule." ~)
               [effects poll]
+          [effects.result poll.result]
+        %-  (slog leaf+"ballot: end date not found in payload. no need to reschedule poll end." ~)
+        [effects poll]
 
     =/  poll  (~(put by poll.result) 'status' s+'scheduled')
     =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
