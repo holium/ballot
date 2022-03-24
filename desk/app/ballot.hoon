@@ -2757,7 +2757,7 @@
         ~&  >>  "ballot: extracting votes for booth {<booth-key>}..."
         =/  booth-proposals  (~(get by votes.state) booth-key)
         ?~  booth-proposals  ``json+!>(~)
-        ``json+!>([%o booth-proposals])
+        ``json+!>([%o (need booth-proposals)])
 
       ::  ~lodlev-migdev
       ::  list of booths scry => /x/booths/[ship|group]/proposals
@@ -2771,7 +2771,7 @@
         ~&  >>  "ballot: extracting participants for booth {<key>}..."
         =/  participants  (~(get by participants.state) key)
         ?~  participants  ``json+!>(~)
-        ``json+!>((need participants))
+        ``json+!>([%o (need participants)])
   ==
 
 ::
