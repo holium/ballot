@@ -1598,6 +1598,7 @@
         ==
 
         =/  wire-payload  (~(put by payload) 'context' [%o context])
+        =/  wire-payload  (~(put by wire-payload) 'data' [%o proposal])
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
         ~&  >>  "sending proposal update to {<remote-agent-wire>}..."
@@ -3590,7 +3591,7 @@
         ['key' s+participant-key]
         ['name' s+participant-key]
         ['status' s+'active']
-        ['ts-added' s+timestamp]
+        ['created' s+timestamp]
       ==
 
     =/  booth-participants  (~(put by booth-participants) participant-key participant)
