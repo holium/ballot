@@ -2353,14 +2353,14 @@
                 %-  (slog leaf+"ballot: delete-proposal {<key>}..." ~)
                 (delete-proposal-api req payload booth-key)
 
+              [%proposal %cast-vote]
+                %-  (slog leaf+"ballot: cast-vote received over http..." ~)
+                (cast-vote-api req payload)
+
               [%participant %delete-participant]
                 =/  key  (so:dejs:format (~(got by context) 'booth'))
                 %-  (slog leaf+"ballot: delete-participant {<key>}..." ~)
                 (delete-participant-api req payload booth-key)
-
-              [%booth %cast-vote]
-                %-  (slog leaf+"ballot: cast-vote received over http..." ~)
-                (cast-vote-api req payload)
 
         ==
 
