@@ -8,15 +8,14 @@ import {
   SnapshotOut,
   applyPatch,
   IJsonPatch,
-  getParentOfType,
 } from "mobx-state-tree";
 
 import proposalsApi from "../api/proposals";
 import votesApi from "../api/votes";
-import { BoothModel, BoothModelType } from "./booths";
+import { BoothModelType } from "./booths";
+import { ContextModelType, EffectModelType } from "./common/effects";
 
 import { LoaderModel } from "./common/loader";
-import { ParticipantStore } from "./participants";
 
 export const ChoiceModel = types.model({
   label: types.string,
@@ -79,9 +78,6 @@ export const ProposalModel = types
           proposalForm
         );
         if (error) throw error;
-        // TODO fix this on backend
-        response.data.redacted = false;
-
         const validKeys = Object.keys(response.data).filter((key: string) =>
           self.hasOwnProperty(key)
         );
@@ -91,8 +87,10 @@ export const ProposalModel = types
           value: response.data[key],
         }));
         applyPatch(self, patches);
+        return self;
       } catch (error) {
         self.loader.error(error.toString());
+        return;
       }
     }),
     castVote: flow(function* (chosenVote: Instance<typeof VoteResultModel>) {
@@ -128,6 +126,22 @@ export const ProposalModel = types
         self.loader.error(error.toString());
       }
     }),
+    initialEffect(voteMap: any) {
+      //
+    },
+    updateEffect(update: any) {
+      const validKeys = Object.keys(update).filter((key: string) =>
+        self.hasOwnProperty(key)
+      );
+      const patches: IJsonPatch[] = validKeys.map((key: string) => ({
+        op: "replace",
+        path: `/${key}`,
+        value: update[key],
+      }));
+
+      applyPatch(self, patches);
+      return self;
+    },
   }));
 
 export type ProposalModelType = Instance<typeof ProposalModel>;
@@ -136,6 +150,7 @@ export const ProposalStore = types
   .model({
     boothKey: types.string,
     loader: types.optional(LoaderModel, { state: "initial" }),
+    addLoader: types.optional(LoaderModel, { state: "initial" }),
     proposals: types.map(ProposalModel),
     activeProposal: types.optional(types.string, ""),
   })
@@ -176,27 +191,31 @@ export const ProposalStore = types
     //
     // add new resource
     //
-    add: flow(function* (proposalForm: Instance<typeof self>) {
-      // self.loader.set("loading");
+    add: flow(function* (proposalForm: ProposalModelType) {
+      self.addLoader.set("loading");
       try {
         const [response, error] = yield proposalsApi.create(
           self.boothKey,
           proposalForm
         );
         if (error) throw error;
-        // self.loader.set("loaded");
+        self.addLoader.set("loaded");
         // response could be null
         console.log("creating proposal ", response);
         // Object.values(response || []).forEach((proposal: any) => {
-        //   proposal.redacted = false; // todo fix this on backend
         const newProposal = ProposalModel.create({
           ...response.data,
+          status: determineStatus(response.data),
+          owner: "",
           boothKey: self.boothKey,
         });
+        // newProposal.redacted = false; // todo fix this on backend
         self.proposals.set(newProposal.key, newProposal);
+        return newProposal;
         // });
       } catch (error) {
         self.loader.error(error.toString());
+        return;
       }
     }),
     //
@@ -208,9 +227,86 @@ export const ProposalStore = types
     //
     // remove
     //
-    remove(proposal: Instance<typeof ProposalModel>) {
-      // TODO
-      destroy(proposal);
+    remove: flow(function* (proposalKey: string) {
+      try {
+        const [response, error] = yield proposalsApi.delete(
+          self.boothKey,
+          proposalKey
+        );
+        if (error) throw error;
+        const deleted = self.proposals.get(proposalKey)!;
+        self.proposals.delete(proposalKey);
+        destroy(deleted);
+      } catch (error) {
+        self.loader.error(error.toString());
+      }
+    }),
+    //
+    //
+    //
+    onEffect(
+      payload: EffectModelType,
+      context: ContextModelType,
+      action?: string
+    ) {
+      switch (payload.effect) {
+        case "add":
+          this.addEffect(payload.data);
+          break;
+        case "update":
+          this.updateEffect(payload.key!, payload.data);
+          break;
+        case "delete":
+          this.deleteEffect(payload.key!);
+          break;
+        case "initial":
+          // this.initialEffect(payload);
+          break;
+      }
+    },
+    initialEffect(proposalMap: any, voteMap: any) {
+      console.log("proposal initialEffect proposalMap ", proposalMap);
+      Object.keys(proposalMap).forEach((proposalKey: any) => {
+        const proposal = proposalMap[proposalKey];
+        const newProposal = ProposalModel.create({
+          ...proposal,
+          status: determineStatus(proposal),
+          boothKey: self.boothKey,
+        });
+        Object.keys(voteMap).forEach((voterKey: string) => {
+          const voteResult = voteMap[voterKey];
+          newProposal.results.set(
+            voteResult.voter,
+            VoteResultModel.create({
+              ...voteResult,
+              choice: ChoiceModel.create(voteResult.choice),
+            })
+          );
+        });
+        self.proposals.set(proposal.key, newProposal);
+      });
+    },
+
+    addEffect(proposal: any) {
+      console.log("proposal addEffect ", proposal);
+      self.proposals.set(
+        proposal.key,
+        ProposalModel.create({
+          ...proposal,
+          status: determineStatus(proposal),
+          boothKey: self.boothKey,
+        })
+      );
+    },
+    updateEffect(proposalKey: string, data: any) {
+      console.log("proposal updateEffect ", proposalKey, data);
+      const oldProposal = self.proposals.get(proposalKey)!;
+      const updated: any = oldProposal.updateEffect(data)!;
+      self.proposals.set(proposalKey, updated);
+    },
+    deleteEffect(proposalKey: string) {
+      console.log("proposal deleteEffect ", proposalKey);
+      self.proposals.delete(proposalKey);
     },
   }));
 

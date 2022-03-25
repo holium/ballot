@@ -4,13 +4,21 @@ export const EffectModel = types.model("EffectModel", {
   resource: types.string, // "booth", "participant", "proposal", "vote"
   effect: types.string,
   key: types.string,
-  data: types.model(),
+  data: types.maybeNull(types.model()),
 });
 export type EffectModelType = Instance<typeof EffectModel>;
 
+export const ContextModel = types.model({
+  booth: types.maybeNull(types.string),
+  participant: types.maybeNull(types.string),
+  proposal: types.maybeNull(types.string),
+});
+
+export type ContextModelType = Instance<typeof ContextModel>;
+
 export const ActionModel = types.model("ActionModel", {
   action: types.string,
-  context: types.model(),
+  context: ContextModel,
   effects: types.array(EffectModel),
 });
 export type ActionModelType = Instance<typeof ActionModel>;

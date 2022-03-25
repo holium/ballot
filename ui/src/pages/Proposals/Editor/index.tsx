@@ -80,16 +80,16 @@ export const ProposalEditor: FC = observer(() => {
     app.setCurrentUrl(newPath);
   };
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     let responseProposal: any;
     const proposalStore = store.booth!.proposalStore;
 
     // If editing an existing proposal
     if (urlParams.proposalId) {
       const proposal = proposalStore.proposals.get(urlParams.proposalId)!;
-      responseProposal = proposal.update(form.actions.submit());
+      responseProposal = await proposal.update(form.actions.submit());
     } else {
-      responseProposal = proposalStore.add(form.actions.submit());
+      responseProposal = await proposalStore.add(form.actions.submit());
     }
 
     if (isNew) {
@@ -97,7 +97,6 @@ export const ProposalEditor: FC = observer(() => {
       let newPath = createPath(
         {
           name: urlParams.boothName!,
-          // @ts-ignore
           type: urlParams.type!,
         },
         "proposals/editor",

@@ -6,8 +6,11 @@ import {
   getParent,
   destroy,
   SnapshotOut,
+  IJsonPatch,
+  applyPatch,
 } from "mobx-state-tree";
 import participantApi from "../api/participants";
+import { ContextModelType, EffectModelType } from "./common/effects";
 
 import { LoaderModel } from "./common/loader";
 
@@ -26,6 +29,19 @@ export const ParticipantModel = types
   .actions((self) => ({
     setStatus(status: typeof self.status) {
       self.status = status;
+    },
+    updateEffect(update: any) {
+      console.log("updateEffect in participant model ", update);
+
+      const validKeys = Object.keys(update).filter((key: string) =>
+        self.hasOwnProperty(key)
+      );
+      const patches: IJsonPatch[] = validKeys.map((key: string) => ({
+        op: "replace",
+        path: `/${key}`,
+        value: update[key],
+      }));
+      applyPatch(self, patches);
     },
   }));
 
@@ -97,6 +113,56 @@ export const ParticipantStore = types
         self.loader.error(error.toString());
       }
     }),
+    //
+    //
+    //
+    onEffect(
+      payload: EffectModelType,
+      context: ContextModelType,
+      action?: string
+    ) {
+      switch (payload.effect) {
+        case "add":
+          this.addEffect(payload.data);
+          break;
+        case "update":
+          this.updateEffect(payload.key, payload.data);
+          break;
+        case "delete":
+          this.deleteEffect(payload.key);
+          break;
+        case "initial":
+          // this.initialEffect(payload);
+          break;
+      }
+    },
+    // data: Map<string, ParticipantModelType>
+    initialEffect(participantMap: any) {
+      console.log("participant initialEffect participantMap ", participantMap);
+      Object.keys(participantMap).forEach((participantKey: string) => {
+        self.participants.set(
+          participantKey,
+          ParticipantModel.create(participantMap[participantKey])
+        );
+      });
+    },
+
+    addEffect(participant: any) {
+      console.log("participant addEffect ", participant);
+      self.participants.set(
+        participant.key,
+        ParticipantModel.create(participant)
+      );
+    },
+    updateEffect(participantKey: string, data: any) {
+      console.log("participant updateEffect ", participantKey, data);
+      const oldBooth = self.participants.get(participantKey);
+      oldBooth?.updateEffect(data);
+    },
+    deleteEffect(participantKey: string) {
+      console.log("participant deleteEffect ", participantKey);
+      self.participants.delete(participantKey);
+    },
   }));
 // addParticipant = action(async (boothKey: string, participantKey: string) => {
 //   this.loader.set(STATE.LOADING);

@@ -38,7 +38,9 @@ export class BoothsApi extends BaseAPI {
         body: JSON.stringify({
           action: "join",
           resource: "booth",
-          key: boothKey,
+          context: {
+            booth: boothKey,
+          },
         }), // ACTION TYPE
       });
       return [await response.json(), null];
@@ -64,7 +66,9 @@ export class BoothsApi extends BaseAPI {
         body: JSON.stringify({
           action: "accept",
           resource: "booth",
-          key: boothKey,
+          context: {
+            booth: boothKey,
+          },
         }),
       });
       return [await response.json(), null];

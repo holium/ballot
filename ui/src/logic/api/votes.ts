@@ -1,7 +1,20 @@
 import { BaseAPI } from "./base";
-// import { ParticipantType } from "../types/participants";
 export class VotesApi extends BaseAPI {
-  // list call - ~/scry/ballot/booths/~zod/votes
+  fetchAll = async (boothKey: string) => {
+    const scryUrl = `${this.baseUrl}/~/scry/ballot/booths/${boothKey}/votes`;
+    try {
+      const response = await fetch(scryUrl, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      return [await response.json(), null];
+    } catch (error) {
+      return [this.handleErrors(error), null];
+    }
+  };
   /**
    *
    * @param boothKey - booth key value
@@ -22,8 +35,8 @@ export class VotesApi extends BaseAPI {
           action: "cast-vote",
           resource: "booth",
           context: {
-            "booth-key": boothKey,
-            "proposal-key": proposalKey,
+            booth: boothKey,
+            proposal: proposalKey,
           },
           data: {
             choice,

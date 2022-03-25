@@ -11,7 +11,9 @@ export class ProposalsApi extends BaseAPI {
    * @returns
    */
   async create(boothKey: string, proposal: any): Promise<[any, any]> {
-    const url = `${this.baseUrl}/ballot/api/booths/${boothKey}`;
+    // const url = `${this.baseUrl}/ballot/api/booths/${boothKey}`;
+
+    const url = `${this.baseUrl}/ballot/api/booths`;
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -21,8 +23,10 @@ export class ProposalsApi extends BaseAPI {
         credentials: "include",
         body: JSON.stringify({
           action: "save-proposal",
-          resource: "booth",
-          key: boothKey,
+          resource: "proposal",
+          context: {
+            booth: boothKey,
+          },
           data: proposal,
         }),
       });
@@ -55,8 +59,11 @@ export class ProposalsApi extends BaseAPI {
         credentials: "include",
         body: JSON.stringify({
           action: "save-proposal",
-          resource: "booth",
-          key: boothKey,
+          resource: "proposal",
+          context: {
+            booth: boothKey,
+            proposal: proposalKey,
+          },
           data: { ...proposal, key: proposalKey },
         }),
       });
@@ -106,8 +113,14 @@ export class ProposalsApi extends BaseAPI {
         credentials: "include",
         body: JSON.stringify({
           action: "delete-proposal",
-          resource: "booth",
-          key: proposalKey,
+          resource: "proposal",
+          context: {
+            booth: boothKey,
+            proposal: proposalKey,
+          },
+          data: {
+            key: proposalKey,
+          },
         }),
       });
       return [{ participant: response }, null];

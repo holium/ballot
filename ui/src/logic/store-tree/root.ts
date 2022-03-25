@@ -63,28 +63,34 @@ export function onChannel(data: ChannelResponseModelType) {
           );
           break;
         case "participant":
-          // const participantStore = rootStore.store.booths.get(responseJson.context.key!)?.participantStore
-          // rootStore.store.onEffect(
-          //   effect,
-          //   responseJson.context,
-          //   responseJson.action
-          // );
+          const participantBooth = rootStore.store.booths.get(
+            responseJson.context.booth!
+          )!;
+          participantBooth.participantStore.onEffect(
+            effect,
+            responseJson.context,
+            responseJson.action
+          );
           break;
         case "proposal":
-          // store.proposalStore.onEffect(
-          //   effect,
-          //   responseJson.context,
-          //   responseJson.action
-          // );
+          const proposalBooth = rootStore.store.booths.get(
+            responseJson.context.booth!
+          )!;
+          proposalBooth.proposalStore.onEffect(
+            effect,
+            responseJson.context,
+            responseJson.action
+          );
           break;
         case "vote":
-          // store.voteStore.onEffect(
-          //   effect,
-          //   responseJson.context,
-          //   responseJson.action
-          // );
+          const voteBooth = rootStore.store.booths.get(
+            responseJson.context.booth!
+          )!;
+          const voteStore = voteBooth.proposalStore.proposals?.get(
+            responseJson.context.proposal!
+          );
+          // voteStore.onEffect(effect, responseJson.context, responseJson.action);
           break;
-
         default:
           console.log("unknown effect", effect);
           break;

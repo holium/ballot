@@ -40,8 +40,10 @@ export class ParticipantsApi extends BaseAPI {
         body: JSON.stringify({
           action: "invite",
           resource: "booth",
-          key: boothKey,
-          data: { key: participant },
+          context: {
+            booth: boothKey,
+            participant: participant,
+          },
         }),
       });
 
@@ -58,14 +60,22 @@ export class ParticipantsApi extends BaseAPI {
    * @returns 200 on success w/ a string message in the body
    */
   deleteParticipant = async (boothKey: string, participantKey: string) => {
-    const scryUrl = `${this.baseUrl}/ballot/api/booths/${boothKey}/participants/${participantKey}`;
+    const scryUrl = `${this.baseUrl}/ballot/api/booths/${boothKey}`;
     try {
       const response = await fetch(scryUrl, {
-        method: "DELETE",
+        method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          action: "delete-participant",
+          resource: "participant",
+          context: {
+            booth: boothKey,
+            participant: participantKey,
+          },
+        }),
       });
       return [{ participant: response }, null];
     } catch (error) {

@@ -41,6 +41,7 @@ export const App: FC = observer(() => {
         store.setBooth(urlBooth.key);
       } else {
         // use your current ship booth since we didnt find the url booth
+        store.setBooth(app.ship.patp);
         let newPath = createPath(store.booth, app.currentPage);
         navigate(newPath);
         app.setCurrentUrl(newPath, app.currentPage);

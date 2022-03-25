@@ -18,9 +18,9 @@ export const createProposalForm = () => {
 };
 
 export const createProposalFormFields = (defaults: any = {}) => {
-  console.log(defaults);
   const form = createForm({
     onSubmit({ values }) {
+      values.redacted = Boolean(values.redacted);
       values.start = new Date(values.start).valueOf();
       values.end = new Date(values.end).valueOf();
       return values;

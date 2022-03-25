@@ -10,7 +10,6 @@ import {
   applyPatch,
 } from "mobx-state-tree";
 import boothApi from "../api/booths";
-import participantApi from "../api/participants";
 
 import { LoaderModel } from "./common/loader";
 import { ParticipantStore } from "./participants";
@@ -177,7 +176,7 @@ export const BoothStore = types
       }
     },
     initialEffect(payload: any) {
-      console.log("initialEffect ", payload);
+      // console.log("initialEffect ", payload);
       const { booth, participants, proposals, votes } = payload.data;
       self.booths.set(
         booth.key,
@@ -193,13 +192,12 @@ export const BoothStore = types
           loader: { state: "loaded" },
         })
       );
-      const initialBooth = self.booths.get(booth.key);
-      console.log(initialBooth);
-      // initialBooth?.participantStore.onEffect()
-      // initialBooth?.proposalStore.onEffect()
+      const initialBooth = self.booths.get(booth.key)!;
+      initialBooth.participantStore.initialEffect(participants);
+      initialBooth.proposalStore.initialEffect(proposals, votes);
     },
     addEffect(booth: any) {
-      console.log("addEffect ", booth);
+      // console.log("addEffect ", booth);
       self.booths.set(
         booth.key,
         BoothModel.create({
@@ -216,11 +214,14 @@ export const BoothStore = types
       );
     },
     updateEffect(key: string, data: any) {
-      console.log("updateEffect ", key, data);
+      console.log("booth updateEffect ", key, data);
       const oldBooth = self.booths.get(data.key);
       oldBooth?.updateEffect(data);
     },
-    deleteEffect(key: string) {
-      console.log("deleteEffect ", key);
+    deleteEffect(boothKey: string) {
+      console.log("booth deleteEffect ", boothKey);
+      const deleted = self.booths.get(boothKey)!;
+      destroy(deleted);
+      self.booths.delete(boothKey);
     },
   }));

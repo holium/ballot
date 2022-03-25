@@ -11,6 +11,8 @@ import {
   MenuItemProps,
 } from "@holium/design-system";
 import { toJS } from "mobx";
+import { Observer } from "mobx-react";
+
 import { Status } from "../Status";
 import { ProposalType } from "../../logic/types/proposals";
 import { descriptiveTimeString } from "../../logic/utils/time";
@@ -46,9 +48,7 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
   // const { participantStore, proposalStore, voteStore } = useStore();
   const { store } = useMst();
   const booth = store.booths!.get(store.activeBooth!)!;
-  console.log(
-    toJS(booth?.proposalStore.proposals.get(proposal.key)?.participantCount)
-  );
+
   const participantCount =
     booth?.proposalStore.proposals.get(proposal.key)?.participantCount || 1;
   const voteCount =
@@ -83,33 +83,48 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
             mb={["4px", "8px", "8px"]}
             style={{ gap: 8 }}
           >
-            <ProposalTitle variant="h6">
-              {proposal.title ? proposal.title : "Loading..."}
-            </ProposalTitle>
-            <Status status={status} />
+            <Observer>
+              {() => (
+                <>
+                  <ProposalTitle variant="h6">
+                    {proposal.title ? proposal.title : "Loading..."}
+                  </ProposalTitle>
+
+                  <Status status={status} />
+                </>
+              )}
+            </Observer>
           </Flex>
           <Flex
             flexDirection={["column", "row", "row"]}
             justifyContent="space-between"
           >
-            {/* TODO robust status handling */}
-            {status !== "Ended" ? (
-              <KPI
-                icon={<TlonIcon icon="Clock" />}
-                value={descriptiveTimeString(proposal.start, proposal.end)}
-              />
-            ) : (
-              <KPI value="Not enough support" />
-            )}
-            {/* {!statusInfoValue ? (
+            <Observer>
+              {() => (
+                <>
+                  {status !== "Ended" ? (
+                    <KPI
+                      icon={<TlonIcon icon="Clock" />}
+                      value={descriptiveTimeString(
+                        proposal.start,
+                        proposal.end
+                      )}
+                    />
+                  ) : (
+                    <KPI value="Not enough support" />
+                  )}
+                  {/* {!statusInfoValue ? (
               <StatusInfo status={status} value={timeRemaining} />
             ) : (
               <StatusInfo status={status} value={statusInfoValue} />
             )} */}
-            <KPI
-              icon={<TlonIcon icon="Users" />}
-              value={`${voteCount}/${participantCount} (${percentage}%)`}
-            />
+                  <KPI
+                    icon={<TlonIcon icon="Users" />}
+                    value={`${voteCount}/${participantCount} (${percentage}%)`}
+                  />
+                </>
+              )}
+            </Observer>
           </Flex>
         </Flex>
       </Card>

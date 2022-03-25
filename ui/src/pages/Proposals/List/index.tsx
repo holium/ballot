@@ -14,29 +14,20 @@ import {
   Button,
 } from "@holium/design-system";
 
-import { useStore } from "../../../logic/store";
 import { getProposalFilters } from "../../../logic/stores/proposals";
 import { ProposalType } from "../../../logic/types/proposals";
 import { appName } from "../../../app";
 import { ProposalCard } from "../../../components/ProposalCard";
 import { Participants } from "../../../components/Participants";
 import { createPath } from "../../../logic/utils/path";
-import { mapToList } from "../../../logic/utils/map";
 import { useMst } from "../../../logic/store-tree/root";
 
 export const ProposalList: FC = observer(() => {
   const [selectedOption, setSelectedOption] = useState("All");
   const navigate = useNavigate();
   const urlParams = useParams();
-  // const { proposalStore, boothStore, participantStore, voteStore } = useStore();
   const { store } = useMst();
   const currentBooth = urlParams.boothName!;
-
-  // useEffect(() => {
-  //   // @ts-ignore
-  //   !proposalStore.loader.state === "loaded" &&
-  //     proposalStore.initial(currentBooth);
-  // }, []);
 
   let leftPane;
 
@@ -128,7 +119,7 @@ export const ProposalList: FC = observer(() => {
                 key={key}
                 proposal={proposal}
                 onClick={(proposal: ProposalType) => {
-                  let boothName: string = store.booth!.name;
+                  // let boothName: string = store.booth!.name;
                   // proposalStore.setProposal(boothName, proposal!.key);
                   let newPath = createPath(
                     store.booth!,
@@ -175,10 +166,8 @@ export const ProposalList: FC = observer(() => {
                     section: 2,
                     onClick: (event: React.MouseEvent<HTMLElement>) => {
                       event.stopPropagation();
-                      // proposalStore.delete(
-                      //   store.booth!.name,
-                      //   proposal.key
-                      // );
+                      const proposalStore = store.booth?.proposalStore!;
+                      proposalStore.proposals.delete(proposal.key);
                     },
                   },
                 ]}
@@ -222,18 +211,12 @@ export const ProposalList: FC = observer(() => {
           <Participants
             loading={participantLoading}
             participants={participants}
-            onAdd={
-              (patp: string) => {
-                store.booth!.participantStore.add(patp);
-              }
-              // participantStore.addParticipant(currentBooth, patp)
-            }
-            onRemove={
-              (patp: string) => {
-                store.booth!.participantStore.remove(patp);
-              }
-              // participantStore.removeParticipant(currentBooth, patp)
-            }
+            onAdd={(patp: string) => {
+              store.booth!.participantStore.add(patp);
+            }}
+            onRemove={(patp: string) => {
+              store.booth!.participantStore.remove(patp);
+            }}
           />
         </Flex>
       </Grid>
