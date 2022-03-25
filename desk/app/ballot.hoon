@@ -413,6 +413,9 @@
 
       =/  effects  (booths-to-subscriptions booths)
 
+      %-  (slog leaf+"subscribing to /groups..." ~)
+      =/  effects  (snoc effects [%pass /group %agent [our.bowl %group-store] %watch /groups])
+
       :_  state(booths booths, participants (~(put by participants.state) booth-key booth-participants))
 
       [effects]
@@ -1037,28 +1040,30 @@
         ::  variable to convert $json (payload) as map : key => json pairs
         ((om json):dejs:format payload)
 
+      ::  if we get this, bad news we've been kicked from the booth
       ++  delete-participant-wire
         |=  [payload=(map @t json)]
 
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
 
         =/  context  ((om json):dejs:format (~(got by payload) 'context'))
-        =/  booth-key  (so:dejs:format (~(got by context) 'key'))
+        =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+        =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
 
-        =/  participant-key  (so:dejs:format (~(got by payload) 'key'))
+        :: this should never happen. we shouldn't get poke if participant-key is not our ship
+        ?.  =(participant-key (crip "{<our.bowl>}"))  !!
 
         =/  booth-participants  (~(get by participants.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
         =/  participant  (~(get by booth-participants) participant-key)
-        ?~  participant  `state
-        =/  participant  (need participant)
-        =/  booth-participants  (~(del by booth-participants) participant-key)
+        =/  participant  ?~(participant ~ (need participant))
 
-        =/  context=json
-        %-  pairs:enjs:format
-        :~
-          ['key' s+booth-key]
-        ==
+        =/  booth-participants  (~(del by participants.state) booth-key)
+        =/  booth-votes  (~(del by votes.state) booth-key)
+        =/  booth-proposals  (~(del by proposals.state) booth-key)
+        =/  booth-polls  (~(del by polls.state) booth-key)
+        =/  booth-invitations  (~(del by invitations.state) booth-key)
+        =/  new-booths  (~(del by booths.state) booth-key)
 
         =/  participant-effect=json
         %-  pairs:enjs:format
@@ -1073,7 +1078,7 @@
         %-  pairs:enjs:format
         :~
           ['action' s+'delete-participant-effect']
-          ['context' context]
+          ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
 
@@ -1095,7 +1100,7 @@
               (as-octs:mimes:html body)
 
         ::  no changes to state. state will change when poke ack'd
-        :_  state(participants (~(put by participants.state) booth-key booth-participants))
+        :_  state(booths new-booths, proposals booth-proposals, participants booth-participants, votes booth-votes, polls booth-polls, invitations booth-invitations)
 
         :~
           ::  for clients (e.g. UI) and "our" agent, send to generic /booths path
@@ -1108,9 +1113,8 @@
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
 
         =/  context  ((om json):dejs:format (~(got by payload) 'context'))
-        =/  booth-key  (so:dejs:format (~(got by context) 'key'))
-
-        =/  proposal-key  (so:dejs:format (~(got by payload) 'key'))
+        =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+        =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
 
         =/  booth-proposals  (~(get by proposals.state) booth-key)
         =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
@@ -1118,12 +1122,6 @@
         ?~  proposal  `state
         =/  proposal  (need proposal)
         =/  booth-proposals  (~(del by booth-proposals) proposal-key)
-
-        =/  context=json
-        %-  pairs:enjs:format
-        :~
-          ['key' s+booth-key]
-        ==
 
         =/  proposal-effect=json
         %-  pairs:enjs:format
@@ -1138,7 +1136,7 @@
         %-  pairs:enjs:format
         :~
           ['action' s+'delete-proposal-effect']
-          ['context' context]
+          ['context' [%o context]]
           ['effects' [%a [proposal-effect]~]]
         ==
 
@@ -1172,9 +1170,9 @@
 
         =/  context  ((om json):dejs:format (~(got by contract) 'context'))
 
-        =/  booth-key  (so:dejs:format (~(got by context) 'booth-key'))
-        =/  proposal-key  (so:dejs:format (~(got by context) 'proposal-key'))
-        =/  participant-key  (so:dejs:format (~(got by context) 'participant-key'))
+        =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+        =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
+        =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
 
         =/  vote  ((om json):dejs:format (~(got by contract) 'data'))
         =/  vote  (~(put by vote) 'status' s+'recorded')
@@ -1228,24 +1226,18 @@
       ++  invite-accepted-wire
         |=  [contract=(map @t json)]
 
+        =/  context  ((om json):dejs:format (~(got by contract) 'context'))
         ::  grab the booth key from the action payload
-        =/  booth-key  (so:dejs:format (~(got by contract) 'key'))
+        =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
         ::  use it to extract the booth participant list
-        =/  booth-participants  (~(get by participants.state) booth-key)
-        ::  crash if not found (tbd: better error handling)
-        ?~  booth-participants  !!
-        ::  get the actual participant list from the unit
-        =/  booth-participants  (need booth-participants)
+        =/  booth-participants  (~(got by participants.state) booth-key)
 
         ::  the participant key is the remote ship that sent the poke
         =/  participant-key  (crip "{<src.bowl>}")
 
         ::  get the participant from the booth participant list
-        =/  participant  (~(get by booth-participants) participant-key)
-        ::  crash on participant not found
-        ?~  participant  !!
-        ::  get the actual participant from the unit while converting to (map @t json)
-        =/  participant  ((om json):dejs:format (need participant))
+        =/  participant  ((om json):dejs:format (~(got by booth-participants) participant-key))
+
         :: update the participant's status to 'active'
         =/  participant  (~(put by participant) 'status' s+'active')
         :: add the updated participant back to the booth participant list
@@ -1271,7 +1263,7 @@
         %-  pairs:enjs:format
         :~
           ['action' s+'accept-effect']
-          ['context' [%o contract]]
+          ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
 
@@ -1284,11 +1276,9 @@
       ++  invite-participant-wire-response
         |=  [contract=(map @t json)]
 
-        :: the join succeeded. the response will have the booth in the data element
-        ::  use that to commit the booth to our local store
-        =/  booth-key  (so:dejs:format (~(got by contract) 'key'))
-        =/  contract-data  ((om json):dejs:format (~(got by contract) 'data'))
-        =/  participant-key  (so:dejs:format (~(got by contract-data) 'key'))
+        =/  context  ((om json):dejs:format (~(got by contract) 'context'))
+        =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+        =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
 
         =/  booth-participants  (~(got by participants.state) booth-key)
         =/  booth-participant  ((om json):dejs:format (~(got by booth-participants) participant-key))
@@ -1314,7 +1304,7 @@
         %-  pairs:enjs:format
         :~
           ['action' s+'invite-effect']
-          ['context' [%o contract]]
+          ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
 
@@ -1329,13 +1319,13 @@
 
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
 
+        =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+        =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+
         =/  participant-key  (crip "{<our.bowl>}")
-        =/  booth-key  (so:dejs:format (~(got by payload) 'key'))
-        =/  data  (~(get by payload) 'data')
-        ?~  data  !!
-        =/  data  ((om json):dejs:format (need data))
-        =/  booth  (~(get by data) 'booth')
-        =/  booth  ?~(booth ~ ((om json):dejs:format (need booth)))
+        =/  data  ((om json):dejs:format (~(got by payload) 'data'))
+        =/  booth  ((om json):dejs:format (~(got by data) 'booth'))
+
         ::  update booth status because on receiving ship (this ship), the booth
         ::    is being added; therefore status is 'invited'
         =/  booth  (~(put by booth) 'status' s+'invited')
@@ -1361,7 +1351,7 @@
         %-  pairs:enjs:format
         :~
           ['action' s+'invite-effect']
-          ['context' [%o payload]]
+          ['context' [%o context]]
           ['effects' [%a [booth-effect]~]]
         ==
 
@@ -1398,7 +1388,14 @@
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json) booth-key=@t]
         ^-  (quip card _state)
 
-        =/  participant-key  (so:dejs:format (~(got by payload) 'key'))
+        =/  context  (~(get by payload) 'context')
+        ?~  context  (send-error req 'missing context')
+        =/  context  ((om json):dejs:format (need context))
+
+        =/  participant-key  (~(get by context) 'participant')
+        ?~  participant-key  (send-error req 'missing context key. participant key')
+        =/  participant-key  (so:dejs:format (need participant-key))
+
         ~&  >>  "deleting participant {<booth-key>}, {<participant-key>}"
 
         =/  booth-participants  (~(get by participants.state) booth-key)
@@ -1406,13 +1403,20 @@
         =/  participant  (~(get by booth-participants) participant-key)
         ?~  participant  (send-api-error req 'participant not found')
         =/  participant  (need participant)
+        =/  participant-ship  `@p`(slav %p participant-key)
         =/  booth-participants  (~(del by booth-participants) participant-key)
 
-        =/  context=json
-        %-  pairs:enjs:format
-        :~
-          ['key' s+booth-key]
-        ==
+        ::  remove their votes also
+        =/  booth-votes  (~(get by votes.state) booth-key)
+        =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
+
+        =/  booth-votes
+              %-  ~(rep in booth-votes)
+                |=  [[p=@t q=json] rslt=(map @t json)]
+                  =/  votes  ((om json):dejs:format q)
+                  =/  votes  [%o (~(del by votes) participant-key)]
+                  %-  (slog leaf+"removing vote by {<participant-key>} from {<p>}..." ~)
+                  (~(put by rslt) p votes)
 
         =/  participant-effect=json
         %-  pairs:enjs:format
@@ -1427,7 +1431,7 @@
         %-  pairs:enjs:format
         :~
           ['action' s+'delete-participant-effect']
-          ['context' context]
+          ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
 
@@ -1449,7 +1453,7 @@
               (as-octs:mimes:html body)
 
         ::  no changes to state. state will change when poke ack'd
-        :_  state(participants (~(put by participants.state) booth-key booth-participants))
+        :_  state(participants (~(put by participants.state) booth-key booth-participants), votes (~(put by votes.state) booth-key booth-votes))
 
         :~
           [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
@@ -1459,13 +1463,21 @@
           [%give %fact [/booths]~ %json !>(effects)]
           ::  for remote subscribers, indicate over booth specific wire
           [%give %fact [remote-agent-wire]~ %json !>([%o payload])]
+          [%pass remote-agent-wire %agent [participant-ship %ballot] %poke %json !>([%o payload])]
         ==
 
       ++  delete-proposal-api
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json) booth-key=@t]
         ^-  (quip card _state)
 
-        =/  proposal-key  (so:dejs:format (~(got by payload) 'key'))
+        =/  context  (~(get by payload) 'context')
+        ?~  context  (send-error req 'missing context')
+        =/  context  ((om json):dejs:format (need context))
+
+        =/  proposal-key  (~(get by context) 'proposal')
+        ?~  proposal-key  (send-error req 'missing context key. proposal key')
+        =/  proposal-key  (so:dejs:format (need proposal-key))
+
         ~&  >>  "deleting proposal {<booth-key>}, {<proposal-key>}"
 
         =/  booth-proposals  (~(get by proposals.state) booth-key)
@@ -1475,11 +1487,9 @@
         =/  proposal  (need proposal)
         =/  booth-proposals  (~(del by booth-proposals) proposal-key)
 
-        =/  context=json
-        %-  pairs:enjs:format
-        :~
-          ['key' s+booth-key]
-        ==
+        =/  booth-votes  (~(get by votes.state) booth-key)
+        =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
+        =/  booth-votes  (~(del by booth-votes) proposal-key)
 
         =/  proposal-effect=json
         %-  pairs:enjs:format
@@ -1494,7 +1504,7 @@
         %-  pairs:enjs:format
         :~
           ['action' s+'delete-proposal-effect']
-          ['context' context]
+          ['context' [%o context]]
           ['effects' [%a [proposal-effect]~]]
         ==
 
@@ -1516,7 +1526,7 @@
               (as-octs:mimes:html body)
 
         ::  no changes to state. state will change when poke ack'd
-        :_  state(proposals (~(put by proposals.state) booth-key booth-proposals))
+        :_  state(proposals (~(put by proposals.state) booth-key booth-proposals), votes (~(put by votes.state) booth-key booth-votes))
 
         :~
           [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
@@ -1540,16 +1550,22 @@
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
         ^-  (quip card _state)
 
-        =/  booth-key  (so:dejs:format (~(got by payload) 'key'))
+        =/  context  (~(get by payload) 'context')
+        ?~  context  (send-error req 'missing context element')
+        =/  context  ((om json):dejs:format (need context))
+
+        =/  booth-key  (~(get by context) 'booth')
+        ?~  booth-key  (send-error req 'context missing booth')
+        =/  booth-key  (so:dejs:format (need booth-key))
         =/  data  (~(get by payload) 'data')
         =/  data  ?~(data ~ ((om json):dejs:format (need data)))
 
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
 
-        =/  is-update  (~(has by data) 'key')
+        =/  is-update  (~(has by context) 'proposal')
         =/  proposal-key
               ?:  is-update
-                    (so:dejs:format (~(got by data) 'key'))
+                    (so:dejs:format (~(got by context) 'proposal'))
                   (crip (weld "proposal-" timestamp))
 
         =/  booth-proposals  (~(get by proposals.state) booth-key)
@@ -1570,13 +1586,18 @@
           ['data' [%o proposal]]
         ==
 
+        ::  add proposal to the context before sending out updates
+        =/  context  (~(put by context) 'proposal' s+proposal-key)
+
         =/  effects=json
         %-  pairs:enjs:format
         :~
           ['action' s+'save-proposal-effect']
-          ['context' [%o payload]]
+          ['context' [%o context]]
           ['effects' [%a [proposal-effect]~]]
         ==
+
+        =/  wire-payload  (~(put by payload) 'context' [%o context])
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
         ~&  >>  "sending proposal update to {<remote-agent-wire>}..."
@@ -1605,7 +1626,7 @@
           ::  for clients (e.g. UI) and "our" agent, send to generic /booths path
           [%give %fact [/booths]~ %json !>(effects)]
           ::  for remote subscribers, indicate over booth specific wire
-          [%give %fact [remote-agent-wire]~ %json !>([%o payload])]
+          [%give %fact [remote-agent-wire]~ %json !>([%o wire-payload])]
         ==
 
       ::  ARM:  ++  accept-invite-api
@@ -1620,9 +1641,16 @@
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json) booth-key=@t]
         ^-  (quip card _state)
 
-        =/  booth-key  (so:dejs:format (~(got by payload) 'key'))
+        =/  context  (~(get by payload) 'context')
+        ?~  context  (send-error req 'missing context')
+        =/  context  ((om json):dejs:format (need context))
+
+        =/  booth-key  (~(get by context) 'booth')
+        ?~  booth-key  (send-error req 'missing booth key')
+        =/  booth-key  (so:dejs:format (need booth-key))
+
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  !!  :: booth not found
+        ?~  booth  (send-error req 'booth not found in store')
 
         =/  booth  ((om json):dejs:format (need booth))
         =/  booth  (~(put by booth) 'status' s+'pending')
@@ -1662,7 +1690,7 @@
         %-  pairs:enjs:format
         :~
           ['action' s+'accept-effect']
-          ['context' [%o payload]]
+          ['context' [%o context]]
           ['effects' [%a [booth-effect]~]]
         ==
 
@@ -1670,7 +1698,7 @@
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
         =/  mq-key  (crip (weld "msg-" timestamp))
 
-        =/  booth-ship  (so:dejs:format (~(got by payload) 'key'))
+        =/  booth-ship  (so:dejs:format (~(got by booth) 'owner'))
         =/  hostship=@p  `@p`(slav %p booth-ship)
         ::  wirepath includes msg queue id so that it can be correlated
         ::    when the poke is ack'd
@@ -1754,14 +1782,18 @@
         =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
 
         =/  context  (~(get by payload) 'context')
-        =/  context  ?~(context ~ ((om json):dejs:format (need context)))
-        =/  booth-key  (so:dejs:format (~(got by context) 'booth-key'))
-        =/  proposal-key  (so:dejs:format (~(got by context) 'proposal-key'))
+        ?~  context  (send-error req 'missing context')
+        =/  context  ((om json):dejs:format (need context))
+        =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+        =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
 
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  !!  :: booth not found
+        ?~  booth  (send-error req 'booth not found in store')
 
         =/  booth  ((om json):dejs:format (need booth))
+
+        =/  booth-ship  (so:dejs:format (~(got by booth) 'owner'))
+        =/  hostship=@p  `@p`(slav %p booth-ship)
 
         =/  action  (so:dejs:format (~(got by payload) 'action'))
         =/  resource  (so:dejs:format (~(got by payload) 'resource'))
@@ -1782,8 +1814,14 @@
               (send-error req 'missing data')
 
         =/  payload-data  ((om json):dejs:format (need payload-data))
-        ::  update the status of the vote to 'pending'
-        =/  payload-data  (~(put by payload-data) 'status' s+'pending')
+
+        ::  update the status of the vote to 'pending' for remote ships
+        ::    and 'recorded' if we are voting on our own ship
+        =/  payload-data
+              ?:  =(our.bowl hostship)
+                (~(put by payload-data) 'status' s+'recorded')
+              (~(put by payload-data) 'status' s+'pending')
+
         ::  add voter information
         =/  payload-data  (~(put by payload-data) 'voter' s+participant-key)
         ::  timestamp the vote
@@ -1805,18 +1843,14 @@
         =/  data=octs
               (as-octs:mimes:html body)
 
-        =/  context=json
-        %-  pairs:enjs:format
-        :~
-          ['booth-key' s+booth-key]
-          ['proposal-key' s+proposal-key]
-          ['participant-key' s+participant-key]
-        ==
+        ::  add the participant that is voting (this ship) to the context
+        ::   before sending off vote
+        =/  context  (~(put by context) 'participant' s+participant-key)
 
         =/  wire-payload=json
         %-  pairs:enjs:format
         :~
-          ['context' context]
+          ['context' [%o context]]
           ['resource' s+resource]
           ['action' s+action]
           ['data' [%o payload-data]]
@@ -1835,35 +1869,42 @@
         %-  pairs:enjs:format
         :~
           ['action' s+'cast-vote-effect']
-          ['context' context]
+          ['context' [%o context]]
           ['effects' [%a [vote-effect]~]]
         ==
 
-        =/  booth-ship  (so:dejs:format (~(got by booth) 'owner'))
-        =/  hostship=@p  `@p`(slav %p booth-ship)
+        =/  effects=(list card)
+          :~  [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
+              [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
+              [%give %kick [/http-response/[p.req]]~ ~]
+              [%give %fact [/booths]~ %json !>(effects)]
+          ==
 
-        ::  wirepath includes msg queue id so that it can be correlated
-        ::    when the poke is ack'd
-        =/  destpath=path  `path`/booths/(scot %p hostship)
+        ::  no need for poke if casting ballot from our own ship. this method has already
+        ::  updated its store
+        =/  effects  ?.  =(our.bowl hostship)
+              %-  (slog leaf+"poking remote ship on wire /booths/{<(scot %p hostship)>}..." ~)
+              (snoc effects [%pass /booths/(scot %p hostship) %agent [hostship %ballot] %poke %json !>(wire-payload)])
+            effects
 
         ::  no changes to state. state will change when poke ack'd
         :_  state(votes (~(put by votes.state) booth-key booth-votes))
 
-        :~
-          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-          [%give %kick [/http-response/[p.req]]~ ~]
-          [%give %fact [/booths]~ %json !>(effects)]
-          [%pass destpath %agent [hostship %ballot] %poke %json !>(wire-payload)]
-        ==
+        [effects]
 
       ++  invite-participant-api
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json) booth-key=@t]
         ^-  (quip card _state)
 
-        =/  booth-key  (so:dejs:format (~(got by payload) 'key'))
-        =/  payload-data  ((om json):dejs:format (~(got by payload) 'data'))
-        =/  participant-key  (so:dejs:format (~(got by payload-data) 'key'))
+        =/  context  (~(get by payload) 'context')
+        =/  context  ?~(context ~ ((om json):dejs:format (need context)))
+        =/  booth-key  (~(get by context) 'booth')
+        ?~  booth-key  (send-error req 'bad context. booth missing.')
+        =/  booth-key  (so:dejs:format (need booth-key))
+
+        =/  participant-key  (~(get by context) 'participant')
+        ?~  participant-key  (send-error req 'bad data. key missing')
+        =/  participant-key  (so:dejs:format (need participant-key))
 
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
         =/  mq-key  (crip (weld "msg-" timestamp))
@@ -1934,12 +1975,13 @@
         %-  pairs:enjs:format
         :~
           ['action' s+'invite-effect']
-          ['context' [%o payload]]
+          ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
 
         ::  merge booth data into data element
-        =/  payload-data  (~(put by payload-data) 'booth' booth)
+        =|  payload-data=(map @t json)
+        =.  payload-data  (~(put by payload-data) 'booth' booth)
         =/  wire-payload  (~(put by payload) 'data' [%o payload-data])
 
         ~&  >>  "invite-participant-api: {<our.bowl>} poking {<participant-ship>}"
@@ -2280,38 +2322,39 @@
         ::   ~&  >>>  "ballot: handle-put-booth http request payload data not found"
         ::   `state
 
+        =/  context  ((om json):dejs:format (~(got by payload) 'context'))
         =/  action  (so:dejs:format (~(got by payload) 'action'))
         =/  resource  (so:dejs:format (~(got by payload) 'resource'))
 
         ?+  [resource action]  `state
 
               [%booth %join]
-                =/  key  (so:dejs:format (~(got by payload) 'key'))
+                =/  key  (so:dejs:format (~(got by context) 'booth'))
                 %-  (slog leaf+"ballot: join {<resource>}, {<key>}..." ~)
                 (join-remote-booth req payload)
 
               [%booth %invite]
-                =/  key  (so:dejs:format (~(got by payload) 'key'))
+                =/  key  (so:dejs:format (~(got by context) 'booth'))
                 %-  (slog leaf+"ballot: invite {<key>}..." ~)
                 (invite-participant-api req payload key)
 
               [%booth %accept]
-                =/  key  (so:dejs:format (~(got by payload) 'key'))
+                =/  key  (so:dejs:format (~(got by context) 'booth'))
                 %-  (slog leaf+"ballot: accept {<key>}..." ~)
                 (accept-invite-api req payload key)
 
-              [%booth %save-proposal]
-                =/  key  (so:dejs:format (~(got by payload) 'key'))
+              [%proposal %save-proposal]
+                =/  key  (so:dejs:format (~(got by context) 'booth'))
                 %-  (slog leaf+"ballot: save-proposal {<key>}..." ~)
                 (save-proposal-api req payload)
 
-              [%booth %delete-proposal]
-                =/  key  (so:dejs:format (~(got by payload) 'key'))
+              [%proposal %delete-proposal]
+                =/  key  (so:dejs:format (~(got by context) 'booth'))
                 %-  (slog leaf+"ballot: delete-proposal {<key>}..." ~)
                 (delete-proposal-api req payload booth-key)
 
-              [%booth %delete-participant]
-                =/  key  (so:dejs:format (~(got by payload) 'key'))
+              [%participant %delete-participant]
+                =/  key  (so:dejs:format (~(got by context) 'booth'))
                 %-  (slog leaf+"ballot: delete-participant {<key>}..." ~)
                 (delete-participant-api req payload booth-key)
 
@@ -2644,6 +2687,12 @@
         =/  booth-votes  (~(get by votes.state) booth-key)
         =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
 
+        =/  context=json
+          %-  pairs:enjs:format
+          :~
+            ['booth' s+booth-key]
+          ==
+
         =/  data
           %-  pairs:enjs:format
           :~
@@ -2661,41 +2710,13 @@
           %-  pairs:enjs:format
           :~
             ['action' s+'initial']
+            ['context' context]
             ['data' data]
           ==
 
         :_  this
         :~  [%give %fact ~ %json !>(action-payload)]
         ==
-        :: =/  key  (key-from-path:util i.t.path)
-
-        :: ::  we can subscribe to any booth path we want
-        :: ?:  =(our.bowl src.bowl)
-        ::   ~&  >  "ballot: client subscribed to {(spud path)}."
-        ::   `this
-
-        :: ::  other ships need to be validated against a booth's participant listing
-        :: ::   therefore run some validation on the subscriber
-
-        :: ::  does the booth actually exist
-        :: =/  booth  (~(get by booths.state) key)
-        :: ?~  booth  !!
-
-        :: :: next check if the subscriber is a participant of the booth
-        :: =/  participants  (~(get by participants.state) key)
-        :: ?~  participants  !!
-        :: =/  participants  (need participants)
-
-        :: ::  locate participant ship in booth participants store
-        :: =/  participant  (~(get by participants) `@t`(scot %p src.bowl))
-        :: ?~  participant  !!
-
-        :: ~&  >  "ballot: client subscribed to {(spud path)}."
-        :: `this
-
-      :: [%booths @ %join-requests *]
-      ::   ~&  >  "ballot: client subscribed to {(spud path)}."
-      ::   `this
 
       ::  ~lodlev-migdev - allow external agents (including UI clients) to subscribe
       ::    to the /notifications channel.
@@ -2781,8 +2802,34 @@
 
   |^
   =/  wirepath  `path`wire
+  %-  (slog leaf+"ballot: {<wirepath>} data received..." ~)
 
   ?+    wire  (on-agent:def wire sign)
+
+    :: handle updates coming in from group store
+    [%group ~]
+      ?+    -.sign  (on-agent:def wire sign)
+        %watch-ack
+          ?~  p.sign
+            %-  (slog leaf+"ballot: group subscription succeeded" ~)
+            `this
+          %-  (slog leaf+"ballot: group subscription failed" ~)
+          `this
+    ::
+        %kick
+          %-  (slog leaf+"ballot: group kicked us, resubscribing..." ~)
+          :_  this
+          :~  [%pass /group %agent [our.bowl %group-store] %watch /groups]
+          ==
+    ::
+        %fact
+          %-  (slog leaf+"ballot: received fact from group => {<p.cage.sign>}" ~)
+          ?+    p.cage.sign  (on-agent:def wire sign)
+              %group-update-0
+                ~&  >>  !<(=update:group-store q.cage.sign)
+            `this
+          ==
+      ==
 
     [%booths @ @ ~]
 
@@ -2844,16 +2891,16 @@
       ?-    -.sign
         %poke-ack
           ?~  p.sign
-            ((slog 'ballot: {<wirepath>} poke succeeded' ~) `this)
-          ((slog 'ballot: {<wirepath>} poke failed' ~) `this)
+            ((slog leaf+"ballot: {<wirepath>} poke succeeded" ~) `this)
+          ((slog leaf+"ballot: {<wirepath>} poke failed" ~) `this)
 
         %watch-ack
           ?~  p.sign
-            ((slog 'ballot: subscribed to {<wirepath>}' ~) `this)
-          ((slog 'ballot: {<wirepath>} subscription failed' ~) `this)
+            ((slog leaf+"ballot: subscribed to {<wirepath>}" ~) `this)
+          ((slog leaf+"ballot: {<wirepath>} subscription failed" ~) `this)
 
         %kick
-          %-  (slog 'ballot: {<wirepath>} got kick, resubscribing...' ~)
+          %-  (slog leaf+"ballot: {<wirepath>} got kick, resubscribing..." ~)
           :_  this
           :~  [%pass /booths/(scot %tas booth-key) %agent [src.bowl %ballot] %watch /booths/(scot %tas booth-key)]
           ==
@@ -2908,7 +2955,8 @@
   ==
   ++  count-vote
     |:  [vote=`json`~ results=`(map @t json)`~]
-    :: |=  [vote=json results=(map @t json)]
+
+    %-  (slog leaf+"count-vote called. [vote={<vote>}, results={<results>}]")
 
     =/  v  ((om json):dejs:format vote)
     =/  choice  ((om json):dejs:format (~(got by v) 'choice'))
@@ -2923,6 +2971,8 @@
 
   ++  tally-results
     |=  [booth-key=@t proposal-key=@t]
+
+    %-  (slog leaf+"tally-results called. [booth-key='{<booth-key>}', proposal-key='{<proposal-key>}']")
 
     =/  booth-proposals  (~(get by votes.state) booth-key)
     =/  booth-proposals  (need booth-proposals)
@@ -2944,8 +2994,8 @@
     =/  context=json
     %-  pairs:enjs:format
     :~
-      ['booth-key' s+booth-key]
-      ['proposal-key' s+proposal-key]
+      ['booth' s+booth-key]
+      ['proposal' s+proposal-key]
     ==
 
     =/  status-data=json
@@ -2989,8 +3039,8 @@
     =/  context=json
     %-  pairs:enjs:format
     :~
-      ['booth-key' s+booth-key]
-      ['proposal-key' s+proposal-key]
+      ['booth' s+booth-key]
+      ['proposal' s+proposal-key]
     ==
 
     =/  results-data=json
@@ -3028,8 +3078,10 @@
 
     =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
 
+    =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+    =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
+
     =/  data  ((om json):dejs:format (~(got by payload) 'data'))
-    =/  proposal-key  (so:dejs:format (~(got by data) 'key'))
 
     ::  find the existing poll for this proposal (if it exists)
     =/  booth-polls  (~(get by polls.state) booth-key)
@@ -3046,8 +3098,8 @@
           =/  context=json
           %-  pairs:enjs:format
           :~
-            ['booth-key' s+booth-key]
-            ['proposal-key' s+proposal-key]
+            ['booth' s+booth-key]
+            ['proposal' s+proposal-key]
           ==
 
           =/  error-key  (crip (weld "poll-started-error-" (trip timestamp)))
@@ -3189,8 +3241,8 @@
     =/  data  (~(get by payload) 'data')
     =/  data  ?~(data ~ ((om json):dejs:format (need data)))
 
-    =/  proposal-key  (so:dejs:format (~(got by context) 'proposal-key'))
-    =/  participant-key  (so:dejs:format (~(got by context) 'participant-key'))
+    =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
+    =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
 
     =/  booth-proposals  (~(get by votes.state) booth-key)
     =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
@@ -3243,6 +3295,8 @@
   ++  handle-initial
     |=  [payload=(map @t json)]
 
+    =/  context  (~(got by payload) 'context')
+
     =/  data  (~(get by payload) 'data')
     ?~  data
           ~&  >>>  "handle-initial missing data"
@@ -3266,12 +3320,6 @@
     =/  booth-participants  (~(get by participants.state) booth-key)
     =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
     =/  booth-participants  (~(gas by booth-participants) ~(tap by participants))
-
-    =/  context=json
-    %-  pairs:enjs:format
-    :~
-      ['key' s+booth-key]
-    ==
 
     =/  initial-effect=json
     %-  pairs:enjs:format
@@ -3300,17 +3348,13 @@
   ++  handle-save-proposal
     |=  [payload=(map @t json)]
 
-    =/  data  (~(get by payload) 'data')
-    ?~  data
-          ~&  >>>  "handle-save-proposal missing data"
-          `this
+    =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+    =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+    =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
 
-    =/  data=(map @t json)  ((om json):dejs:format (need data))
-    =/  booth-key  (so:dejs:format (~(got by payload) 'key'))
+    =/  data  ((om json):dejs:format (~(got by payload) 'data'))
 
     =/  timestamp  (en-json:html (time:enjs:format now.bowl))
-
-    =/  proposal-key  (so:dejs:format (~(got by data) 'key'))
 
     =/  booth-proposals  (~(get by proposals.state) booth-key)
     =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
@@ -3333,7 +3377,7 @@
     %-  pairs:enjs:format
     :~
       ['action' s+'save-proposal-effect']
-      ['context' [%o payload]]
+      ['context' [%o context]]
       ['effects' [%a [proposal-effect]~]]
     ==
 
@@ -3350,19 +3394,12 @@
   ++  handle-delete-proposal
     |=  [booth-key=@t payload=(map @t json)]
 
-    =/  proposal-key  (~(get by payload) 'key')
-    ?~  proposal-key  !!
-    =/  proposal-key  (so:dejs:format (need proposal-key))
+    =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+    =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
 
     =/  booth-proposals  (~(get by proposals.state) booth-key)
     =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
     =/  booth-proposals  (~(del by booth-proposals) proposal-key)
-
-    =/  context=json
-    %-  pairs:enjs:format
-    :~
-      ['key' s+booth-key]
-    ==
 
     =/  proposal-effect=json
     %-  pairs:enjs:format
@@ -3376,7 +3413,7 @@
     %-  pairs:enjs:format
     :~
       ['action' s+'delete-proposal-effect']
-      ['context' context]
+      ['context' [%o context]]
       ['effects' [%a [proposal-effect]~]]
     ==
 
@@ -3391,19 +3428,18 @@
   ++  handle-delete-participant
     |=  [booth-key=@t payload=(map @t json)]
 
-    =/  participant-key  (~(get by payload) 'key')
-    ?~  participant-key  !!
-    =/  participant-key  (so:dejs:format (need participant-key))
+    =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+    =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
 
+    =/  our-ship  (crip "{<our.bowl>}")
+    ::  if "we" (this ship) is the one being deleted, ignore this update and
+    ::    let the poke we receive take care of the rest
+    ?:  =(our-ship participant-key)  `this
+
+    ::  otherwise it was some other participant and we can remove them from our store
     =/  booth-participants  (~(get by participants.state) booth-key)
     =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
     =/  booth-participants  (~(del by booth-participants) participant-key)
-
-    =/  context=json
-    %-  pairs:enjs:format
-    :~
-      ['key' s+booth-key]
-    ==
 
     =/  participant-effect=json
     %-  pairs:enjs:format
@@ -3417,7 +3453,7 @@
     %-  pairs:enjs:format
     :~
       ['action' s+'delete-participant-effect']
-      ['context' context]
+      ['context' [%o context]]
       ['effects' [%a [participant-effect]~]]
     ==
 
@@ -3440,16 +3476,17 @@
 ++  save-proposal-wire
   |=  [payload=(map @t json)]
 
-  =/  booth-key  (so:dejs:format (~(got by payload) 'key'))
+  =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+  =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
   =/  data  (~(get by payload) 'data')
   =/  data  ?~(data ~ ((om json):dejs:format (need data)))
 
   =/  timestamp  (en-json:html (time:enjs:format now.bowl))
 
-  =/  is-update  (~(has by data) 'key')
+  =/  is-update  (~(has by context) 'proposal')
   =/  proposal-key
         ?:  is-update
-              (so:dejs:format (~(got by data) 'key'))
+              (so:dejs:format (~(got by context) 'proposal'))
             (crip (weld "proposal-" timestamp))
 
   =/  booth-proposals  (~(get by proposals.state) booth-key)
@@ -3534,7 +3571,8 @@
     ?:  =(reaction 'nack')
       `this(mq (~(del by mq.state) msg-id))
 
-    =/  booth-key  (so:dejs:format (~(got by msg) 'key'))
+    =/  context  ((om json):dejs:format (~(got by msg) 'context'))
+    =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
     =/  booth  ((om json):dejs:format (~(got by booths.state) booth-key))
     =/  booth  (~(put by booth) 'status' s+'active')
     =/  booth-ship  (so:dejs:format (~(got by booth) 'owner'))
@@ -3580,7 +3618,7 @@
       %-  pairs:enjs:format
       :~
         ['action' s+'accept-effect']
-        ['context' [%o msg]]
+        ['context' [%o context]]
         ['effects' [%a effect-list]]
       ==
 
