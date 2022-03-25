@@ -1487,6 +1487,10 @@
         =/  proposal  (need proposal)
         =/  booth-proposals  (~(del by booth-proposals) proposal-key)
 
+        =/  booth-votes  (~(get by votes.state) booth-key)
+        =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
+        =/  booth-votes  (~(del by booth-votes) proposal-key)
+
         =/  proposal-effect=json
         %-  pairs:enjs:format
         :~
@@ -1522,7 +1526,7 @@
               (as-octs:mimes:html body)
 
         ::  no changes to state. state will change when poke ack'd
-        :_  state(proposals (~(put by proposals.state) booth-key booth-proposals))
+        :_  state(proposals (~(put by proposals.state) booth-key booth-proposals), votes (~(put by votes.state) booth-key booth-votes))
 
         :~
           [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
