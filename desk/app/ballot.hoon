@@ -1048,6 +1048,10 @@
 
         =/  context  ((om json):dejs:format (~(got by payload) 'context'))
         =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+        =/  booth  (~(get by booths.state) booth-key)
+        ?~  booth  !!
+        =/  booth  ((om json):dejs:format (need booth))
+        =/  booth-ship  `@p`(slav %p (so:dejs:format (~(got by booth) 'owner')))
         =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
 
         :: this should never happen. we shouldn't get poke if participant-key is not our ship
@@ -1084,6 +1088,7 @@
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
         ~&  >>  "sending delete-participant effect to subscribers..."
+        ~&  >>  "sending %leave to {<remote-agent-wire>}..."
 
         =/  =response-header:http
           :-  200
@@ -1105,6 +1110,7 @@
         :~
           ::  for clients (e.g. UI) and "our" agent, send to generic /booths path
           [%give %fact [/booths]~ %json !>(effects)]
+          [%pass remote-agent-wire %agent [booth-ship %ballot] %leave ~]
         ==
 
       ++  delete-proposal-wire
