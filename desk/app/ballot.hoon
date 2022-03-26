@@ -1470,6 +1470,7 @@
           ::  for remote subscribers, indicate over booth specific wire
           [%give %fact [remote-agent-wire]~ %json !>([%o payload])]
           [%pass remote-agent-wire %agent [participant-ship %ballot] %poke %json !>([%o payload])]
+          [%give %kick ~[remote-agent-wire] (some participant-ship)]
         ==
 
       ++  delete-proposal-api
@@ -2687,8 +2688,14 @@
         =/  booth-key  (key-from-path:util i.t.path)
         =/  booth  (~(get by booths.state) booth-key)
         =/  booth  ?~(booth ~ (need booth))
+
         =/  booth-participants  (~(get by participants.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+        =/  participant  (~(get by booth-participants) (crip "{<src.bowl>}"))
+        ?~  participant
+              ~&  >>>  "subscription request rejected. not a participant of the booth."
+              !!
+
         =/  booth-proposals  (~(get by proposals.state) booth-key)
         =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
         =/  booth-votes  (~(get by votes.state) booth-key)
