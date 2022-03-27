@@ -9,9 +9,9 @@ import {
   Box,
   Select,
 } from "@holium/design-system";
+import { runInAction } from "mobx";
 
 export type ChoiceType = {
-  order: number;
   label: string;
   action: string;
 };
@@ -27,12 +27,12 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
   const buttonRef = React.createRef();
   const { choices, onUpdate } = props;
 
-  const onAddChoice = (lastIndex: number) => {
-    console.log(lastIndex);
-    choices.push({
-      order: lastIndex,
-      label: "",
-      action: "",
+  const onAddChoice = () => {
+    runInAction(() => {
+      choices.push({
+        label: "",
+        action: "",
+      });
     });
     onUpdate([...choices]);
   };
@@ -68,7 +68,9 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
 
               <IconButton
                 onClick={() => {
-                  choices.splice(index, 1);
+                  runInAction(() => {
+                    choices.splice(index, 1);
+                  });
                   onUpdate([...choices]);
                 }}
               >
@@ -81,17 +83,21 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
           defaultValue={choice.label}
           onBlur={(evt: any) => {
             let updatedChoice = choices[index];
-            choices.splice(index, 1, {
-              ...updatedChoice,
-              label: evt.target.value,
+            runInAction(() => {
+              choices.splice(index, 1, {
+                ...updatedChoice,
+                label: evt.target.value,
+              });
             });
             onUpdate(choices);
           }}
           onChange={(evt: any) => {
             let updatedChoice = choices[index];
-            choices.splice(index, 1, {
-              ...updatedChoice,
-              label: evt.target.value,
+            runInAction(() => {
+              choices.splice(index, 1, {
+                ...updatedChoice,
+                label: evt.target.value,
+              });
             });
             onUpdate(choices);
           }}
@@ -112,7 +118,7 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
           onClick={(evt: any) => {
             // @ts-ignore
             buttonRef.current.blur();
-            onAddChoice(choices.length);
+            onAddChoice();
           }}
         >
           Add choice

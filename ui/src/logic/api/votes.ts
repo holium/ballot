@@ -33,7 +33,7 @@ export class VotesApi extends BaseAPI {
         },
         body: JSON.stringify({
           action: "cast-vote",
-          resource: "booth",
+          resource: "proposal",
           context: {
             booth: boothKey,
             proposal: proposalKey,

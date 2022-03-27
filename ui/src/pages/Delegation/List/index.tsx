@@ -11,20 +11,20 @@ import {
 } from "@holium/design-system";
 import { useParams } from "react-router";
 
-import { useStore } from "../../../logic/store";
 import { pluralize } from "../../../logic/utils/text";
 import { DelegationCard } from "../DelegationCard";
-import { ParticipantType } from "../../../logic/types/participants";
-import { mapToList } from "../../../logic/utils/map";
+import { useMst } from "../../../logic/stores/root";
+import { ParticipantModelType } from "../../../logic/stores/participants";
+import { toJS } from "mobx";
+import { observer } from "mobx-react";
 
-export const DelegationList: FC = () => {
-  const { participantStore, shipStore } = useStore();
+export const DelegationList: FC = observer(() => {
+  const { app, store } = useMst();
   const urlParams = useParams();
-  const currentBooth = urlParams.boothName!;
-  const participants = mapToList(
-    participantStore.participants.get(currentBooth)!
-  );
-  const totalVotingPower = participants.length + 1;
+  const currentBooth = store.booths.get(urlParams.boothName!)!;
+
+  const participants = currentBooth.participantStore.list;
+  const totalVotingPower = participants.length;
 
   return (
     <CenteredPane
@@ -34,7 +34,7 @@ export const DelegationList: FC = () => {
     >
       <Header
         title="Delegation"
-        subtitle={{ text: currentBooth, patp: true }}
+        subtitle={{ text: currentBooth.key, patp: true }}
         rightContent={
           <Flex style={{ opacity: 0.7 }}>
             <Icons.Team mr={1} />
@@ -45,7 +45,7 @@ export const DelegationList: FC = () => {
         }
       />
       <Flex flexDirection="column">
-        <DelegationCard votingPower={1} ship={shipStore.ship!} />
+        <DelegationCard votingPower={1} ship={app.ship!} />
         <Card
           style={{ borderColor: "transparent" }}
           elevation="lifted"
@@ -58,10 +58,10 @@ export const DelegationList: FC = () => {
           {participants.length ? (
             participants
               .filter(
-                (participant: ParticipantType) =>
-                  participant.name !== shipStore.ship?.patp
+                (participant: ParticipantModelType) =>
+                  participant.name !== app.ship.patp
               )
-              .map((participant: ParticipantType) => {
+              .map((participant: ParticipantModelType) => {
                 const participantVotingPower = 1;
                 return (
                   <GenericRow key={participant.name}>
@@ -72,7 +72,7 @@ export const DelegationList: FC = () => {
                     >
                       <Ship
                         patp={participant.name}
-                        color={participant.metadata?.color || "#000000"}
+                        color={participant.metadata!.color || "#000000"}
                         textOpacity={1}
                       />
                       <Text variant="body" opacity={0.7}>
@@ -101,4 +101,4 @@ export const DelegationList: FC = () => {
       </Flex>
     </CenteredPane>
   );
-};
+});

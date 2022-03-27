@@ -14,29 +14,21 @@ import {
 } from "@holium/design-system";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
-import { useStore } from "../../../logic/store";
 import { useNavigate, useParams } from "react-router";
 import { toJS } from "mobx";
 import { observer } from "mobx-react-lite";
 import { VoteCard } from "../../../components/VoteCard";
-import { ChoiceType, ProposalType } from "../../../logic/types/proposals";
 import { createPath } from "../../../logic/utils/path";
 import { descriptiveTimeString } from "../../../logic/utils/time";
 import { DetailHeader, DetailCentered, DetailBody } from "./Detail.styles";
 import { Status } from "../../../components/Status";
-import { useMst } from "../../../logic/store-tree/root";
-import {
-  ChoiceModelType,
-  ProposalModelType,
-} from "../../../logic/store-tree/proposals";
+import { useMst } from "../../../logic/stores/root";
+import { ProposalModelType } from "../../../logic/stores/proposals";
 
 export const ProposalDetail: FC = observer((props: any) => {
   const navigate = useNavigate();
   const urlParams = useParams();
   const { store, app } = useMst();
-  const [chosenVote, setChosenVote] = useState<Partial<ChoiceType>>({
-    label: undefined,
-  });
   const currentBooth = urlParams.boothName!;
   store.setBooth(currentBooth);
 
@@ -55,14 +47,12 @@ export const ProposalDetail: FC = observer((props: any) => {
       urlParams.proposalId!
     )!;
     proposal.castVote(vote.chosenVote);
-    setChosenVote(vote.chosenVote);
   };
 
   const onBack = () => {
     let newPath = createPath(
       {
         name: currentBooth,
-        // @ts-ignore
         type: urlParams.type!,
       },
       "proposals"
@@ -74,28 +64,14 @@ export const ProposalDetail: FC = observer((props: any) => {
   let content;
   // If the proposal store has loaded, render the page
 
-  // const proposal = booth.proposalStore.proposals.get(urlParams.proposalId!);
   const booth = store.booth!;
   if (store.isLoaded && booth.proposalStore.isLoaded) {
     let proposal: ProposalModelType = booth.proposalStore.proposals.get(
       urlParams.proposalId!
     )!;
-
-    const voteResults = proposal.voteCount; // this should be the total votes submitted
-    const participantAmounts = booth.participantStore.count;
+    const chosenVote = proposal.results!.getMyVote;
 
     const isActive = proposal.status === "Active";
-
-    // TODO implement vote result logic
-    const votes = proposal.choices.map((value: ChoiceModelType) => ({
-      label: value.label,
-      results:
-        value.label === chosenVote.label
-          ? ((1 + voteResults) / participantAmounts) * 100
-          : 0,
-      action: value.action,
-      description: value.description,
-    }));
 
     content = (
       <Grid
@@ -155,13 +131,13 @@ export const ProposalDetail: FC = observer((props: any) => {
             disabled={!isActive}
             choices={proposal.choices}
             title={proposal.title}
-            // loading={args.loading}
+            loading={proposal.isLoading}
             currentUser={app.ship}
             strategy={proposal.strategy}
             onVote={onVote}
-            chosenOption={chosenVote.label && chosenVote}
-            voteResults={votes}
-            voteSubmitted={chosenVote.label}
+            chosenOption={chosenVote && chosenVote.choice}
+            voteResults={proposal.results!.resultSummary}
+            voteSubmitted={proposal.results!.didVote}
           />
           {/* <Card
             padding={12}

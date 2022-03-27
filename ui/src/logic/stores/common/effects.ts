@@ -4,7 +4,7 @@ export const EffectModel = types.model("EffectModel", {
   resource: types.string, // "booth", "participant", "proposal", "vote"
   effect: types.string,
   key: types.string,
-  data: types.maybeNull(types.model()),
+  data: types.model(),
 });
 export type EffectModelType = Instance<typeof EffectModel>;
 

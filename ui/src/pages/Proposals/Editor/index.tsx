@@ -1,4 +1,4 @@
-import React, { FC, useMemo, useState, useEffect } from "react";
+import React, { FC, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Observer, observer } from "mobx-react";
 import MDEditor from "@uiw/react-md-editor";
@@ -22,21 +22,18 @@ import {
   BreadcrumbNav,
 } from "@holium/design-system";
 
-import { useStore } from "../../../logic/store";
 import { createProposalFormFields } from "./CreateForm";
 import { MarkdownEditor } from "../../../components/MarkdownEditor";
 import { ChoiceEditor, ChoiceType } from "./Choices";
-import { ProposalType } from "../../../logic/types/proposals";
 import { createPath } from "../../../logic/utils/path";
 import { toJS } from "mobx";
 import { emptyState } from "./empty";
-import { useMst } from "../../../logic/store-tree/root";
+import { useMst } from "../../../logic/stores/root";
 
 export const ProposalEditor: FC = observer(() => {
   const saveButton = React.createRef<HTMLButtonElement>();
   const navigate = useNavigate();
   const { store, app } = useMst();
-  // const { appStore, proposalStore, boothStore } = useStore();
   const urlParams = useParams();
 
   let body = emptyState();
@@ -121,8 +118,6 @@ export const ProposalEditor: FC = observer(() => {
     () => createProposalFormFields(proposal),
     [proposal && proposal.isLoaded]
   );
-
-  console.log(toJS(title));
 
   body =
     proposalStore && proposalStore.isLoaded ? (

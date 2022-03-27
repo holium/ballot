@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router";
 import {
   Card,
@@ -15,12 +15,12 @@ import { ChoiceType, VoteType } from "../../logic/types/proposals";
 import { VoteBreakdownBar } from "../VoteBreakdownBar";
 import { VoteCardButton } from "./VoteCard.styles";
 import { pluralize } from "../../logic/utils/text";
-import { useStore } from "../../logic/store";
-
-export type VoteResultsType = {
-  label: string;
-  results: number;
-};
+import {
+  ResultSummaryType,
+  TallyType,
+  VoteModelType,
+} from "../../logic/stores/proposals";
+import { toJS } from "mobx";
 
 export type VoteCardProps = {
   disabled?: boolean;
@@ -33,10 +33,11 @@ export type VoteCardProps = {
   title: string;
   blurred?: boolean;
   loading?: boolean;
+  castingLoading?: boolean;
   strategy: string;
   choices: [];
   chosenOption?: string;
-  voteResults?: VoteResultsType[];
+  voteResults?: ResultSummaryType;
   voteSubmitted?: boolean;
   onClick: (option: string) => any;
   onVote: (chosenVote: VoteType) => any;
@@ -46,6 +47,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
   const {
     disabled,
     loading,
+    castingLoading,
     currentUser,
     choices,
     strategy,
@@ -61,7 +63,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
   const ref = React.createRef();
   const urlParams = useParams();
   const proposalId = urlParams.proposalId;
-  const { voteStore } = useStore();
+
   const [chosenVote, setChosenVote] = useState<VoteType>({
     chosenVote: {
       label: "",
@@ -116,22 +118,20 @@ export const VoteCard: any = (props: VoteCardProps) => {
   }
 
   if (chosenOption) {
-    middleSection = voteResults?.map((vote: VoteResultsType) => {
-      const winningOption = Math.max.apply(
-        Math,
-        voteResults.map((vote: VoteResultsType) => vote.results)
-      );
-      return (
-        <VoteBreakdownBar
-          win={vote.results === winningOption}
-          label={vote.label}
-          results={vote.results}
-          width="250px"
-          overlay={true}
-          key={vote.label}
-        />
-      );
-    });
+    middleSection =
+      voteResults &&
+      voteResults.tallies.map((vote: TallyType) => {
+        return (
+          <VoteBreakdownBar
+            win={vote.label === voteResults.topChoice}
+            label={vote.label}
+            percentage={vote.percentage}
+            width="250px"
+            overlay={true}
+            key={vote.label}
+          />
+        );
+      });
   }
   return (
     <Card
@@ -190,7 +190,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
           {middleSection}
         </Grid>
         <VoteCardButton
-          isLoading={voteStore.isCastingLoading.get()}
+          isLoading={castingLoading}
           additionalVariant="submit"
           variant="custom"
           disabled={

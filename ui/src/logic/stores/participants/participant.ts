@@ -1,0 +1,49 @@
+import {
+  types,
+  flow,
+  Instance,
+  SnapshotIn,
+  getParent,
+  destroy,
+  SnapshotOut,
+  IJsonPatch,
+  applyPatch,
+} from "mobx-state-tree";
+import participantApi from "../../api/participants";
+import { ContextModelType, EffectModelType } from "../common/effects";
+
+import { LoaderModel } from "../common/loader";
+
+export const ParticipantModel = types
+  .model({
+    key: types.identifier,
+    name: types.string,
+    created: types.string,
+    metadata: types.optional(types.frozen(), { color: "#000000" }),
+    status: types.enumeration("State", [
+      "pending",
+      "invited",
+      "error",
+      "active",
+    ]),
+  })
+  .actions((self) => ({
+    setStatus(status: typeof self.status) {
+      self.status = status;
+    },
+    updateEffect(update: any) {
+      console.log("updateEffect in participant model ", update);
+
+      const validKeys = Object.keys(update).filter((key: string) =>
+        self.hasOwnProperty(key)
+      );
+      const patches: IJsonPatch[] = validKeys.map((key: string) => ({
+        op: "replace",
+        path: `/${key}`,
+        value: update[key],
+      }));
+      applyPatch(self, patches);
+    },
+  }));
+
+export type ParticipantModelType = Instance<typeof ParticipantModel>;

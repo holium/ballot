@@ -1,34 +1,52 @@
-import { action, makeAutoObservable, observable } from "mobx";
-import { makePersistable } from "mobx-persist-store";
-class AppStore {
-  public title?: string;
-  @observable public currentUrl: string = "";
-  @observable public currentPage: string = "proposals";
-  @observable public theme: {
-    template: "light" | "dark";
-  } = { template: "light" };
+import { types, Instance } from "mobx-state-tree";
+import { matchPath, resolvePath } from "react-router-dom";
 
-  constructor() {
-    makeAutoObservable(this);
-    makePersistable(this, {
-      name: "AppStore",
-      properties: ["theme"],
-      storage: window.localStorage,
-    });
-  }
+const ShipModel = types.model({
+  patp: types.string,
+  metadata: types.optional(
+    types.model({
+      color: types.string,
+    }),
+    { color: "#000000" }
+  ),
+});
 
-  setTitle = action((title: string | undefined) => {
-    this.title = title;
-  });
+export const AppModel = types
+  .model({
+    title: types.optional(types.string, ""),
+    currentUrl: types.optional(types.string, ""),
+    currentPage: types.optional(types.string, "proposals"),
+    theme: types.optional(
+      types.enumeration("Theme", ["light", "dark"]),
+      "light"
+    ),
+    ship: ShipModel,
+  })
+  .actions((self) => ({
+    setTitle(title: typeof self.title) {
+      self.title = title;
+    },
+    setTheme(theme: typeof self.theme) {
+      self.theme = theme;
+    },
+    setCurrentUrl(url: string, page?: string) {
+      self.currentUrl = url;
+      if (page) {
+        self.currentPage = page;
+        return;
+      }
+      // Checks if delegation is selected
+      // TODO better routing mst
+      const matchesDelegation = matchPath(
+        `/apps/ballot/booth/:type/:boothName/delegation`,
+        url
+      );
+      if (matchesDelegation) {
+        self.currentPage = "delegation";
+      } else {
+        self.currentPage = "proposals";
+      }
+    },
+  }));
 
-  setTheme = action((themeTemplate: "light" | "dark") => {
-    this.theme.template = themeTemplate;
-  });
-
-  setCurrentUrl = action((url: string, page?: string) => {
-    this.currentUrl = url;
-    if (page) this.currentPage = page;
-  });
-}
-
-export default AppStore;
+export type AppModelType = Instance<typeof AppModel>;

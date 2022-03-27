@@ -14,14 +14,13 @@ import { toJS } from "mobx";
 import { Observer } from "mobx-react";
 
 import { Status } from "../Status";
-import { ProposalType } from "../../logic/types/proposals";
 import { descriptiveTimeString } from "../../logic/utils/time";
 import { Author } from "../Author";
-import { useStore } from "../../logic/store";
-import { useMst } from "../../logic/store-tree/root";
+import { useMst } from "../../logic/stores/root";
+import { ProposalModelType } from "../../logic/stores/proposals";
 
 export type ProposalCardType = {
-  proposal: ProposalType;
+  proposal: ProposalModelType;
   onClick: (proposalId: any) => any;
   contextMenu: MenuItemProps[];
   status: string;
@@ -41,25 +40,34 @@ const ProposalTitle = styled(Text)`
   -o-text-overflow: ellipsis; /* Opera < 11*/
   text-overflow: ellipsis; /* IE, Safari (WebKit), Opera >= 11, FF > 6 */
 `;
+const Skeleton = styled.div`
+  width: 100%;
+  /* height: 15px; */
+  display: block;
+  border-radius: 3px;
+  background: linear-gradient(
+      to right,
+      rgba(197, 199, 204, 0),
+      rgba(197, 199, 204, 0.3) 30%,
+      rgba(197, 199, 204, 0) 50%
+    ),
+    lightgray;
+  background-repeat: repeat-y;
+  background-size: 50px 500px;
+  background-position: 0 0;
+  animation: shine 1s infinite;
+
+  @keyframes shine {
+    to {
+      background-position: 100% 0;
+    }
+  }
+`;
 
 export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
   const { proposal, onClick, clickable, status, entity, contextMenu } = props;
   const parentRef = React.useRef();
-  // const { participantStore, proposalStore, voteStore } = useStore();
   const { store } = useMst();
-  const booth = store.booths!.get(store.activeBooth!)!;
-
-  const participantCount =
-    booth?.proposalStore.proposals.get(proposal.key)?.participantCount || 1;
-  const voteCount =
-    booth?.proposalStore.proposals.get(proposal.key)?.voteCount || 0;
-  // const timeRemaining = formatDistance(new Date(proposal.start), new Date(), {
-  //   addSuffix: true,
-  // });
-  const percentage = useMemo(
-    () => Math.round((voteCount / participantCount) * 1000 * 10) / 100,
-    [voteCount, participantCount]
-  );
 
   return (
     <Flex flexDirection="column" mb="12px">
@@ -86,9 +94,7 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
             <Observer>
               {() => (
                 <>
-                  <ProposalTitle variant="h6">
-                    {proposal.title ? proposal.title : "Loading..."}
-                  </ProposalTitle>
+                  <ProposalTitle variant="h6">{proposal.title}</ProposalTitle>
 
                   <Status status={status} />
                 </>
@@ -99,37 +105,45 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
             flexDirection={["column", "row", "row"]}
             justifyContent="space-between"
           >
-            <Observer>
-              {() => (
-                <>
-                  {status !== "Ended" ? (
-                    <KPI
-                      icon={<TlonIcon icon="Clock" />}
-                      value={descriptiveTimeString(
-                        proposal.start,
-                        proposal.end
-                      )}
-                    />
-                  ) : (
-                    <KPI value="Not enough support" />
-                  )}
-                  {/* {!statusInfoValue ? (
-              <StatusInfo status={status} value={timeRemaining} />
+            {status !== "Ended" ? (
+              <KPI
+                icon={<TlonIcon icon="Clock" />}
+                value={descriptiveTimeString(proposal.start, proposal.end)}
+              />
             ) : (
-              <StatusInfo status={status} value={statusInfoValue} />
-            )} */}
+              <KPI value="Not enough support" />
+            )}
+            <Observer>
+              {() => {
+                const booth = store.booths!.get(store.activeBooth!)!;
+                const proposalModel = booth?.proposalStore.proposals.get(
+                  proposal.key
+                )!;
+                const voteCount =
+                  proposalModel.results.resultSummary.voteCount || 0;
+                const participantCount =
+                  proposalModel.results.resultSummary.participantCount || 1;
+                const percentage = useMemo(
+                  () =>
+                    Math.round((voteCount / participantCount) * 1000 * 10) /
+                    100,
+                  [voteCount, participantCount]
+                );
+                if (proposalModel.isLoading) {
+                  return <Skeleton style={{ height: 18, width: 60 }} />;
+                }
+                return (
                   <KPI
                     icon={<TlonIcon icon="Users" />}
                     value={`${voteCount}/${participantCount} (${percentage}%)`}
                   />
-                </>
-              )}
+                );
+              }}
             </Observer>
           </Flex>
         </Flex>
       </Card>
       <Author
-        // @ts-ignore
         patp={proposal.owner}
         // color={proposal.author.metadata?.color}
         size="small"

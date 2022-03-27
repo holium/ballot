@@ -1,6 +1,4 @@
 import { appName } from "../../app";
-import { BoothType2 } from "../store-tree/booths";
-import { BoothType } from "../types/booths";
 
 export const createPath = (
   booth: any,

@@ -14,13 +14,14 @@ import {
   Button,
 } from "@holium/design-system";
 
-import { getProposalFilters } from "../../../logic/stores/proposals";
 import { ProposalType } from "../../../logic/types/proposals";
 import { appName } from "../../../app";
 import { ProposalCard } from "../../../components/ProposalCard";
 import { Participants } from "../../../components/Participants";
 import { createPath } from "../../../logic/utils/path";
-import { useMst } from "../../../logic/store-tree/root";
+import { useMst } from "../../../logic/stores/root";
+import { ProposalModelType } from "../../../logic/stores/proposals";
+import { getProposalFilters } from "../../../logic/stores/proposals/utils";
 
 export const ProposalList: FC = observer(() => {
   const [selectedOption, setSelectedOption] = useState("All");
@@ -113,14 +114,12 @@ export const ProposalList: FC = observer(() => {
             index: number;
             style: any;
           }) => {
-            const proposal: ProposalType = proposalsList[index];
+            const proposal: ProposalModelType = proposalsList[index];
             return (
               <ProposalCard
                 key={key}
                 proposal={proposal}
-                onClick={(proposal: ProposalType) => {
-                  // let boothName: string = store.booth!.name;
-                  // proposalStore.setProposal(boothName, proposal!.key);
+                onClick={(proposal: ProposalModelType) => {
                   let newPath = createPath(
                     store.booth!,
                     "proposals",
@@ -147,10 +146,8 @@ export const ProposalList: FC = observer(() => {
                     // TODO add disabled text
                     onClick: (event: React.MouseEvent<HTMLElement>) => {
                       event.stopPropagation();
-                      // proposalStore.setProposal(
-                      //   store.booth!.name,
-                      //   proposal!.key
-                      // );
+                      const proposalStore = store.booth?.proposalStore!;
+                      proposalStore.setActive(proposal!);
                       let newPath = createPath(
                         store.booth!,
                         "proposals/editor",

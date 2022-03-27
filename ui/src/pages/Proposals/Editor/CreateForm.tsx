@@ -1,5 +1,8 @@
+import { toJS } from "mobx";
 import { createField, createForm } from "mobx-easy-form";
+import { clone, unprotect } from "mobx-state-tree";
 import * as yup from "yup";
+import { ChoiceType } from "./Choices";
 
 export const createProposalForm = () => {
   // const proposalBooth = booth?.name;
@@ -87,99 +90,33 @@ export const createProposalFormFields = (defaults: any = {}) => {
     validationSchema: yup.number().required("Support is required."),
   });
 
-  const choices = createField({
-    id: "choices",
-    form,
-    initialValue: defaults.choices || [
-      { order: 1, label: "Approve", action: "approve-action" },
-      { order: 2, label: "Reject", action: "reject-action" },
-    ],
-    validationSchema: yup.array().min(2, "Need at least two choices."),
-  });
-
-  return {
-    form,
-    title,
-    content,
-    strategy,
-    redactVotes,
-    startTime,
-    endTime,
-    support,
-    choices,
-  };
-};
-
-export const addFields = (form: any, defaults: any = {}) => {
-  const title = createField({
-    id: "title",
-    form,
-    initialValue: defaults.title || "",
-    validationSchema: yup.string().required("Name is required"),
-  });
-  form.actions.add(title);
-
-  const content = createField({
-    id: "content",
-    form,
-    initialValue: defaults.content || "",
-    validationSchema: yup
-      .string()
-      .required("You should probably write something."),
-  });
-  form.actions.add(content);
-
-  const strategy = createField({
-    id: "strategy",
-    form,
-    initialValue: defaults.strategy || "single-choice",
-    validationSchema: yup.string().required("Strategy is required."),
-  });
-  form.actions.add(strategy);
-
-  const redactVotes = createField({
-    id: "redacted",
-    form,
-    initialValue: defaults.redacted || "false",
-  });
-  form.actions.add(redactVotes);
-
-  const startTime = createField({
-    id: "start",
-    form,
-    initialValue: defaults.start || "",
-    validationSchema: yup.date().required("Must have a start time."),
-  });
-  form.actions.add(startTime);
-
-  const endTime = createField({
-    id: "end",
-    form,
-    initialValue: defaults.end || "",
-    validationSchema: yup.date().required("Must have an end time."),
-  });
-  form.actions.add(endTime);
-
-  const support = createField({
-    id: "support",
-    form,
-    initialValue: defaults.support || "50",
-    validationSchema: yup.number().required("Support is required."),
-  });
-  form.actions.add(support);
+  // const defaultChoices = defaults.choices && defaults.choices.slice();
+  // const choices = createField({
+  //   id: "choices",
+  //   form,
+  //   initialValue: defaultChoices || [
+  //     { order: 1, label: "Approve", action: "approve-action" },
+  //     { order: 2, label: "Reject", action: "reject-action" },
+  //   ],
+  //   validationSchema: yup.array().min(2, "Need at least two choices."),
+  // });
+  const defaultChoices =
+    defaults.choices &&
+    defaults.choices.map((choice: ChoiceType) => clone(choice, false));
 
   const choices = createField({
     id: "choices",
     form,
-    initialValue: defaults.choices || [
-      { order: 1, label: "Approve", action: "approve-action" },
-      { order: 2, label: "Reject", action: "reject-action" },
+    initialValue: defaultChoices || [
+      { label: "Approve", action: "approve-action" },
+      { label: "Reject", action: "reject-action" },
     ],
     validationSchema: yup.array().min(2, "Need at least two choices."),
   });
   form.actions.add(choices);
 
   return {
+    form,
     title,
     content,
     strategy,

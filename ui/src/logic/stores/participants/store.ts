@@ -9,43 +9,11 @@ import {
   IJsonPatch,
   applyPatch,
 } from "mobx-state-tree";
-import participantApi from "../api/participants";
-import { ContextModelType, EffectModelType } from "./common/effects";
+import participantApi from "../../api/participants";
+import { ContextModelType, EffectModelType } from "../common/effects";
 
-import { LoaderModel } from "./common/loader";
-
-export const ParticipantModel = types
-  .model({
-    key: types.identifier,
-    name: types.string,
-    created: types.string,
-    status: types.enumeration("State", [
-      "pending",
-      "invited",
-      "error",
-      "active",
-    ]),
-  })
-  .actions((self) => ({
-    setStatus(status: typeof self.status) {
-      self.status = status;
-    },
-    updateEffect(update: any) {
-      console.log("updateEffect in participant model ", update);
-
-      const validKeys = Object.keys(update).filter((key: string) =>
-        self.hasOwnProperty(key)
-      );
-      const patches: IJsonPatch[] = validKeys.map((key: string) => ({
-        op: "replace",
-        path: `/${key}`,
-        value: update[key],
-      }));
-      applyPatch(self, patches);
-    },
-  }));
-
-export type ParticipantModelType = Instance<typeof ParticipantModel>;
+import { LoaderModel } from "../common/loader";
+import { ParticipantModel } from "../participants";
 
 export const ParticipantStore = types
   .model({
@@ -54,6 +22,9 @@ export const ParticipantStore = types
     participants: types.map(ParticipantModel),
   })
   .views((self) => ({
+    get list() {
+      return Array.from(self.participants.values());
+    },
     get count() {
       return self.participants.size;
     },
@@ -164,34 +135,3 @@ export const ParticipantStore = types
       self.participants.delete(participantKey);
     },
   }));
-// addParticipant = action(async (boothKey: string, participantKey: string) => {
-//   this.loader.set(STATE.LOADING);
-// const [response, error] = await this.api.addParticipant(
-//   boothKey,
-//   participantKey
-// );
-//   if (error) return null;
-//   const currentMap = this.participants.get(boothKey)!;
-//   currentMap[participantKey] = {
-//     name: participantKey,
-//     status: "pending",
-//   };
-//   runInAction(() => {
-//     this.participants.set(boothKey, currentMap);
-//     this.loader.set(STATE.LOADED);
-//   });
-// });
-// removeParticipant = action(
-//   async (boothKey: string, participantKey: string) => {
-//     const [response, error] = await this.api.deleteParticipant(
-//       boothKey,
-//       participantKey
-//     );
-//     if (error) return null;
-//     const currentMap = this.participants.get(boothKey)!;
-//     runInAction(() => {
-//       delete currentMap[participantKey];
-//       this.participants.set(boothKey, currentMap);
-//     });
-//   }
-// );

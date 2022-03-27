@@ -11,8 +11,7 @@ import {
 import styled from "styled-components";
 import { BoothType } from "../../logic/types/booths";
 import { toJS } from "mobx";
-import { useStore } from "../../logic/store";
-import { BoothModelType } from "../../logic/store-tree/booths";
+import { BoothModelType } from "../../logic/stores/booths";
 
 export type BoothDrowdownProps = {
   booths: any[];
@@ -42,7 +41,6 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
   props: BoothDrowdownProps
 ) => {
   const { booths, onContextClick, onNewBooth, onAccept } = props;
-  const { boothStore } = useStore();
   const shipBooths = booths
     .filter((booth: BoothType) => booth.type === "ship")
     .map(

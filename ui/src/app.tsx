@@ -1,6 +1,12 @@
 import React, { FC, useEffect, useState } from "react";
 import { observer } from "mobx-react";
-import { useLocation, useNavigate, Outlet, useParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  Outlet,
+  useParams,
+  matchPath,
+} from "react-router-dom";
 import Helmet from "react-helmet";
 import { ThemeProvider } from "styled-components";
 
@@ -18,8 +24,8 @@ import { BoothsDropdown } from "./components/BoothsDropdown";
 import { NewBoothDialog } from "./components";
 import { createPath } from "./logic/utils/path";
 import { toJS } from "mobx";
-import { useMst } from "./logic/store-tree/root";
-import { BoothModelType } from "./logic/store-tree/booths";
+import { useMst } from "./logic/stores/root";
+import { BoothModelType } from "./logic/stores/booths";
 
 export const appName = "ballot";
 
