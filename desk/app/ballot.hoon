@@ -1881,11 +1881,17 @@
           ['effects' [%a [vote-effect]~]]
         ==
 
+        =/  sub-wire  `path`(stab (crip (weld "/booths/" (trip booth-key))))
+        %-  (slog leaf+"sending cast-vote updates on {<sub-wire>}..." ~)
+
         =/  effects=(list card)
           :~  [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
               [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
               [%give %kick [/http-response/[p.req]]~ ~]
+              :: ui-updates
               [%give %fact [/booths]~ %json !>(effects)]
+              :: remote agent/client updates
+              [%give %fact [sub-wire]~ %json !>(wire-payload)]
           ==
 
         ::  no need for poke if casting ballot from our own ship. this method has already
@@ -2970,7 +2976,7 @@
   ++  count-vote
     |:  [vote=`json`~ results=`(map @t json)`~]
 
-    %-  (slog leaf+"count-vote called. [vote={<vote>}, results={<results>}]")
+    %-  (slog leaf+"count-vote called. [vote={<vote>}, results={<results>}]" ~)
 
     =/  v  ((om json):dejs:format vote)
     =/  choice  ((om json):dejs:format (~(got by v) 'choice'))
@@ -3257,6 +3263,16 @@
 
     =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
     =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
+
+    %-  (slog leaf+"on-agent:handling-cast-vote => {<participant-key>} voted..." ~)
+
+    ::  does proposal exist?
+    =/  booth-proposals  (~(get by proposals.state) booth-key)
+    =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
+    =/  proposal  (~(get by booth-proposals) proposal-key)
+    ?~  proposal
+          ~&  >>>  "cast-vote error: proposal {<proposal-key>} not found"
+          `this
 
     =/  booth-proposals  (~(get by votes.state) booth-key)
     =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
