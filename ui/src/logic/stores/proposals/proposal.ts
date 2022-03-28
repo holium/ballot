@@ -13,6 +13,7 @@ import { ChoiceModel, ResultModel, VoteModel } from ".";
 
 import proposalsApi from "../../api/proposals";
 import votesApi from "../../api/votes";
+import { timeout } from "../../utils/dev";
 import { BoothModelType } from "../booths";
 import { ContextModelType, EffectModelType } from "../common/effects";
 
@@ -118,6 +119,7 @@ export const ProposalModel = types
     }),
     getVotes: flow(function* () {
       self.loader.set("loading");
+      yield timeout(3000);
       try {
         const [response, error] = yield votesApi.initialVotes(
           self.boothKey,

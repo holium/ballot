@@ -11,6 +11,7 @@ import {
   Ship,
   BreadcrumbNav,
   Fill,
+  Grid2,
 } from "@holium/design-system";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
@@ -74,20 +75,12 @@ export const ProposalDetail: FC = observer((props: any) => {
     const isActive = proposal.status === "Active";
 
     content = (
-      <Grid
-        style={{
-          width: "inherit",
-          height: "inherit",
-        }}
-        gridTemplateColumns="2fr 300px"
-        gridColumnGap={16}
-      >
-        <Flex flexDirection="column">
+      <Grid2.Row justify="center">
+        <Grid2.Column mb="16px" lg={9} xl={9}>
           <Card
             padding={0}
             style={{ borderColor: "transparent" }}
             elevation="lifted"
-            height="100%"
           >
             <DetailHeader>
               <Flex flex={1} flexDirection="row" justifyContent="space-between">
@@ -109,11 +102,10 @@ export const ProposalDetail: FC = observer((props: any) => {
                 />
               </Flex>
             </DetailHeader>
-            <DetailBody style={{ height: height! - 150, overflowY: "scroll" }}>
+            <DetailBody>
               <MDEditor.Markdown
                 style={{
                   padding: 16,
-                  height: "initial",
                   fontFamily: "Inter, sans-serif",
                 }}
                 source={proposal.content}
@@ -121,12 +113,8 @@ export const ProposalDetail: FC = observer((props: any) => {
               />
             </DetailBody>
           </Card>
-        </Flex>
-        <Grid
-          gridTemplateRows="auto"
-          gridRowGap="16px"
-          style={{ height: "fit-content" }}
-        >
+        </Grid2.Column>
+        <Grid2.Column md={2} lg={3} style={{ height: "fit-content" }}>
           <VoteCard
             disabled={!isActive}
             choices={proposal.choices}
@@ -173,19 +161,30 @@ export const ProposalDetail: FC = observer((props: any) => {
               <KPI inline label="Host" value={proposal.owner} />
             </Grid>
           </Card> */}
-        </Grid>
-      </Grid>
+        </Grid2.Column>
+      </Grid2.Row>
     );
   }
 
   return (
-    <Fill ref={div}>
-      <BreadcrumbNav
-        onBack={onBack}
-        crumbs={[{ label: "Proposals", onClick: onBack }, { label: "Details" }]}
-      />
-      <DetailCentered>{content}</DetailCentered>
-    </Fill>
+    <Grid2.Box offset={40} fluid scroll ref={div}>
+      <Grid2.Box>
+        <Grid2.Column mb="16px" lg={12} xl={12}>
+          <Grid2.Row>
+            <Grid2.Column>
+              <BreadcrumbNav
+                onBack={onBack}
+                crumbs={[
+                  { label: "Proposals", onClick: onBack },
+                  { label: "Details" },
+                ]}
+              />
+            </Grid2.Column>
+          </Grid2.Row>
+          {content}
+        </Grid2.Column>
+      </Grid2.Box>
+    </Grid2.Box>
   );
 });
 export default ProposalDetail;

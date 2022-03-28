@@ -1,5 +1,5 @@
 import { types, Instance } from "mobx-state-tree";
-import { matchPath, resolvePath } from "react-router-dom";
+import { matchPath } from "react-router-dom";
 
 const ShipModel = types.model({
   patp: types.string,

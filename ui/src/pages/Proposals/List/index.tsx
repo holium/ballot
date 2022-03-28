@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useState, useMemo } from "react";
+import React, { FC, useState } from "react";
 import { toJS } from "mobx";
 import { useNavigate, useParams } from "react-router";
 import { observer } from "mobx-react-lite";
@@ -6,11 +6,11 @@ import { observer } from "mobx-react-lite";
 import {
   ListHeader,
   OptionType,
-  CenteredPane,
   VirtualizedList,
   Text,
   Flex,
   Grid,
+  Grid2,
   Button,
 } from "@holium/design-system";
 
@@ -69,7 +69,12 @@ export const ProposalList: FC = observer(() => {
 
   // return (
   leftPane = (
-    <Flex mb={8} style={{ height: "inherit" }} flex={1} flexDirection="column">
+    <Flex
+      mb="8px"
+      style={{ height: "inherit" }}
+      flex={1}
+      flexDirection="column"
+    >
       <ListHeader
         title="Proposals"
         subtitle={{ patp: true, text: currentBooth }}
@@ -130,13 +135,13 @@ export const ProposalList: FC = observer(() => {
                 status={proposal.status}
                 entity={store.booth!.type}
                 contextMenu={[
-                  {
-                    label: "Copy link",
-                    onClick: (event: React.MouseEvent<HTMLElement>) => {
-                      event.stopPropagation();
-                      console.log("add copy and pasted link");
-                    },
-                  },
+                  // {
+                  //   label: "Copy link",
+                  //   onClick: (event: React.MouseEvent<HTMLElement>) => {
+                  //     event.stopPropagation();
+                  //     console.log("add copy and pasted link");
+                  //   },
+                  // },
                   {
                     label: "Edit",
                     disabled:
@@ -195,28 +200,72 @@ export const ProposalList: FC = observer(() => {
     ? store.booth.participantStore.isLoading
     : false;
   return (
-    <CenteredPane style={{ height: "100%" }} width={1216} bordered={false}>
-      <Grid
-        mt={16}
-        flex={1}
-        style={{ height: "inherit" }}
-        gridTemplateColumns="2fr 300px"
-        gridColumnGap={16}
-      >
-        {leftPane}
-        <Flex style={{ width: 300, height: "fit-content" }}>
-          <Participants
-            loading={participantLoading}
-            participants={participants}
-            onAdd={(patp: string) => {
-              store.booth!.participantStore.add(patp);
-            }}
-            onRemove={(patp: string) => {
-              store.booth!.participantStore.remove(patp);
-            }}
-          />
-        </Flex>
-      </Grid>
-    </CenteredPane>
+    <Grid2.Box offset={40} fluid scroll>
+      <Grid2.Box>
+        <Grid2.Column mt="16px" lg={12} xl={12}>
+          <Grid2.Row justify="center">
+            <Grid2.Column xs={4} sm={5} md={5} lg={9} xl={9}>
+              {leftPane}
+            </Grid2.Column>
+            <Grid2.Column xs={4} sm={3} md={3} lg={3}>
+              <Participants
+                loading={participantLoading}
+                participants={participants}
+                onAdd={(patp: string) => {
+                  store.booth!.participantStore.add(patp);
+                }}
+                onRemove={(patp: string) => {
+                  store.booth!.participantStore.remove(patp);
+                }}
+              />
+            </Grid2.Column>
+          </Grid2.Row>
+        </Grid2.Column>
+      </Grid2.Box>
+    </Grid2.Box>
   );
 });
+// return (
+//   <CenteredPane style={{ height: "100%" }} width={1216} bordered={false}>
+//     <Grid2.Box>
+//       <Grid2.Row>
+//         <Grid2.Column>{leftPane}</Grid2.Column>
+//         <Grid2.Column>
+//           <Flex style={{ width: 300, height: "fit-content" }}>
+//             <Participants
+//               loading={participantLoading}
+//               participants={participants}
+//               onAdd={(patp: string) => {
+//                 store.booth!.participantStore.add(patp);
+//               }}
+//               onRemove={(patp: string) => {
+//                 store.booth!.participantStore.remove(patp);
+//               }}
+//             />
+//           </Flex>
+//         </Grid2.Column>
+//       </Grid2.Row>
+//     </Grid2.Box>
+//     {/* <Grid
+// mt={16}
+// flex={1}
+// style={{ height: "inherit" }}
+// gridTemplateColumns="2fr 300px"
+// gridColumnGap={16}
+//     >
+//       {leftPane}
+//       <Flex style={{ width: 300, height: "fit-content" }}>
+//         <Participants
+//           loading={participantLoading}
+//           participants={participants}
+//           onAdd={(patp: string) => {
+//             store.booth!.participantStore.add(patp);
+//           }}
+//           onRemove={(patp: string) => {
+//             store.booth!.participantStore.remove(patp);
+//           }}
+//         />
+//       </Flex>
+//     </Grid> */}
+//   </CenteredPane>
+// );

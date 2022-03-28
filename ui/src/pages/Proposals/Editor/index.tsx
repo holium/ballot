@@ -20,6 +20,8 @@ import {
   DateTimeInput,
   Box,
   BreadcrumbNav,
+  Fill,
+  Grid2,
 } from "@holium/design-system";
 
 import { createProposalFormFields } from "./CreateForm";
@@ -121,8 +123,8 @@ export const ProposalEditor: FC = observer(() => {
 
   body =
     proposalStore && proposalStore.isLoaded ? (
-      <Grid gridTemplateColumns="2fr 320px" gridColumnGap={12}>
-        <Flex mb={12} flexDirection="column">
+      <Grid2.Row>
+        <Grid2.Column mb="12px" md={5} lg={9} xl={9}>
           <ListHeader
             title={
               <Observer>
@@ -204,9 +206,14 @@ export const ProposalEditor: FC = observer(() => {
               }}
             </Observer>
           </Card>
-        </Flex>
-        <Grid gridTemplateRows="30px 1fr" gridGap={12}>
-          <Flex height={30} justifyContent="flex-end" style={{ gap: 8 }}>
+        </Grid2.Column>
+        <Grid2.Column reverse={["xs"]} mb="12px" sm={3} md={3} lg={3} xl={3}>
+          <Flex
+            height={30}
+            mb="12px"
+            justifyContent="flex-end"
+            style={{ gap: 8 }}
+          >
             {/* <Button py={1} variant="secondary">
             Save draft
           </Button> */}
@@ -216,6 +223,7 @@ export const ProposalEditor: FC = observer(() => {
                   <Button
                     ref={saveButton}
                     py={1}
+                    tabIndex={choices.state.value.length + 8}
                     type="submit"
                     variant="minimal"
                     onClick={onSubmit}
@@ -229,6 +237,7 @@ export const ProposalEditor: FC = observer(() => {
           </Flex>
           <Card
             padding={0}
+            mb="12px"
             style={{ borderColor: "transparent" }}
             elevation="lifted"
             height="fit-content"
@@ -311,7 +320,7 @@ export const ProposalEditor: FC = observer(() => {
                         <DateTimeInput
                           timePicker
                           inputId="endTime"
-                          tabIndex={4}
+                          tabIndex={5}
                           minBookingDate={
                             startTime.state.value
                               ? new Date(startTime.state.value)
@@ -339,7 +348,7 @@ export const ProposalEditor: FC = observer(() => {
                           style={{ width: 75 }}
                           type="number"
                           placeholder="ie. 50%"
-                          tabIndex={5}
+                          tabIndex={6}
                           bg="ui.tertiary"
                           rightIcon={
                             <Icons.Percentage
@@ -365,24 +374,30 @@ export const ProposalEditor: FC = observer(() => {
               </Observer>
             </Grid>
           </Card>
-        </Grid>
-      </Grid>
+        </Grid2.Column>
+      </Grid2.Row>
     ) : (
       emptyState()
     );
 
   return (
-    <Box flexDirection="column">
-      <BreadcrumbNav
-        onBack={onBack}
-        crumbs={[
-          { label: "Proposals", onClick: onBack },
-          { label: "Create New" },
-        ]}
-      />
-      <CenteredPane width={1216} bordered={false}>
-        {body}
-      </CenteredPane>
-    </Box>
+    <Grid2.Box fluid scroll>
+      <Grid2.Box>
+        <Grid2.Column mb="16px" lg={12} xl={12}>
+          <Grid2.Row>
+            <Grid2.Column>
+              <BreadcrumbNav
+                onBack={onBack}
+                crumbs={[
+                  { label: "Proposals", onClick: onBack },
+                  { label: "Create New" },
+                ]}
+              />
+            </Grid2.Column>
+          </Grid2.Row>
+          {body}
+        </Grid2.Column>
+      </Grid2.Box>
+    </Grid2.Box>
   );
 });

@@ -2,6 +2,7 @@ import {
   Card,
   Flex,
   Grid,
+  Grid2,
   IconButton,
   Icons,
   Text,
@@ -41,9 +42,9 @@ export const Participants: FC<ParticipantsProps> = (
   return (
     <Card
       elevation="lifted"
-      p={0}
+      p="0px"
       minHeight={250}
-      width={300}
+      width={"inherit"}
       style={{
         borderColor: "transparent",
       }}
@@ -82,39 +83,36 @@ export const Participants: FC<ParticipantsProps> = (
         )}
       </Flex>
       {participants && (
-        <Grid
-          style={{
-            gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-            width: "100%",
-            gridGap: "8px",
-          }}
-        >
-          <Observer>
-            {() => {
-              return (
-                <>
-                  {participants
-                    .sort((a: ParticipantType, b: ParticipantType) =>
-                      a.status === b.status ? 0 : a.status == "owner" ? -1 : 1
-                    )
-                    .map((ship: ParticipantType) => (
-                      <ParticipantRow
-                        loading={
-                          booth.checkAction(`invite-${ship.name}`) !== "success"
-                        }
-                        status={ship.status}
-                        canAdmin={hasAdmin && ship.status !== "owner"}
-                        key={`${ship.name}-${urlParams.boothName!}`}
-                        patp={ship.name}
-                        color={ship?.metadata?.color}
-                        onRemove={onRemove}
-                      />
-                    ))}
-                </>
-              );
-            }}
-          </Observer>
-        </Grid>
+        <Grid2.Box pl="2px" pr="2px">
+          <Grid2.Column noGutter>
+            <Observer>
+              {() => {
+                return (
+                  <>
+                    {participants
+                      .sort((a: ParticipantType, b: ParticipantType) =>
+                        a.status === b.status ? 0 : a.status == "owner" ? -1 : 1
+                      )
+                      .map((ship: ParticipantType) => (
+                        <ParticipantRow
+                          loading={
+                            booth.checkAction(`invite-${ship.name}`) !==
+                            "success"
+                          }
+                          status={ship.status}
+                          canAdmin={hasAdmin && ship.status !== "owner"}
+                          key={`${ship.name}-${urlParams.boothName!}`}
+                          patp={ship.name}
+                          color={ship?.metadata?.color}
+                          onRemove={onRemove}
+                        />
+                      ))}
+                  </>
+                );
+              }}
+            </Observer>
+          </Grid2.Column>
+        </Grid2.Box>
       )}
       {!participants?.length && !loading && (
         <Grid style={{ placeItems: "center", height: "80%", opacity: 0.6 }}>

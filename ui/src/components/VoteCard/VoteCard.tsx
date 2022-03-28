@@ -10,6 +10,7 @@ import {
   Grid,
   Fill,
   Box,
+  Spinner,
 } from "@holium/design-system";
 import { ChoiceType, VoteType } from "../../logic/types/proposals";
 import { VoteBreakdownBar } from "../VoteBreakdownBar";
@@ -64,6 +65,8 @@ export const VoteCard: any = (props: VoteCardProps) => {
   const urlParams = useParams();
   const proposalId = urlParams.proposalId;
 
+  console.log(loading);
+
   const [chosenVote, setChosenVote] = useState<VoteType>({
     chosenVote: {
       label: "",
@@ -94,7 +97,13 @@ export const VoteCard: any = (props: VoteCardProps) => {
   }, [onClickOutside]);
 
   let middleSection;
-  if (!chosenOption) {
+  if (loading) {
+    middleSection = (
+      <Flex style={{ height: 76 }} justifyCenter itemsCenter>
+        <Spinner size={2} />
+      </Flex>
+    );
+  } else if (!chosenOption) {
     middleSection = choices?.map((choice: ChoiceType) => (
       <VoteCardButton
         variant="custom"
@@ -115,9 +124,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
         {choice.label}
       </VoteCardButton>
     ));
-  }
-
-  if (chosenOption) {
+  } else if (chosenOption) {
     middleSection =
       voteResults &&
       voteResults.tallies.map((vote: TallyType) => {
@@ -138,10 +145,11 @@ export const VoteCard: any = (props: VoteCardProps) => {
       ref={ref}
       elevation="lifted"
       style={{
-        position: "relative",
+        position: "fixed",
         borderColor: "transparent",
         padding: "12px",
         minWidth: "250px",
+        width: "300px",
       }}
     >
       {blurred && (
@@ -195,7 +203,8 @@ export const VoteCard: any = (props: VoteCardProps) => {
           variant="custom"
           disabled={
             (!chosenOption && chosenVote?.chosenVote?.label === "") ||
-            chosenOption !== undefined
+            chosenOption !== undefined ||
+            loading
           }
           onClick={() => !disabled && onVote(chosenVote)}
         >

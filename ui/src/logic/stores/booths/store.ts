@@ -99,7 +99,6 @@ export const BoothStore = types
       }
     },
     initialEffect(payload: any) {
-      // console.log("initialEffect ", payload);
       const { booth, participants, proposals, votes } = payload.data;
       self.booths.set(
         booth.key,
@@ -108,9 +107,11 @@ export const BoothStore = types
           meta: { ...booth.meta, color: "#000000" },
           proposalStore: ProposalStore.create({
             boothKey: booth.key,
+            loader: { state: "loaded" },
           }),
           participantStore: ParticipantStore.create({
             boothKey: booth.key,
+            loader: { state: "loaded" },
           }),
           loader: { state: "loaded" },
         })

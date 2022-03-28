@@ -18,7 +18,9 @@ import {
   useDialog,
   Dialog,
   Fill,
+  Text,
   Button,
+  Flex,
 } from "@holium/design-system";
 import { BoothsDropdown } from "./components/BoothsDropdown";
 import { NewBoothDialog } from "./components";
@@ -106,9 +108,19 @@ export const App: FC = observer(() => {
             patp: app.ship!.patp,
             color: app.ship!.metadata!.color,
             contextMenu: (
-              <Button variant="secondary" onClick={() => toggleTheme()}>
-                Theme: {currentTheme}
-              </Button>
+              <Flex p={3} pb={2} flexDirection="column">
+                <Text mb={3} variant="patp">
+                  {app.ship!.patp}
+                </Text>
+
+                <Button
+                  data-prevent-menu-close
+                  variant="minimal"
+                  onClick={() => toggleTheme()}
+                >
+                  Theme: {currentTheme}
+                </Button>
+              </Flex>
             ),
           }}
           selectedRouteUri={app.currentPage} // proposals or delegation

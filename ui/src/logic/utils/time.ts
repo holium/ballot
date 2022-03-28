@@ -14,9 +14,10 @@ export const descriptiveTimeString = (start: number, end: number) => {
   if (now < start) {
     let startsIn = start - now;
     return `Starts in ${descriptiveTime(startsIn)}`;
-  }
-  if (now > start && now < end) {
+  } else if (now > start && now < end) {
     let timeLeft = end - now;
     return `${descriptiveTime(timeLeft)} left`;
+  } else {
+    return "Closed";
   }
 };

@@ -195,7 +195,7 @@ const ShipBooths = (props: {
           ) : (
             <TextButton
               style={{ height: 26 }}
-              data-prevent-menu-close={true}
+              data-prevent-menu-close
               onClick={(evt: any) => {
                 evt.preventDefault();
                 evt.stopPropagation();
@@ -264,7 +264,7 @@ const GroupBooths = (props: {
         {needsAccepting && (
           <TextButton
             tabIndex={0}
-            data-prevent-menu-close={true}
+            data-prevent-menu-close
             onClick={(evt: any) => {
               evt.preventDefault();
               evt.stopPropagation();

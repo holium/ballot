@@ -113,7 +113,7 @@ export const ParticipantStore = types
       Object.keys(participantMap).forEach((participantKey: string) => {
         self.participants.set(
           participantKey,
-          ParticipantModel.create(participantMap[participantKey])
+          ParticipantModel.create(participantMap[participantKey]),
         );
       });
     },

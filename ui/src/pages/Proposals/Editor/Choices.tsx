@@ -41,6 +41,7 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
     <Grid gridGap={2} pl={12} pr={12} pb={12}>
       {choices.map((choice: ChoiceType, index: number) => (
         <Input
+          tabIndex={index + 7} // 6 was the support % input tabIndex
           key={`index-${choice.label}-${index}`}
           leftIcon={index + 1}
           rightInteractive
@@ -112,6 +113,7 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
         <Button
           pt="4px"
           pb="4px"
+          tabIndex={choices.length + 7}
           // @ts-ignore
           ref={buttonRef}
           variant="minimal"
