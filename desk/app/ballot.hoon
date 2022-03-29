@@ -3033,7 +3033,26 @@
   ++  on-group-added
     |=  =action:group-store
     =/  booth  (booth-from-resource resource.action)
-    `this(booths (~(put by booths.state) key.booth data.booth))
+    =/  booth-participants  participants.state
+    =/  booth-participants
+          ?:  =(status.booth 'active')
+            %-  (slog leaf+"adding {<our.bowl>} to booth {<key.booth>} as participant..." ~)
+            =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
+            =/  participant-key  (crip "{<our.bowl>}")
+            =/  member=json
+            %-  pairs:enjs:format
+            :~
+              ['key' s+participant-key]
+              ['name' s+participant-key]
+              ['status' s+'active']
+              ['created' s+timestamp]
+              ['role' s+'owner']
+            ==
+            =|  members=(map @t json)
+            =.  members  (~(put by members) participant-key member)
+            (~(put by booth-participants) key.booth members)
+          participants.state
+    `this(booths (~(put by booths.state) key.booth data.booth), participants booth-participants)
 
   ++  on-group-removed
     |=  =action:group-store
@@ -3176,6 +3195,9 @@
       |=  [[=resource =group] acc=[effects=(list card) booths=(map @t json) participants=(map @t (map @t json))]]  :: participants=(map @t (map @t json))]]
         ^-  [effects=(list card) booths=(map @t json) participants=(map @t (map @t json))] :: participants=(map @t (map @t json))]
         =/  booth  (booth-from-resource resource)
+        ?:  (~(has by booths.state) key.booth)
+              ~&  >>  "cannot add booth {<key.booth>} to store. already exists..."
+              [effects.acc booths.acc participants.acc]
         =/  effects
               ?:  =(status.booth 'active')
                 %-  (slog leaf+"activating booth {<key.booth>} on {<our.bowl>}..." ~)
@@ -3199,10 +3221,7 @@
                 =.  members  (~(put by members) participant-key member)
                 (~(put by participants.acc) key.booth members)
               [participants.acc]
-        ?.  (~(has by booths.state) key.booth)
-              [effects (~(put by booths.acc) key.booth data.booth) participants]
-            ~&  >>  "cannot add booth {<key.booth>} to store. already exists..."
-            [effects.acc booths.acc participants.acc]
+            [effects (~(put by booths.acc) key.booth data.booth) participants]
     :_  this(booths (~(gas by booths.state) ~(tap by booths.data)), participants (~(gas by participants.state) ~(tap by participants.data)))
     [effects.data]
 
@@ -3214,7 +3233,27 @@
     ?.  =(booth ~)
         ~&  >>  "cannot add booth {<key.new-booth>} to store. already exists..."
         `this
-    `this(booths (~(put by booths.state) key.new-booth data.new-booth))
+    =/  booth-participants  participants.state
+    =/  booth-participants
+          ?:  =(status.new-booth 'active')
+            %-  (slog leaf+"adding {<our.bowl>} to booth {<key.new-booth>} as participant..." ~)
+            =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
+            =/  participant-key  (crip "{<our.bowl>}")
+            =/  member=json
+            %-  pairs:enjs:format
+            :~
+              ['key' s+participant-key]
+              ['name' s+participant-key]
+              ['status' s+'active']
+              ['created' s+timestamp]
+              ['role' s+'owner']
+            ==
+            =|  members=(map @t json)
+            =.  members  (~(put by members) participant-key member)
+            (~(put by booth-participants) key.new-booth members)
+          participants.state
+
+    `this(booths (~(put by booths.state) key.new-booth data.new-booth), participants booth-participants)
 
   ++  count-vote
     |:  [vote=`json`~ results=`(map @t json)`~]
