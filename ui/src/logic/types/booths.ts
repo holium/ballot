@@ -1,6 +1,7 @@
 import { ResourcePermissionType } from "./common";
 
 export type BoothType = {
+  key: string;
   created: string;
   image: any;
   meta: { [key: string]: any };

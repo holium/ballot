@@ -1,13 +1,7 @@
-import api from "./api";
-
-const baseUrl = import.meta.env.VITE_SHIP_URL?.toString()!;
-// // Sent through PUT to /participants/~bus
-// type ActionType = {
-//   action: "invite" | "join";
-//   resource: string;
-//   key: string;
-//   data: any;
-// };
+import { toJS } from "mobx";
+import shipStore from "./stores/ship";
+shipStore.setShip(window.ship);
+const baseUrl = import.meta.env.VITE_SHIP_URL?.toString() || "";
 
 export type ActionType = {
   action: string;
@@ -27,15 +21,6 @@ export type EffectType = {
   resource: string;
   data: any;
 };
-
-// // Received through channel
-// export type ActionType = {
-//   action: "invite" | "invite-effect" | "join";
-//   reaction?: "ack" | "nawk" | "nod";
-//   resource: string;
-//   key: string;
-//   data: any;
-// };
 
 export type ChannelResponseType = {
   id?: number;
@@ -63,14 +48,18 @@ export class BaseWatcher {
       .toString()
       .replaceAll(",", "");
     this.channelUrl = `${baseUrl}/~/channel/${channelId}`;
-    this.ship = api.ship?.toString()!;
+    this.ship = shipStore.ship?.toString()!;
   }
 
   // onBoothUpdates = (data: any) => {
   //   console.log("onBoothUpdate", data);
   // };
 
-  initialize = (booths: any[], onChannel: (data: any) => void) => {
+  initialize = (
+    app: string,
+    channel: string,
+    onChannel: (data: any) => void
+  ) => {
     this.onChannel = onChannel;
     const channelId: string = [
       Date.now(),
@@ -87,23 +76,9 @@ export class BaseWatcher {
     //    2) subscribe to the ballot /contexts wire
     //
     this.shconn().then((res) => {
-      this.subscribe("ballot", `/booths`, onChannel)
+      this.subscribe("ballot", channel, onChannel)
         .then(() => console.log(`subscribed to ballot '/booths'`))
         .catch((e: any) => console.error(e));
-      // subscribe to each booth we are a member of
-      // if (booths && booths.length > 0) {
-      //   for (let i = 0; i < booths.length; i++) {
-      //     let booth = booths[i];
-      //     console.log(
-      //       `connected to '${this.ship}'. subscribing to ballot '/booths/${booth.key}'`
-      //     );
-      //     this.subscribe("ballot", `/booths/${booth.key}`, onChannel)
-      //       .then(() =>
-      //         console.log(`subscribed to ballot '/booths/${booth.key}'`)
-      //       )
-      //       .catch((e: any) => console.error(e));
-      //   }
-      // }
     });
   };
 

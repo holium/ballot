@@ -36,7 +36,9 @@ export const Participants: FC<ParticipantsProps> = (
   const { isShowing, toggle } = useDialog();
   const urlParams = useParams();
   const { store } = useMst();
+
   const booth = store.booth!;
+  const isGroup = urlParams.groupName;
   const hasAdmin = booth.hasAdmin;
   // console.log("rendering participants"); // todo prevent unnecessary render
   return (
@@ -76,7 +78,7 @@ export const Participants: FC<ParticipantsProps> = (
         <Text variant="h6" fontWeight={500}>
           Participants
         </Text>
-        {hasAdmin && (
+        {hasAdmin && !isGroup && (
           <IconButton color="brand.primary" size={24} onClick={() => toggle()}>
             <Icons.AddUser />
           </IconButton>

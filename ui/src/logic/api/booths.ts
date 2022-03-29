@@ -55,7 +55,7 @@ export class BoothsApi extends BaseAPI {
    * @param participant - patp of the ship to invite
    */
   acceptInvite = async (boothKey: string) => {
-    const scryUrl = `${this.baseUrl}/ballot/api/booths/${boothKey}`;
+    const scryUrl = `${this.baseUrl}/ballot/api/booths`;
     try {
       const response = await fetch(scryUrl, {
         method: "POST",

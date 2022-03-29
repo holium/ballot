@@ -19,7 +19,11 @@ import { useNavigate, useParams } from "react-router";
 import { toJS } from "mobx";
 import { observer } from "mobx-react-lite";
 import { VoteCard } from "../../../components/VoteCard";
-import { createPath } from "../../../logic/utils/path";
+import {
+  createPath,
+  getKeyFromUrl,
+  getNameFromUrl,
+} from "../../../logic/utils/path";
 import { descriptiveTimeString } from "../../../logic/utils/time";
 import { DetailHeader, DetailCentered, DetailBody } from "./Detail.styles";
 import { Status } from "../../../components/Status";
@@ -30,8 +34,10 @@ export const ProposalDetail: FC = observer((props: any) => {
   const navigate = useNavigate();
   const urlParams = useParams();
   const { store, app } = useMst();
-  const currentBooth = urlParams.boothName!;
-  store.setBooth(currentBooth);
+  // const currentBooth = urlParams.boothName!;
+  // const currentBoothName = getNameFromUrl(urlParams);
+  const currentBoothKey = getKeyFromUrl(urlParams);
+  store.setBooth(currentBoothKey);
 
   const [height, setHeight] = useState(null);
   const div = useCallback(
@@ -51,13 +57,7 @@ export const ProposalDetail: FC = observer((props: any) => {
   };
 
   const onBack = () => {
-    let newPath = createPath(
-      {
-        name: currentBooth,
-        type: urlParams.type!,
-      },
-      "proposals"
-    );
+    let newPath = createPath(getKeyFromUrl(urlParams), "proposals");
     navigate(newPath);
     app.setCurrentUrl(newPath, "proposals");
   };

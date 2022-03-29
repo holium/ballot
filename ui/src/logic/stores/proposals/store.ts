@@ -62,8 +62,8 @@ export const ProposalStore = types
           self.proposals.set(newProposal.key, newProposal);
         });
         self.loader.set("loaded");
-      } catch (error) {
-        self.loader.error(error.toString());
+      } catch (err: any) {
+        self.loader.error(err.toString());
       }
     }),
     //
@@ -88,8 +88,8 @@ export const ProposalStore = types
         });
         self.proposals.set(newProposal.key, newProposal);
         return newProposal;
-      } catch (error) {
-        self.loader.error(error.toString());
+      } catch (err: any) {
+        self.loader.error(err.toString());
         return;
       }
     }),
@@ -112,8 +112,8 @@ export const ProposalStore = types
         const deleted = self.proposals.get(proposalKey)!;
         self.proposals.delete(proposalKey);
         destroy(deleted);
-      } catch (error) {
-        self.loader.error(error.toString());
+      } catch (err: any) {
+        self.loader.error(err.toString());
       }
     }),
     //

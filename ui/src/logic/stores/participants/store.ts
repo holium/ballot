@@ -48,8 +48,8 @@ export const ParticipantStore = types
           const newParticipant = ParticipantModel.create(participant);
           self.participants.set(newParticipant.key, newParticipant);
         });
-      } catch (error) {
-        self.loader.error(error.toString());
+      } catch (err: any) {
+        self.loader.error(err.toString());
       }
     }),
     add: flow(function* (participantKey: string) {
@@ -66,8 +66,8 @@ export const ParticipantStore = types
           created: "",
         });
         self.participants.set(newParticipant.key, newParticipant);
-      } catch (error) {
-        self.loader.error(error.toString());
+      } catch (err: any) {
+        self.loader.error(err.toString());
       }
     }),
     remove: flow(function* (participantKey: string) {
@@ -80,8 +80,8 @@ export const ParticipantStore = types
         const deleted = self.participants.get(participantKey)!;
         self.participants.delete(participantKey);
         destroy(deleted);
-      } catch (error) {
-        self.loader.error(error.toString());
+      } catch (err: any) {
+        self.loader.error(err.toString());
       }
     }),
     //
@@ -113,7 +113,7 @@ export const ParticipantStore = types
       Object.keys(participantMap).forEach((participantKey: string) => {
         self.participants.set(
           participantKey,
-          ParticipantModel.create(participantMap[participantKey]),
+          ParticipantModel.create(participantMap[participantKey])
         );
       });
     },

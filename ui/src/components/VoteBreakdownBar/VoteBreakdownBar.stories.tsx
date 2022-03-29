@@ -12,21 +12,21 @@ const Template: Story = (args: VoteBreakdownBarProps) => (
   <Flex style={{ gap: 4 }} flexDirection="column" width="860px">
     <VoteBreakdownBar
       win={true}
-      results={80}
+      percentage={80}
       label="Yes"
       overlay={args.overlay}
       width={"860px"}
     />
     <VoteBreakdownBar
       win={false}
-      results={12}
+      percentage={12}
       label="No"
       overlay={args.overlay}
       width={"860px"}
     />
     <VoteBreakdownBar
       win={false}
-      results={8}
+      percentage={8}
       label="Maybe"
       overlay={args.overlay}
       width={"860px"}

@@ -27,7 +27,7 @@ import {
 import { createProposalFormFields } from "./CreateForm";
 import { MarkdownEditor } from "../../../components/MarkdownEditor";
 import { ChoiceEditor, ChoiceType } from "./Choices";
-import { createPath } from "../../../logic/utils/path";
+import { createPath, getKeyFromUrl } from "../../../logic/utils/path";
 import { toJS } from "mobx";
 import { emptyState } from "./empty";
 import { useMst } from "../../../logic/stores/root";
@@ -54,27 +54,13 @@ export const ProposalEditor: FC = observer(() => {
   ) {
     const hasAdmin = store.booth!.hasAdmin;
     if (!hasAdmin) {
-      navigate(
-        createPath(
-          {
-            name: urlParams.boothName,
-            type: urlParams.type!,
-          },
-          "proposals"
-        )
-      );
+      navigate(createPath(getKeyFromUrl(urlParams), "proposals"));
     }
     proposal = proposalStore.proposals.get(urlParams.proposalId)!;
   }
 
   const onBack = () => {
-    let newPath = createPath(
-      {
-        name: urlParams.boothName!,
-        type: urlParams.type!,
-      },
-      "proposals"
-    );
+    let newPath = createPath(getKeyFromUrl(urlParams), "proposals");
     navigate(newPath);
     app.setCurrentUrl(newPath);
   };
@@ -94,10 +80,7 @@ export const ProposalEditor: FC = observer(() => {
     if (isNew) {
       saveButton.current!.blur();
       let newPath = createPath(
-        {
-          name: urlParams.boothName!,
-          type: urlParams.type!,
-        },
+        getKeyFromUrl(urlParams),
         "proposals/editor",
         responseProposal.key
       );

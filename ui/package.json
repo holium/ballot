@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "dev:bus": "vite --mode bus",
+    "dev:moon1": "vite --mode moon1",
     "build": "tsc && vite build",
     "serve": "vite preview",
     "test": "tsc --noEmit",
@@ -18,8 +19,6 @@
     "@tlon/sigil-js": "^1.4.5",
     "@types/date-fns": "^2.6.0",
     "@uiw/react-md-editor": "^3.9.9",
-    "@urbit/api": "^2.0.0",
-    "@urbit/http-api": "^2.0.0",
     "date-fns": "^2.28.0",
     "formik": "^2.2.9",
     "mobx": "^6.5.0",

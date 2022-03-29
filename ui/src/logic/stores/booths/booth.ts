@@ -30,6 +30,7 @@ export const BoothModel = types
     ),
     status: types.enumeration("State", [
       "pending",
+      "enlisted",
       "invited",
       "error",
       "active",
@@ -40,6 +41,13 @@ export const BoothModel = types
     actionLog: types.map(types.string),
   })
   .views((self) => ({
+    get isActive() {
+      return (
+        self.status !== "pending" &&
+        self.status !== "invited" &&
+        self.status !== "enlisted"
+      );
+    },
     get listProposals() {
       return Array.from(self.proposalStore.proposals.values());
     },
@@ -69,8 +77,8 @@ export const BoothModel = types
           `${response.action}-${response.key}`,
           response.status
         );
-      } catch (error) {
-        self.loader.error(error.toString());
+      } catch (err: any) {
+        self.loader.error(err.toString());
       }
     }),
     updateEffect(update: any) {

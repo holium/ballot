@@ -1,12 +1,18 @@
-import Urbit from "@urbit/http-api";
-const api = new Urbit("", "", (window as any).desk);
-api.ship = window.ship;
-api.verbose = true;
-// @ts-ignore TODO window typings
-window.api = api;
+// import Urbit from "@urbit/http-api";
+// import ship from "../stores/ship";
+// // const ship = new ShipAPI();
+// ship.spawn();
+// // @ts-ignore
+// window.ship = ship;
 
-export default api;
-// export default {}
+// const api = new Urbit("", "", "ballot");
+// api.ship = window.ship;
+// api.verbose = true;
+// @ts-ignore TODO window typings
+// window.api = api;
+
+// export default ship;
+export default {};
 
 // // TODO build generic api
 // const example = {

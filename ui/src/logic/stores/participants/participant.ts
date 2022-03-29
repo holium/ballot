@@ -1,18 +1,4 @@
-import {
-  types,
-  flow,
-  Instance,
-  SnapshotIn,
-  getParent,
-  destroy,
-  SnapshotOut,
-  IJsonPatch,
-  applyPatch,
-} from "mobx-state-tree";
-import participantApi from "../../api/participants";
-import { ContextModelType, EffectModelType } from "../common/effects";
-
-import { LoaderModel } from "../common/loader";
+import { types, Instance, IJsonPatch, applyPatch } from "mobx-state-tree";
 
 export const ParticipantModel = types
   .model({

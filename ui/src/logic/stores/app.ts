@@ -11,6 +11,8 @@ const ShipModel = types.model({
   ),
 });
 
+export type ShipModelType = Instance<typeof ShipModel>;
+
 export const AppModel = types
   .model({
     title: types.optional(types.string, ""),

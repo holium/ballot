@@ -1,5 +1,4 @@
 import { ObservableMap } from "mobx";
-import { ShipType } from "../stores/ship";
 
 export type ChoiceType = {
   label: string;
@@ -10,7 +9,7 @@ export type ChoiceType = {
 export type ProposalType = {
   id?: any;
   key: string;
-  owner: ShipType;
+  owner: string;
   // group?: {
   //   name: string;
   //   uri: string;
@@ -25,7 +24,7 @@ export type ProposalType = {
   start: number;
   end: number;
   support: number;
-  createdBy?: ShipType; // potentially remove
+  createdBy?: string; // potentially remove
   created?: string;
 };
 
@@ -35,7 +34,7 @@ export type VoteType = {
 };
 
 export type BallotType = {
-  voter: ShipType;
+  voter: string;
   choice: ChoiceType;
   signature?: string;
   createdAt: Date;

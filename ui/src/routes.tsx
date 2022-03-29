@@ -18,25 +18,49 @@ export default function AppRoutes() {
     <Routes>
       <Route path={`/apps/${appName}/`} element={<App />}>
         <Route
-          path={`/apps/${appName}/booth/:type/:boothName/proposals`}
+          path={`/apps/${appName}/booth/:boothName/groups/:groupName/proposals`}
           element={<Proposals />}
         >
           <Route index element={<ProposalList />} />
           <Route
-            path={`/apps/${appName}/booth/:type/:boothName/proposals/:proposalId`}
+            path={`/apps/${appName}/booth/:boothName/groups/:groupName/proposals/:proposalId`}
             element={<ProposalDetail />}
           />
           <Route
-            path={`/apps/${appName}/booth/:type/:boothName/proposals/create-new`}
+            path={`/apps/${appName}/booth/:boothName/groups/:groupName/proposals/create-new`}
             element={<ProposalEditor />}
           />
           <Route
-            path={`/apps/${appName}/booth/:type/:boothName/proposals/editor/:proposalId`}
+            path={`/apps/${appName}/booth/:boothName/groups/:groupName/proposals/editor/:proposalId`}
             element={<ProposalEditor />}
           />
         </Route>
         <Route
-          path={`/apps/${appName}/booth/:type/:boothName/delegation`}
+          path={`/apps/${appName}/booth/:boothName/proposals`}
+          element={<Proposals />}
+        >
+          <Route index element={<ProposalList />} />
+          <Route
+            path={`/apps/${appName}/booth/:boothName/proposals/:proposalId`}
+            element={<ProposalDetail />}
+          />
+          <Route
+            path={`/apps/${appName}/booth/:boothName/proposals/create-new`}
+            element={<ProposalEditor />}
+          />
+          <Route
+            path={`/apps/${appName}/booth/:boothName/proposals/editor/:proposalId`}
+            element={<ProposalEditor />}
+          />
+        </Route>
+        <Route
+          path={`/apps/${appName}/booth/:boothName/delegation`}
+          element={<Delegation />}
+        >
+          <Route index element={<DelegationList />} />
+        </Route>
+        <Route
+          path={`/apps/${appName}/booth/:boothName/groups/:groupName/delegation`}
           element={<Delegation />}
         >
           <Route index element={<DelegationList />} />
