@@ -3255,20 +3255,7 @@
               [effects.acc]
         =/  participants
               ?:  =(status.booth 'active')
-                %-  (slog leaf+"adding {<our.bowl>} to booth {<key.booth>} as participant..." ~)
-                =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-                =/  participant-key  (crip "{<our.bowl>}")
-                =/  member=json
-                %-  pairs:enjs:format
-                :~
-                  ['key' s+participant-key]
-                  ['name' s+participant-key]
-                  ['status' s+'active']
-                  ['created' s+timestamp]
-                  ['role' s+'owner']
-                ==
-                =|  members=(map @t json)
-                =.  members  (~(put by members) participant-key member)
+                =/  members  (members-to-participants resource group)
                 (~(put by participants.acc) key.booth members)
               [participants.acc]
             [effects (~(put by booths.acc) key.booth data.booth) participants]
@@ -3286,24 +3273,40 @@
     =/  booth-participants  participants.state
     =/  booth-participants
           ?:  =(status.new-booth 'active')
-            %-  (slog leaf+"adding {<our.bowl>} to booth {<key.new-booth>} as participant..." ~)
-            =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-            =/  participant-key  (crip "{<our.bowl>}")
-            =/  member=json
-            %-  pairs:enjs:format
-            :~
-              ['key' s+participant-key]
-              ['name' s+participant-key]
-              ['status' s+'active']
-              ['created' s+timestamp]
-              ['role' s+'owner']
-            ==
-            =|  members=(map @t json)
-            =.  members  (~(put by members) participant-key member)
+            =/  members  (members-to-participants resource.initial group.initial)
             (~(put by booth-participants) key.new-booth members)
           participants.state
 
     `this(booths (~(put by booths.state) key.new-booth data.new-booth), participants booth-participants)
+
+  ++  members-to-participants
+    |=  [=resource =group]
+    ^-  (map @t json)
+    =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
+    ::  add all other members
+    =/  participants=(map @t json)
+      ^-  [participants=(map @t json)]
+        %-  ~(rep in members.group)
+          |=  [=ship acc=[participants=(map @t json)]]
+          ^-  [participants=(map @t json)]
+          =/  participant-key  (crip "{<ship>}")
+          =/  member=json
+          %-  pairs:enjs:format
+          :~
+            ['key' s+participant-key]
+            ['name' s+participant-key]
+            ['status' s+'enlisted']
+            ['created' s+timestamp]
+          ==
+          =/  member=json
+                ?:  =(ship entity.resource)
+                  =/  member  ((om json):dejs:format member)
+                  =/  member  (~(put by member) 'status' s+'active')
+                  =/  member  (~(put by member) 'role' s+'owner')
+                  [%o member]
+                member
+          [(~(put by participants.acc) participant-key member)]
+    [participants]
 
   ++  count-vote
     |:  [vote=`json`~ results=`(map @t json)`~]
