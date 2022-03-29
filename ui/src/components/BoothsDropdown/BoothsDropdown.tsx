@@ -217,14 +217,14 @@ const GroupBooths = (props: {
 }) => {
   const { group, onContextClick, onAccept } = props;
   const [isExpanded, setIsExpanded] = useState(false);
-  const needsAccepting = group.status === "invited";
+  const needsConnecting = group.status === "enlisted";
 
   return (
     <MenuItem
-      tabIndex={needsAccepting ? -1 : 0}
+      tabIndex={needsConnecting ? -1 : 0}
       style={{ padding: "8px 8px" }}
       type="neutral"
-      disabled={needsAccepting}
+      disabled={needsConnecting}
       onClick={(evt: any) => {
         onContextClick(group);
         evt.preventDefault();
@@ -233,7 +233,7 @@ const GroupBooths = (props: {
       <Flex justifyContent="space-between" alignItems="center">
         <Box
           alignItems="center"
-          style={{ flex: 1, opacity: needsAccepting ? 0.3 : 1 }}
+          style={{ flex: 1, opacity: needsConnecting ? 0.3 : 1 }}
         >
           {group.avatar ? (
             <img
@@ -261,7 +261,7 @@ const GroupBooths = (props: {
             {/* <Icons.ExpandMore ml="6px" /> */}
           </Text>
         </Box>
-        {needsAccepting && (
+        {needsConnecting && (
           <TextButton
             tabIndex={0}
             data-prevent-menu-close
@@ -271,7 +271,7 @@ const GroupBooths = (props: {
               onAccept(group.name);
             }}
           >
-            Accept
+            Join
           </TextButton>
         )}
       </Flex>

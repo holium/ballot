@@ -17,7 +17,6 @@ import { EffectModelType } from "../common/effects";
 import { LoaderModel } from "../common/loader";
 import { ParticipantStore } from "../participants";
 import { ProposalStore } from "../proposals";
-import { onChannel } from "../root";
 
 export const BoothStore = types
   .model({
@@ -65,9 +64,9 @@ export const BoothStore = types
           newBooth.participantStore.getParticipants();
           self.booths.set(newBooth.key, newBooth);
         });
-        Watcher.initialize(Object.values(response), onChannel);
-      } catch (error) {
-        self.loader.error(error.toString());
+        // Watcher.initialize(Object.values(response), onChannel);
+      } catch (err: any) {
+        self.loader.error(err.toString());
       }
     }),
     setBooth(boothKey: string) {

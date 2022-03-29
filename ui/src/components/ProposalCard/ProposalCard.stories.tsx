@@ -2,6 +2,8 @@ import React from "react";
 import { ComponentMeta, ComponentStory, Story } from "@storybook/react";
 import { ProposalCard, ProposalCardType } from "./ProposalCard";
 import { Flex } from "@holium/design-system";
+import { ChoiceModel } from "../../logic/stores/proposals";
+import { types } from "mobx-state-tree";
 
 export default {
   title: "Components/ProposalCard",
@@ -25,7 +27,8 @@ Default.args = {
       "At sed enim morbi vel purus libero ut. Id mauris placerat leo pretium. Gravida eget aliquam urna risus. Dignissim quam ipsum vulputate ut ut faucibus ut. Et varius arcu aliquet sed enim, tellus viverra vitae.",
     body: "",
     hideIndividualVote: true,
-    choices: [{ label: "Yes" }, { label: "No" }],
+    // @ts-expect-error
+    choices: [],
     author: { patp: "~lomder-librun", metadata: { color: "#ff810a" } },
     group: {
       name: "The River",
@@ -35,8 +38,10 @@ Default.args = {
     strategy: "single-choice",
     start: new Date(
       "Wed Dec 20 2021 08:40:33 GMT-0600 (Central Standard Time)"
-    ),
-    end: new Date("Wed Jan 7 2022 08:40:33 GMT-0600 (Central Standard Time)"),
+    ).getUTCHours(),
+    end: new Date(
+      "Wed Jan 7 2022 08:40:33 GMT-0600 (Central Standard Time)"
+    ).getUTCHours(),
     support: 0.5,
     participants: [
       { patp: "~ronseg-hacsym" },

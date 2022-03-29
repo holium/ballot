@@ -16,12 +16,12 @@ import {
   Text,
 } from "@holium/design-system";
 import { pluralize } from "../../logic/utils/text";
-import { ShipType } from "../../logic/stores/ship";
+import { ShipModelType } from "../../logic/stores/app";
 
 type DelegationCardProps = {
   votingPower: number;
   delegatingFor?: any[];
-  ship: ShipType;
+  ship: ShipModelType;
 };
 
 export const DelegationCard: FC<DelegationCardProps> = (

@@ -12,6 +12,9 @@ export default ({ mode }) => {
   // console.log(SHIP_URL);
 
   return defineConfig({
+    build: {
+      minify: false,
+    },
     server: {
       fs: {
         allow: ["../../design-system", "../"],

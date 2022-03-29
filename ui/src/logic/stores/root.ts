@@ -1,9 +1,15 @@
-import urbitApi from "../api";
+import ShipAPI from "../api";
 import { Instance, onSnapshot, types } from "mobx-state-tree";
 import { createContext, useContext } from "react";
 import { AppModel } from "./app";
 import { BoothStore } from "./booths";
 import { ChannelResponseModelType, EffectModelType } from "./common/effects";
+import { toJS } from "mobx";
+import { Watcher } from "../watcher";
+
+import ShipModel from "./ship";
+
+Watcher.initialize("ballot", "/booths", onChannel);
 
 const RootModel = types.model("RootStore", {
   store: BoothStore,
@@ -14,7 +20,7 @@ let initialState = RootModel.create({
   store: {},
   app: {
     ship: {
-      patp: `~${urbitApi.ship!}`,
+      patp: `~${ShipModel.patp!}`,
     },
   },
 });

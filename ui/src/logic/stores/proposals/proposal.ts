@@ -92,8 +92,8 @@ export const ProposalModel = types
         }));
         applyPatch(self, patches);
         return self;
-      } catch (error) {
-        self.loader.error(error.toString());
+      } catch (err: any) {
+        self.loader.error(err.toString());
         return;
       }
     }),
@@ -113,8 +113,8 @@ export const ProposalModel = types
         });
         self.results!.didVote = true;
         self.results.generateResultSummary();
-      } catch (error) {
-        self.loader.error(error.toString());
+      } catch (err: any) {
+        self.loader.error(err.toString());
       }
     }),
     getVotes: flow(function* () {
@@ -136,8 +136,8 @@ export const ProposalModel = types
         });
         self.results!.generateResultSummary();
         self.loader.set("loaded");
-      } catch (error) {
-        self.loader.error(error.toString());
+      } catch (err: any) {
+        self.loader.error(err.toString());
       }
     }),
     onVoteEffect(payload: EffectModelType | any, context: ContextModelType) {
