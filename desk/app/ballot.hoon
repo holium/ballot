@@ -289,15 +289,16 @@
         ['tag' ~]
       ==
 
-      =/  group-name  (trip name.r)
+      =/  group-key  (spat /(scot %p entity.r)/groups/(scot %tas name.r))
+      =/  group-name  name.r
 
       ::  create booth metadata
       =/  booth=json
       %-  pairs:enjs:format
       :~
         ['type' s+'group']
-        ['key' s+(crip group-name)]
-        ['name' s+(crip group-name)]
+        ['key' s+group-key]
+        ['name' s+group-name]
         ['image' ~]
         ['owner' s+(crip "{<our.bowl>}")]
         ['created' s+timestamp]
@@ -306,7 +307,7 @@
       ==
 
       ::  add the group booth to the map
-      =/  result   (~(put by booths) (crip "{group-name}") booth)
+      =/  result   (~(put by booths) group-key booth)
 
       result
 
@@ -322,10 +323,11 @@
       |=  [jon=json]
       ^-  card
       =/  booth  ((om json):dejs:format jon)
+      =/  booth-key  (so:dejs:format (~(got by booth) 'key'))
       =/  owner  (so:dejs:format (~(got by booth) 'owner'))
       =/  booth-ship=@p  `@p`(slav %p owner)
       ::  send out notifications to all subscribers of this booth
-      =/  destpath=path  `path`/booths/(scot %p booth-ship)
+      =/  destpath=path  `path`/booths/(scot %tas booth-key)
       ~&  >>  "ballot: subscribing to {<destpath>}..."
       :: convert json to [%pass /booth/<booth-key> ... /booth/<booth-key>] subscription
       [%pass destpath %agent [booth-ship %ballot] %watch destpath]
@@ -354,7 +356,9 @@
       =/  owner  `@t`(scot %p our.bowl)
       =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
 
+      :: =/  booth-key  (spat /(scot %p our.bowl))
       =/  booth-key  (crip "{<our.bowl>}")
+      =/  booth-name  (crip "{<our.bowl>}")
 
       =/  meta=json
       %-  pairs:enjs:format
@@ -376,7 +380,7 @@
       :~
         ['type' s+'ship']
         ['key' s+booth-key]
-        ['name' s+booth-key]
+        ['name' s+booth-name]
         ['image' ~]
         ['owner' s+owner]
         ['created' s+timestamp]
@@ -388,6 +392,7 @@
       =.  booths  (~(put by booths) booth-key booth)
 
       =/  participant-key  (crip "{<our.bowl>}")
+
       =|  booth-participants=(map @t json)
 
       =/  participant=json
@@ -405,11 +410,11 @@
       ~&  >  'ballot: context initialized!'
 
       ::  fetch groups from group-store
-      =/  groups=(set resource)  (scry (set resource) /y/group-store/groups)
-      :: ::  transform group set to context map
-      =/  group-booths=(map @t json)  (groups-to-booths groups)
-      :: ::  append group contexts to context-store
-      =.  booths  (~(gas by booths) ~(tap by group-booths))
+      :: =/  groups=(set resource)  (scry (set resource) /y/group-store/groups)
+      :: :: ::  transform group set to context map
+      :: =/  group-booths=(map @t json)  (groups-to-booths groups)
+      :: :: ::  append group contexts to context-store
+      :: =.  booths  (~(gas by booths) ~(tap by group-booths))
 
       =/  effects  (booths-to-subscriptions booths)
 
@@ -1219,7 +1224,7 @@
 
         ~&  >>  "cast-vote-wire: {<our.bowl>} {<src.bowl>}"
 
-        =/  booth-path=path  `path`(stab (crip (weld "/booths/" (trip booth-key))))
+        =/  booth-path  /booths/(scot %tas booth-key)
 
         :_  state(votes (~(put by votes.state) booth-key booth-proposals))
         :~  [%give %fact [/booths]~ %json !>(effects)]
@@ -1235,14 +1240,26 @@
         =/  context  ((om json):dejs:format (~(got by contract) 'context'))
         ::  grab the booth key from the action payload
         =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+        =/  booth  ((om json):dejs:format (~(got by booths.state) booth-key))
+        =/  booth-type  (so:dejs:format (~(got by booth) 'type'))
+
         ::  use it to extract the booth participant list
-        =/  booth-participants  (~(got by participants.state) booth-key)
+        =/  booth-participants  (~(get by participants.state) booth-key)
+        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
 
         ::  the participant key is the remote ship that sent the poke
         =/  participant-key  (crip "{<src.bowl>}")
 
-        ::  get the participant from the booth participant list
-        =/  participant  ((om json):dejs:format (~(got by booth-participants) participant-key))
+        ::  if this is a group acceptance, the payload will contain the participant
+        ::    data; otherwise, we already know if it since in all other cases, we must
+        ::    invite them first
+        =/  participant
+              ?:  =(booth-type 'group')
+                ((om json):dejs:format (~(got by contract) 'data'))
+              ::  get the participant from the booth participant list
+              =/  participant  (~(get by booth-participants) booth-key)
+              =/  participant  ?~(participant ~ ((om json):dejs:format (need participant)))
+              [participant]
 
         :: update the participant's status to 'active'
         =/  participant  (~(put by participant) 'status' s+'active')
@@ -1650,6 +1667,8 @@
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json) booth-key=@t]
         ^-  (quip card _state)
 
+        =/  timestamp  (en-json:html (time:enjs:format now.bowl))
+
         =/  context  (~(get by payload) 'context')
         ?~  context  (send-error req 'missing context')
         =/  context  ((om json):dejs:format (need context))
@@ -1663,6 +1682,21 @@
 
         =/  booth  ((om json):dejs:format (need booth))
         =/  booth  (~(put by booth) 'status' s+'pending')
+
+        =/  booth-type  (so:dejs:format (~(got by booth) 'type'))
+        ::  if the booth is a group booth, the participant will need to be added/created
+        ::    to the booth.
+        =/  payload
+              ?:  =(booth-type 'group')
+                =/  participant-data=json
+                %-  pairs:enjs:format
+                :~  ['created' s+(crip timestamp)]
+                    ['key' s+(crip "{<our.bowl>}")]
+                    ['name' s+(crip "{<our.bowl>}")]
+                    ['status' s+'active']
+                ==
+                (~(put by payload) 'data' participant-data)
+              payload
 
         ::  create the response
         =/  =response-header:http
@@ -1704,7 +1738,6 @@
         ==
 
         ::  queue the wire-payload so that we can act accordingly when the poke is ack'd
-        =/  timestamp  (en-json:html (time:enjs:format now.bowl))
         =/  mq-key  (crip (weld "msg-" timestamp))
 
         =/  booth-ship  (so:dejs:format (~(got by booth) 'owner'))
@@ -1834,7 +1867,7 @@
         ::  add voter information
         =/  payload-data  (~(put by payload-data) 'voter' s+participant-key)
         ::  timestamp the vote
-        =/  payload-data  (~(put by payload-data) 'created-at' s+timestamp)
+        =/  payload-data  (~(put by payload-data) 'created' s+timestamp)
 
         =/  proposal-votes  (~(put by proposal-votes) participant-key [%o payload-data])
         =/  booth-votes  (~(put by booth-proposals) proposal-key [%o proposal-votes])
@@ -1882,7 +1915,7 @@
           ['effects' [%a [vote-effect]~]]
         ==
 
-        =/  sub-wire  `path`(stab (crip (weld "/booths/" (trip booth-key))))
+        =/  sub-wire  /booths/(scot %tas booth-key)
         %-  (slog leaf+"sending cast-vote updates on {<sub-wire>}..." ~)
 
         =/  effects=(list card)
@@ -1898,8 +1931,8 @@
         ::  no need for poke if casting ballot from our own ship. this method has already
         ::  updated its store
         =/  effects  ?.  =(our.bowl hostship)
-              %-  (slog leaf+"poking remote ship on wire /booths/{<(scot %p hostship)>}..." ~)
-              (snoc effects [%pass /booths/(scot %p hostship) %agent [hostship %ballot] %poke %json !>(wire-payload)])
+              %-  (slog leaf+"poking remote ship on wire `path`/booths/{<(scot %tas booth-key)>}..." ~)
+              (snoc effects [%pass /booths/(scot %tas booth-key) %agent [hostship %ballot] %poke %json !>(wire-payload)])
             effects
 
         ::  no changes to state. state will change when poke ack'd
@@ -2689,10 +2722,12 @@
       ::    "The (unit tang) in the %watch-ack will be null if processing succeeded,
       ::       and non-null if it crashed, with a stack trace in the tang."
       ::  see:  https://urbit.org/docs/userspace/gall-guide/8-subscriptions
-      [%booths @ ~]
+      [%booths *]
         ~&  >  "ballot: client subscribed to {(spud path)}."
+        =/  booth-key  (spud (oust [0 1] `(list @ta)`path))
+        =/  booth-key  (crip `tape`(oust [0 1] `(list @)`booth-key))
+        %-  (slog leaf+"ballot: extracted booth key => {<booth-key>}..." ~)
 
-        =/  booth-key  (key-from-path:util i.t.path)
         =/  booth  (~(get by booths.state) booth-key)
         =/  booth  ?~(booth ~ (need booth))
 
@@ -2700,7 +2735,7 @@
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
         =/  participant  (~(get by booth-participants) (crip "{<src.bowl>}"))
         ?~  participant
-              ~&  >>>  "subscription request rejected. not a participant of the booth."
+              ~&  >>>  "subscription request rejected. {<src.bowl>} not a participant of the booth."
               !!
 
         =/  booth-proposals  (~(get by proposals.state) booth-key)
@@ -2845,16 +2880,19 @@
     ::
         %fact
           %-  (slog leaf+"ballot: received fact from group => {<p.cage.sign>}" ~)
-          ?+    p.cage.sign  `this
+          ?+    p.cage.sign  (on-agent:def wire sign)
               %group-update-0
                 =/  action  !<(=update:group-store q.cage.sign)
                 ~&  >>  action
-                ?+  -.action  `this
+                ?+  -.action  (on-agent:def wire sign)
                   %initial
                     (on-group-initial action)
 
+                  %initial-group
+                    (on-group-initial-group action)
+
                   %add-group
-                    (on-new-group action)
+                    (on-group-added action)
 
                   %add-members
                     (on-group-member-added action)
@@ -2862,8 +2900,8 @@
                   %remove-members
                     (on-group-member-removed action)
 
-                  :: %remove-group
-                  ::   (on-group-removed action)
+                  %remove-group
+                    (on-group-removed action)
                 ==
           ==
       ==
@@ -2923,8 +2961,10 @@
             ==
       ==
 
-    [%booths @ ~]
-      =/  booth-key  (key-from-path:util i.t.wire)
+    [%booths *]
+      =/  booth-key  (spud (oust [0 1] `(list @ta)`wirepath))
+      =/  booth-key  (crip `tape`(oust [0 1] `(list @)`booth-key))
+      :: =/  booth-key  (key-from-path:util i.t.wire)
       ?-    -.sign
         %poke-ack
           ?~  p.sign
@@ -2990,62 +3030,125 @@
           ==
       ==
   ==
-  ++  on-new-group
+  ++  on-group-added
     |=  =action:group-store
-    =/  data  (to-booth resource.action)
-    `this(booths (~(put by booths.state) key.data booth.data))
+    =/  booth  (booth-from-resource resource.action)
+    =/  booth-participants  participants.state
+    =/  booth-participants
+          ?:  =(status.booth 'active')
+            %-  (slog leaf+"adding {<our.bowl>} to booth {<key.booth>} as participant..." ~)
+            =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
+            =/  participant-key  (crip "{<our.bowl>}")
+            =/  member=json
+            %-  pairs:enjs:format
+            :~
+              ['key' s+participant-key]
+              ['name' s+participant-key]
+              ['status' s+'active']
+              ['created' s+timestamp]
+              ['role' s+'owner']
+            ==
+            =|  members=(map @t json)
+            =.  members  (~(put by members) participant-key member)
+            (~(put by booth-participants) key.booth members)
+          participants.state
+    `this(booths (~(put by booths.state) key.booth data.booth), participants booth-participants)
 
   ++  on-group-removed
     |=  =action:group-store
-    =/  key  (crip (weld (weld "{<entity.resource.action>}" "-") (trip `@t`name.resource.action)))
-    `this(booths (~(del by booths.state) key))
+    =/  key  (crip (weld (weld "{<entity.resource.action>}" "/groups/") (trip `@t`name.resource.action)))
+    `this(booths (~(del by booths.state) key), proposals (~(del by proposals.state) key), participants (~(del by participants.state) key), votes (~(del by votes.state) key), polls (~(del by polls.state) key))
 
-  ++  remove-member
-    |=  [p=@ acc=(map @t json)]
-    ^-  (map @t json)
-    (~(del by acc) p)
-
-  ++  add-member
-    |=  [p=@p acc=(map @t json)]
-    ^-  (map @t json)
+  ++  extract-booth
+    |=  [res=resource eff=@t p=@p acc=[effects=(list card) data=(map @t json)]]
+    ^-  [effects=(list card) data=(map @t json)]
     =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-    =/  member  (crip "{<p>}")
+    =/  key  (crip "{<p>}")
     =/  participant=json
     %-  pairs:enjs:format
     :~
-      ['key' s+member]
-      ['name' s+member]
+      ['key' s+key]
+      ['name' s+key]
+      ['status' s+'enlisted']
       ['image' ~]
       ['created' s+timestamp]
     ==
-    (~(put by acc) member participant)
+    ?:  =(our.bowl p)
+      %-  (slog leaf+"ballot: this ship {<our.bowl>} has been added to the group. mounting booth..." ~)
+      =/  booth  (booth-from-resource res)
+      [(snoc effects.acc (send-new-booth-effect eff key data.booth)) (~(put by data.acc) key.booth data.booth)]
+    [effects.acc data.acc]
 
+  ++  send-new-booth-effect
+    |=  [eff=@t key=@t booth=json]
+    ^-  card
+
+    =/  context=json
+    %-  pairs:enjs:format
+    :~
+      ['booth' s+key]
+    ==
+
+    =/  status-effect=json
+    %-  pairs:enjs:format
+    :~
+      ['resource' s+'booth']
+      ['effect' s+eff]
+      ['data' booth]
+    ==
+
+    =/  effects=json
+    %-  pairs:enjs:format
+    :~
+      ['action' s+'booth-effect']
+      ['context' context]
+      ['effects' [%a [status-effect]~]]
+    ==
+
+    [%give %fact [/booths]~ %json !>(effects)]
+
+  ::  1)  create new key based on ship/group name
+  ::  2)  for each group in which we are a member
+  ::  3)     add a new booth to our store for the group
+  ::  4)     set status of booth to 'initial'
+  ::  5)     send out effects to subscribers notifying of new booth
+  ::  6)  for each member that is not us
+  ::  7)     add the member to the booth as a participant
+  ::  8)     send out effects notifying
+  ::  9)     commit changes to this store
   ++  on-group-member-added
     |=  =action:group-store
     ?>  ?=(%add-members -.action)
-    =/  key  (crip (weld (weld "{<entity.resource.action>}" "-") (trip `@t`name.resource.action)))
-    %-  (slog leaf+"on-group-member-removed {<key>}" ~)
-    =/  booth-participants  (~(get by participants.state) key)
-    =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
-    =/  booth-participants  (~(rep in ships.action) add-member)
-    `this(participants (~(put by participants.state) key booth-participants))
+    =/  key  (crip (weld (weld "{<entity.resource.action>}" "/groups/") (trip `@t`name.resource.action)))
+    %-  (slog leaf+"on-group-member-added {<key>}" ~)
+    =/  data
+      ^-  [effects=(list card) data=(map @t json)]
+      %-  ~(rep in ships.action)
+      |=  [p=@p acc=[effects=(list card) data=(map @t json)]]
+      (extract-booth resource.action 'add' p acc)
+    :_  this(booths (~(gas by booths.state) ~(tap by data.data)))
+    [effects.data]
 
   ++  on-group-member-removed
     |=  =action:group-store
     ?>  ?=(%remove-members -.action)
-    =/  key  (crip (weld (weld "{<entity.resource.action>}" "-") (trip `@t`name.resource.action)))
+    =/  key  (crip (weld (weld "{<entity.resource.action>}" "/groups/") (trip `@t`name.resource.action)))
     %-  (slog leaf+"on-group-member-removed {<key>}" ~)
-    =/  booth-participants  (~(get by participants.state) key)
-    =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
-    =/  booth-participants  (~(rep in ships.action) remove-member)
-    `this(participants (~(put by participants.state) key booth-participants))
+    =/  data
+      ^-  [effects=(list card) data=(map @t json)]
+      %-  ~(rep in ships.action)
+      |=  [p=@p acc=[effects=(list card) data=(map @t json)]]
+      (extract-booth resource.action 'remove' p acc)
+    :_  this(booths (~(gas by booths.state) ~(tap by data.data)))
+    [effects.data]
 
-  ++  to-booth
+  ++  booth-from-resource
     |=  [=resource]
-    ^-  [key=@t booth=json]
+    ^-  [key=@t status=@t data=json]
 
     =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-    =/  key  (crip (weld (weld "{<entity.resource>}" "-") (trip `@t`name.resource)))
+    :: =/  key  (spat /(scot %p entity.resource)/groups/(scot %tas name.resource))
+    =/  key  (crip (weld (weld "{<entity.resource>}" "/groups/") (trip `@t`name.resource)))
 
     =/  meta=json
     %-  pairs:enjs:format
@@ -3055,39 +3158,102 @@
 
     =/  group-name  (trip name.resource)
 
+    ::  if this ship is the owner of the group, set them as the owner of the booth
+    =/  status=@t  ?:(=(our.bowl entity.resource) 'active' 'enlisted')
+
     ::  create booth metadata
-    =/  booth=json
+    =/  data=json
     %-  pairs:enjs:format
     :~
       ['type' s+'group']
-      ['key' s+(crip group-name)]
+      ['key' s+key]
       ['name' s+(crip group-name)]
       ['image' ~]
-      ['owner' s+(crip "{<our.bowl>}")]
+      ['status' s+status]
+      ['owner' s+(crip "{<entity.resource>}")]
       ['created' s+timestamp]
       ['policy' s+'invite-only']
       ['meta' meta]
     ==
 
-    [key booth]
+    [key status data]
 
+  ::  ARM:  ++  on-group-initial
+  ::   This is called when the /groups subscription succeeds. The group-store
+  ::      passes us an initial list of groups we are members of. Use this map
+  ::      to initial group booths in the ballot store.
   ++  on-group-initial
     |=  [=initial:group-store]
     ?>  ?=(%initial -.initial)
     =/  data
-    ^-  [booths=(map @t json) participants=(map @t (map @t json))]
-    %-  ~(rep in groups.initial)
-    |=  [[p=resource q=group] acc=[booths=(map @t json) participants=(map @t (map @t json))]]
-      ^-  [booths=(map @t json) participants=(map @t (map @t json))]
-      =/  data  (to-booth p)
-      =/  members=(map @t json)  (~(rep in members.q) add-member)
-      ?.  (~(has by booths.state) key.data)
-            ~&  >>  "adding group {<key.data>} to booth store..."
-            :: [(snoc effects.acc [%pass /group %agent [our.bowl %group-store] %watch /groups]) (~(put by booths.acc) key.data booth.data)]
-            [(~(put by booths.acc) key.data booth.data) (~(put by participants.acc) key.data members)]
-          ~&  >>  "cannot add booth {<key.data>} to store. already exists..."
-          [booths.acc (~(put by participants.acc) key.data members)]
-    `this(booths (~(gas by booths.state) ~(tap by booths.data)), participants (~(gas by participants.state) ~(tap by participants.data)))
+      ^-  [effects=(list card) booths=(map @t json) participants=(map @t (map @t json))] :: participants=(map @t (map @t json))]
+      ::  loop thru groups, creating a new booth (status='initial') for each
+      ::    group in the map
+      %-  ~(rep in groups.initial)
+      ::  each map key/value pair is a resource => group. acc is an
+      ::   accumulator which is used to store the final result
+      |=  [[=resource =group] acc=[effects=(list card) booths=(map @t json) participants=(map @t (map @t json))]]  :: participants=(map @t (map @t json))]]
+        ^-  [effects=(list card) booths=(map @t json) participants=(map @t (map @t json))] :: participants=(map @t (map @t json))]
+        =/  booth  (booth-from-resource resource)
+        ?:  (~(has by booths.state) key.booth)
+              ~&  >>  "cannot add booth {<key.booth>} to store. already exists..."
+              [effects.acc booths.acc participants.acc]
+        =/  effects
+              ?:  =(status.booth 'active')
+                %-  (slog leaf+"activating booth {<key.booth>} on {<our.bowl>}..." ~)
+                (snoc effects.acc [%pass /booths/(scot %tas key.booth) %agent [our.bowl %ballot] %watch /booths/(scot %tas key.booth)])
+              [effects.acc]
+        =/  participants
+              ?:  =(status.booth 'active')
+                %-  (slog leaf+"adding {<our.bowl>} to booth {<key.booth>} as participant..." ~)
+                =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
+                =/  participant-key  (crip "{<our.bowl>}")
+                =/  member=json
+                %-  pairs:enjs:format
+                :~
+                  ['key' s+participant-key]
+                  ['name' s+participant-key]
+                  ['status' s+'active']
+                  ['created' s+timestamp]
+                  ['role' s+'owner']
+                ==
+                =|  members=(map @t json)
+                =.  members  (~(put by members) participant-key member)
+                (~(put by participants.acc) key.booth members)
+              [participants.acc]
+            [effects (~(put by booths.acc) key.booth data.booth) participants]
+    :_  this(booths (~(gas by booths.state) ~(tap by booths.data)), participants (~(gas by participants.state) ~(tap by participants.data)))
+    [effects.data]
+
+  ++  on-group-initial-group
+    |=  [=initial:group-store]
+    ?>  ?=(%initial-group -.initial)
+    =/  new-booth  (booth-from-resource resource.initial)
+    =/  booth  (~(get by booths.state) key.new-booth)
+    ?.  =(booth ~)
+        ~&  >>  "cannot add booth {<key.new-booth>} to store. already exists..."
+        `this
+    =/  booth-participants  participants.state
+    =/  booth-participants
+          ?:  =(status.new-booth 'active')
+            %-  (slog leaf+"adding {<our.bowl>} to booth {<key.new-booth>} as participant..." ~)
+            =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
+            =/  participant-key  (crip "{<our.bowl>}")
+            =/  member=json
+            %-  pairs:enjs:format
+            :~
+              ['key' s+participant-key]
+              ['name' s+participant-key]
+              ['status' s+'active']
+              ['created' s+timestamp]
+              ['role' s+'owner']
+            ==
+            =|  members=(map @t json)
+            =.  members  (~(put by members) participant-key member)
+            (~(put by booth-participants) key.new-booth members)
+          participants.state
+
+    `this(booths (~(put by booths.state) key.new-booth data.new-booth), participants booth-participants)
 
   ++  count-vote
     |:  [vote=`json`~ results=`(map @t json)`~]
@@ -3494,6 +3660,8 @@
   ++  handle-save-proposal
     |=  [payload=(map @t json)]
 
+    %-  (slog leaf+"handle-save-proposal => {<payload>}..." ~)
+
     =/  context  ((om json):dejs:format (~(got by payload) 'context'))
     =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
     =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
@@ -3528,6 +3696,8 @@
     ==
 
     =/  payload  (~(put by payload) 'data' [%o proposal])
+
+    %-  (slog leaf+"handle-save-proposal => committing to store..." ~)
 
     ::  no changes to state. state will change when poke ack'd
     :_  this(proposals (~(put by proposals.state) booth-key booth-proposals))
@@ -3715,6 +3885,7 @@
 
     ::  forward all nacks to poker as effect
     ?:  =(reaction 'nack')
+      ~&  >>>  'ballot: nack reaction received'
       `this(mq (~(del by mq.state) msg-id))
 
     =/  context  ((om json):dejs:format (~(got by msg) 'context'))
@@ -3770,8 +3941,7 @@
 
     =/  hostship=@p  `@p`(slav %p booth-ship)
     ::  send out notifications to all subscribers of this booth
-      =/  destpath=path  `path`/booths/(scot %p booth-ship)
-    =/  wirepath=path  `path`(stab (crip (weld "/booths/" (trip booth-key))))
+    =/  wirepath=path  /booths/(scot %tas booth-key)
 
     ::  commit updates to store
     :_  this(mq (~(del by mq.state) msg-id), booths (~(put by booths.state) booth-key [%o booth]), participants (~(put by participants.state) booth-key booth-participants))
