@@ -2800,6 +2800,14 @@
   %-  (slog leaf+"ballot: scry called with {<path>}..." ~)
 
   ?+    path  (on-peek:def path)
+      [%x %ship ~]
+        =/  res=json
+        %-  pairs:enjs:format
+        :~
+          ['ship' s+(crip "{<our.bowl>}")]
+        ==
+        ``json+!>(res)
+
       ::  list of booths scry => /x/booths
       [%x %booths ~]
         ``json+!>([%o booths.state])
