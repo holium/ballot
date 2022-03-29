@@ -1240,6 +1240,9 @@
         =/  context  ((om json):dejs:format (~(got by contract) 'context'))
         ::  grab the booth key from the action payload
         =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+        =/  booth  ((om json):dejs:format (~(got by booths.state) booth-key))
+        =/  booth-type  (so:dejs:format (~(got by booth) 'type'))
+
         ::  use it to extract the booth participant list
         =/  booth-participants  (~(get by participants.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
@@ -1247,9 +1250,16 @@
         ::  the participant key is the remote ship that sent the poke
         =/  participant-key  (crip "{<src.bowl>}")
 
-        ::  get the participant from the booth participant list
-        =/  participant  (~(get by booth-participants) booth-key)
-        =/  participant  ?~(participant ~ ((om json):dejs:format (need participant)))
+        ::  if this is a group acceptance, the payload will contain the participant
+        ::    data; otherwise, we already know if it since in all other cases, we must
+        ::    invite them first
+        =/  participant
+              ?:  =(booth-type 'group')
+                ((om json):dejs:format (~(got by contract) 'data'))
+              ::  get the participant from the booth participant list
+              =/  participant  (~(get by booth-participants) booth-key)
+              =/  participant  ?~(participant ~ ((om json):dejs:format (need participant)))
+              [participant]
 
         :: update the participant's status to 'active'
         =/  participant  (~(put by participant) 'status' s+'active')
@@ -1657,6 +1667,8 @@
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json) booth-key=@t]
         ^-  (quip card _state)
 
+        =/  timestamp  (en-json:html (time:enjs:format now.bowl))
+
         =/  context  (~(get by payload) 'context')
         ?~  context  (send-error req 'missing context')
         =/  context  ((om json):dejs:format (need context))
@@ -1670,6 +1682,21 @@
 
         =/  booth  ((om json):dejs:format (need booth))
         =/  booth  (~(put by booth) 'status' s+'pending')
+
+        =/  booth-type  (so:dejs:format (~(got by booth) 'type'))
+        ::  if the booth is a group booth, the participant will need to be added/created
+        ::    to the booth.
+        =/  payload
+              ?:  =(booth-type 'group')
+                =/  participant-data=json
+                %-  pairs:enjs:format
+                :~  ['created' s+(crip timestamp)]
+                    ['key' s+(crip "{<our.bowl>}")]
+                    ['name' s+(crip "{<our.bowl>}")]
+                    ['status' s+'active']
+                ==
+                (~(put by payload) 'data' participant-data)
+              payload
 
         ::  create the response
         =/  =response-header:http
@@ -1711,7 +1738,6 @@
         ==
 
         ::  queue the wire-payload so that we can act accordingly when the poke is ack'd
-        =/  timestamp  (en-json:html (time:enjs:format now.bowl))
         =/  mq-key  (crip (weld "msg-" timestamp))
 
         =/  booth-ship  (so:dejs:format (~(got by booth) 'owner'))
@@ -3012,7 +3038,7 @@
   ++  on-group-removed
     |=  =action:group-store
     =/  key  (crip (weld (weld "{<entity.resource.action>}" "/groups/") (trip `@t`name.resource.action)))
-    `this(booths (~(del by booths.state) key))
+    `this(booths (~(del by booths.state) key), proposals (~(del by proposals.state) key), participants (~(del by participants.state) key), votes (~(del by votes.state) key), polls (~(del by polls.state) key))
 
   ++  extract-booth
     |=  [res=resource eff=@t p=@p acc=[effects=(list card) data=(map @t json)]]
@@ -3167,6 +3193,7 @@
                   ['name' s+participant-key]
                   ['status' s+'active']
                   ['created' s+timestamp]
+                  ['role' s+'owner']
                 ==
                 =|  members=(map @t json)
                 =.  members  (~(put by members) participant-key member)
