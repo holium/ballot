@@ -2797,7 +2797,7 @@
   |=  =path
   ^-  (unit (unit cage))
 
-  ~&  >>  "ballot: scry called with path = '{<path>}'"
+  %-  (slog leaf+"ballot: scry called with {<path>}..." ~)
 
   ?+    path  (on-peek:def path)
       ::  list of booths scry => /x/booths
@@ -2812,14 +2812,25 @@
       ::       /x/booths/~zod/proposals
       ::       /x/booths/my-group/proposals
       [%x %booths @ %proposals ~]
-        =/  key  (key-from-path:util i.t.t.path)
+        =/  segments  `(list @ta)`path
+        =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
+        ~&  >>  "ballot: extracting proposals for booth {<key>}..."
+        =/  booth-proposals  (~(get by proposals.state) key)
+        ?~  booth-proposals  ``json+!>(~)
+        ``json+!>([%o (need booth-proposals)])
+
+      [%x %booths @ @ @ %proposals ~]
+        =/  segments  `(list @ta)`path
+        =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
+        ::=/  key  (crip (oust [0 1] (spud /(snag 2 `(list @)`path)/(snag 3 `(list @)`path)/(snag 4 `(list @)`path))))
         ~&  >>  "ballot: extracting proposals for booth {<key>}..."
         =/  booth-proposals  (~(get by proposals.state) key)
         ?~  booth-proposals  ``json+!>(~)
         ``json+!>([%o (need booth-proposals)])
 
       [%x %booths @ %proposals @ %votes ~]
-        =/  booth-key  (key-from-path:util i.t.t.path)
+        =/  segments  `(list @ta)`path
+        =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments))))
         =/  proposal-key  (key-from-path:util i.t.t.t.t.path)
         ~&  >>  "ballot: extracting votes for booth {<booth-key>}, proposal {<proposal-key>}..."
         =/  booth-proposals  (~(get by votes.state) booth-key)
@@ -2829,8 +2840,29 @@
         ?~  proposal-votes  ``json+!>(~)
         ``json+!>((need proposal-votes))
 
+      [%x %booths @ @ @ %proposals @ %votes ~]
+        =/  segments  `(list @ta)`path
+        =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
+        =/  proposal-key  (crip (oust [0 1] (spud /(snag 6 segments))))
+        ~&  >>  "ballot: extracting votes for booth {<booth-key>}, proposal {<proposal-key>}..."
+        =/  booth-proposals  (~(get by votes.state) booth-key)
+        ?~  booth-proposals  ``json+!>(~)
+        =/  booth-proposals  (need booth-proposals)
+        =/  proposal-votes  (~(get by booth-proposals) proposal-key)
+        ?~  proposal-votes  ``json+!>(~)
+        ``json+!>((need proposal-votes))
+
       [%x %booths @ %votes ~]
-        =/  booth-key  (key-from-path:util i.t.t.path)
+        =/  segments  `(list @ta)`path
+        =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments))))
+        ~&  >>  "ballot: extracting votes for booth {<booth-key>}..."
+        =/  booth-proposals  (~(get by votes.state) booth-key)
+        ?~  booth-proposals  ``json+!>(~)
+        ``json+!>([%o (need booth-proposals)])
+
+      [%x %booths @ @ @ %votes ~]
+        =/  segments  `(list @ta)`path
+        =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
         ~&  >>  "ballot: extracting votes for booth {<booth-key>}..."
         =/  booth-proposals  (~(get by votes.state) booth-key)
         ?~  booth-proposals  ``json+!>(~)
@@ -2844,11 +2876,21 @@
       ::       /x/booths/~zod/participants
       ::       /x/booths/my-group/participants
       [%x %booths @ %participants ~]
-        =/  key  (key-from-path:util i.t.t.path)
+        =/  segments  `(list @ta)`path
+        =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
         ~&  >>  "ballot: extracting participants for booth {<key>}..."
         =/  participants  (~(get by participants.state) key)
         ?~  participants  ``json+!>(~)
         ``json+!>([%o (need participants)])
+
+      [%x %booths @ @ @ %participants ~]
+        =/  segments  `(list @ta)`path
+        =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
+        ~&  >>  "ballot: extracting participants for booth {<key>}..."
+        =/  participants  (~(get by participants.state) key)
+        ?~  participants  ``json+!>(~)
+        ``json+!>([%o (need participants)])
+
   ==
 
 ::
