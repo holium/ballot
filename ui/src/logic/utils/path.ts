@@ -1,7 +1,8 @@
+import { URLSearchParamsInit } from "react-router-dom";
 import { appName } from "../../app";
 
 export const createPath = (
-  booth: any,
+  boothKey: string,
   page: "proposals" | "delegate" | string = "proposals",
   proposalId: string = "",
   subPath: string = ""
@@ -12,12 +13,34 @@ export const createPath = (
   if (proposalId) {
     proposalId = `/${proposalId}${subPath}`;
   }
-  switch (booth.type) {
-    case "ship":
-      return `/apps/${appName}/booth/ship/${booth.name}/${page}${proposalId}`;
-    case "group":
-      return `/apps/${appName}/booth/group/${booth.name}/${page}${proposalId}`;
-    default:
-      return "`/apps/${appName}/booth/";
+  return `/apps/${appName}/booth/${boothKey}/${page}${proposalId}`;
+  // switch (booth.type) {
+  //   case "ship":
+  //     return `/apps/${appName}/booth/${booth.key}/${page}${proposalId}`;
+  //   case "group":
+  //     return `/apps/${appName}/booth/${booth.key}/${page}${proposalId}`;
+  //   default:
+  //     return `/apps/${appName}/booth/`;
+  // }
+};
+
+export const getKeyFromUrl = (urlParams: {
+  boothName?: string;
+  groupName?: string;
+}) => {
+  let boothKey: string = urlParams.boothName!;
+  if (urlParams.groupName) {
+    boothKey = `${boothKey}/groups/${urlParams.groupName}`;
   }
+  return boothKey;
+};
+
+export const getNameFromUrl = (urlParams: {
+  boothName?: string;
+  groupName?: string;
+}) => {
+  if (urlParams.groupName) {
+    return urlParams.groupName!;
+  }
+  return urlParams.boothName!;
 };

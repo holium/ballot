@@ -18,7 +18,11 @@ import { ProposalType } from "../../../logic/types/proposals";
 import { appName } from "../../../app";
 import { ProposalCard } from "../../../components/ProposalCard";
 import { Participants } from "../../../components/Participants";
-import { createPath } from "../../../logic/utils/path";
+import {
+  createPath,
+  getKeyFromUrl,
+  getNameFromUrl,
+} from "../../../logic/utils/path";
 import { useMst } from "../../../logic/stores/root";
 import { ProposalModelType } from "../../../logic/stores/proposals";
 import { getProposalFilters } from "../../../logic/stores/proposals/utils";
@@ -28,8 +32,8 @@ export const ProposalList: FC = observer(() => {
   const navigate = useNavigate();
   const urlParams = useParams();
   const { store } = useMst();
-  const currentBooth = urlParams.boothName!;
-
+  const currentBoothName = getNameFromUrl(urlParams);
+  const currentBoothKey = getKeyFromUrl(urlParams);
   let leftPane;
 
   // leftPane = useMemo(() => {
@@ -77,7 +81,7 @@ export const ProposalList: FC = observer(() => {
     >
       <ListHeader
         title="Proposals"
-        subtitle={{ patp: true, text: currentBooth }}
+        subtitle={{ patp: true, text: currentBoothName }}
         options={options}
         selectedOption={selectedOption}
         rightContent={
@@ -89,7 +93,7 @@ export const ProposalList: FC = observer(() => {
               variant="transparent"
               onClick={() => {
                 navigate(
-                  `/apps/${appName}/booth/${store.booth?.type}/${currentBooth}/proposals/create-new`
+                  `/apps/${appName}/booth/${currentBoothKey}/proposals/create-new`
                 );
               }}
             >
@@ -103,7 +107,7 @@ export const ProposalList: FC = observer(() => {
       />
       {proposalsList?.length ? (
         <VirtualizedList
-          id={`list-${currentBooth}-${new Date().getMilliseconds()}`}
+          id={`list-${currentBoothKey}-${new Date().getMilliseconds()}`}
           style={{
             marginTop: 12,
             height: "calc(100% - 12px)",
@@ -126,7 +130,7 @@ export const ProposalList: FC = observer(() => {
                 proposal={proposal}
                 onClick={(proposal: ProposalModelType) => {
                   let newPath = createPath(
-                    store.booth!,
+                    store.booth!.key,
                     "proposals",
                     proposal.key
                   );
@@ -154,7 +158,7 @@ export const ProposalList: FC = observer(() => {
                       const proposalStore = store.booth?.proposalStore!;
                       proposalStore.setActive(proposal!);
                       let newPath = createPath(
-                        store.booth!,
+                        store.booth!.key,
                         "proposals/editor",
                         proposal.key
                       );

@@ -268,7 +268,7 @@ const GroupBooths = (props: {
             onClick={(evt: any) => {
               evt.preventDefault();
               evt.stopPropagation();
-              onAccept(group.name);
+              onAccept(group.key);
             }}
           >
             Join

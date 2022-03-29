@@ -41,6 +41,13 @@ export const BoothModel = types
     actionLog: types.map(types.string),
   })
   .views((self) => ({
+    get isActive() {
+      return (
+        self.status !== "pending" &&
+        self.status !== "invited" &&
+        self.status !== "enlisted"
+      );
+    },
     get listProposals() {
       return Array.from(self.proposalStore.proposals.values());
     },

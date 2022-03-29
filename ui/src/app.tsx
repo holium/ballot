@@ -1,12 +1,6 @@
 import React, { FC, useEffect, useState } from "react";
 import { observer } from "mobx-react";
-import {
-  useLocation,
-  useNavigate,
-  Outlet,
-  useParams,
-  matchPath,
-} from "react-router-dom";
+import { useLocation, useNavigate, Outlet, useParams } from "react-router-dom";
 import Helmet from "react-helmet";
 import { ThemeProvider } from "styled-components";
 
@@ -24,7 +18,7 @@ import {
 } from "@holium/design-system";
 import { BoothsDropdown } from "./components/BoothsDropdown";
 import { NewBoothDialog } from "./components";
-import { createPath } from "./logic/utils/path";
+import { createPath, getKeyFromUrl } from "./logic/utils/path";
 import { toJS } from "mobx";
 import { useMst } from "./logic/stores/root";
 import { BoothModelType } from "./logic/stores/booths";
@@ -44,13 +38,13 @@ export const App: FC = observer(() => {
   useEffect(() => {
     app.setCurrentUrl(location.pathname);
     store.getBooths().then(() => {
-      const urlBooth = store.booths.get(urlParams.boothName!);
+      const urlBooth = store.booths.get(getKeyFromUrl(urlParams));
       if (urlBooth) {
         store.setBooth(urlBooth.key);
       } else {
         // use your current ship booth since we didnt find the url booth
         store.setBooth(app.ship.patp);
-        let newPath = createPath(store.booth, app.currentPage);
+        let newPath = createPath(store.booth!.key, app.currentPage);
         navigate(newPath);
         app.setCurrentUrl(newPath, app.currentPage);
         return;
@@ -96,7 +90,7 @@ export const App: FC = observer(() => {
                   store.booths.get(boothName)!.acceptInvite(boothName)
                 }
                 onContextClick={(selectedBooth: Partial<BoothModelType>) => {
-                  let newPath = createPath(selectedBooth, app.currentPage);
+                  let newPath = createPath(selectedBooth.key!, app.currentPage);
                   navigate(newPath);
                   app.setCurrentUrl(newPath, app.currentPage);
                   store.setBooth(selectedBooth.key!);
@@ -126,7 +120,7 @@ export const App: FC = observer(() => {
           selectedRouteUri={app.currentPage} // proposals or delegation
           selectedContext={store.booth}
           onHomeClick={() => {
-            let newPath = createPath(store.booth!, app.currentPage);
+            let newPath = createPath(store.booth!.key, app.currentPage);
             navigate(newPath);
             app.setCurrentUrl(newPath, app.currentPage);
           }}
@@ -141,8 +135,8 @@ export const App: FC = observer(() => {
               nav: "proposals",
               uri:
                 store.booth?.type === "ship"
-                  ? `/apps/${appName}/booth/ship/${store.booth?.name}/proposals`
-                  : `/apps/${appName}/booth/group/${store.booth?.name}/proposals`,
+                  ? `/apps/${appName}/booth/${store.booth?.key}/proposals`
+                  : `/apps/${appName}/booth/${store.booth?.key}/proposals`,
             },
             {
               icon: <Icons.ParentLine />,
@@ -150,8 +144,8 @@ export const App: FC = observer(() => {
               nav: "delegation",
               uri:
                 store.booth?.type === "ship"
-                  ? `/apps/${appName}/booth/ship/${store.booth?.name}/delegation`
-                  : `/apps/${appName}/booth/group/${store.booth?.name}/delegation`,
+                  ? `/apps/${appName}/booth/${store.booth?.key}/delegation`
+                  : `/apps/${appName}/booth/${store.booth?.key}/delegation`,
             },
           ]}
           contexts={store.list}

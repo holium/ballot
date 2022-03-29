@@ -65,8 +65,6 @@ export const VoteCard: any = (props: VoteCardProps) => {
   const urlParams = useParams();
   const proposalId = urlParams.proposalId;
 
-  console.log(loading);
-
   const [chosenVote, setChosenVote] = useState<VoteType>({
     chosenVote: {
       label: "",

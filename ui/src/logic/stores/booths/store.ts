@@ -59,9 +59,10 @@ export const BoothStore = types
             }),
             loader: { state: "loaded" },
           });
-          newBooth.proposalStore.getProposals();
+
+          newBooth.isActive && newBooth.proposalStore.getProposals();
           // Initialize booth store
-          newBooth.participantStore.getParticipants();
+          newBooth.isActive && newBooth.participantStore.getParticipants();
           self.booths.set(newBooth.key, newBooth);
         });
         // Watcher.initialize(Object.values(response), onChannel);
