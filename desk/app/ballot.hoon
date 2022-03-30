@@ -18,7 +18,7 @@
 +$  versioned-state
   $%  state-0
   ==
-+$  state-0  [%0 polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store mq=mq:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json))]
++$  state-0  [%0 authentication=@t polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store mq=mq:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json))]
 --
 
 %-  agent:dbug
@@ -34,7 +34,7 @@
 ++  on-init
   ^-  (quip card _this)
 
-  :_  this
+  :_  this(authentication 'enable')
 
       ::  initialize agent booths (ship, groups, etc...)
   :~  [%pass /ballot %agent [our.bowl %ballot] %poke %initialize !>(~)]
@@ -66,6 +66,12 @@
 
   ?+  mark  (on-poke:def mark vase)
 
+      %auth
+        =^  cards  state
+          =/  val  !<(@t vase)
+          (set-authentication-mode val)
+        [cards this]
+
       %initialize
         =^  cards  state
           (initialize-booths ~)
@@ -84,6 +90,11 @@
           (on-http-request !<((pair @ta inbound-request:eyre) vase))
         [cards this]
     ==
+
+    ++  set-authentication-mode
+      |=  [mode=@t]
+      %-  (slog leaf+"ballot: setting authentication {<mode>}..." ~)
+      `state(authentication mode)
 
     ::
     ::  ARM:  ++  initialize-booths
@@ -165,6 +176,12 @@
     ++  on-http-request
       |=  [req=(pair @ta inbound-request:eyre)]
 
+      ?:  ?&  =(authentication.state 'enable')
+              !authenticated.q.req
+          ==
+          ~&  >>>  "ballot: authentication is enabled. request is not authenticated"
+          (send-api-error req 'not authenticated')
+
       :: parse query string portion of url into map of arguments (key/value pair)
       =/  req-args
             (my q:(need `(unit (pair pork:eyre quay:eyre))`(rush url.request.q.req ;~(plug apat:de-purl:html yque:de-purl:html))))
@@ -186,6 +203,12 @@
               ==
       ==
 
+      ::
+      ::  ARM:  ++  handle-resource-action
+      ::
+      ::   All actions funnel thru this arm. They come into Eyre as http
+      ::     POST method requests.
+      ::
       ++  handle-resource-action
         |=  [req=(pair @ta inbound-request:eyre) args=(map @t @t)]
         ^-  (quip card _state)
@@ -230,6 +253,14 @@
 
         ==
 
+    ::
+    ::  ARM:  ++  on-json-poke
+    ::
+    ::    Pokes can enter a ship in a # of ways. When our ship is poked with
+    ::    +json, odds are it has come from another ballot agent running on a
+    ::    remote ship. There's nothing to preven this ship from receiving +json
+    ::    pokes thru dojo however; so try not to make assumptions.
+    ::
     ++  on-json-poke
       |=  [jon=json]
 
@@ -238,11 +269,15 @@
       :: all poke json payloads must include an action (req'd)
       =/  action  (~(get by payload) 'action')
       ?~  action
-        (give-error s+'error: action attribute required')
+        (send-error s+'error: action attribute required')
 
       =/  action  (so:dejs:format (need action))
 
-      ?+  action  (give-error s+'error: unrecognized action')
+      ?+  action  (send-error s+'error: unrecognized action')
+
+        :: %error
+        ::   %-  (slog leaf+"ballot: %error action {<src.bowl>} received..." ~)
+        ::   (give-error s+'error')
 
         %invite
           %-  (slog leaf+"ballot: %invite action {<src.bowl>} received..." ~)
@@ -270,6 +305,16 @@
 
       ==
 
+      ::  send an error as poke back to calling agent
+      ++  send-error
+        |=  [jon=json]
+        ::  ensure action: 'error' in json for this to be recognized
+        ::   on the remote agent
+        :_  state
+        :~  [%pass /errors %agent [src.bowl %ballot] %poke %json !>(jon)]
+        ==
+
+      ::  use this for errors that should appear in UI
       ++  give-error
         |=  [jon=json]
         :_  state
