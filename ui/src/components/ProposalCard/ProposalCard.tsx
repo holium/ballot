@@ -124,9 +124,7 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
                 const participantCount =
                   proposalModel.results.resultSummary.participantCount || 1;
                 const percentage = useMemo(
-                  () =>
-                    Math.round((voteCount / participantCount) * 1000 * 10) /
-                    100,
+                  () => Math.round((voteCount / participantCount) * 1000) / 10,
                   [voteCount, participantCount]
                 );
                 if (proposalModel.isLoading) {

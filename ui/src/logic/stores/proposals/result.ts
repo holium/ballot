@@ -62,8 +62,7 @@ export const ResultModel = types
           return TallyModel.create({
             label,
             count,
-            percentage:
-              Math.round((count / participantCount) * 1000 * 10) / 100,
+            percentage: Math.round((count / participantCount) * 1000) / 10,
           });
         })
         .sort((a: TallyType, b: TallyType) => b!.count - a!.count);

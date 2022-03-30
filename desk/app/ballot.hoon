@@ -1257,7 +1257,7 @@
               ?:  =(booth-type 'group')
                 ((om json):dejs:format (~(got by contract) 'data'))
               ::  get the participant from the booth participant list
-              =/  participant  (~(get by booth-participants) booth-key)
+              =/  participant  (~(get by booth-participants) participant-key)
               =/  participant  ?~(participant ~ ((om json):dejs:format (need participant)))
               [participant]
 
