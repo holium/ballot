@@ -122,9 +122,7 @@ export const ProposalStore = types
           proposalKey
         );
         if (error) throw error;
-        const deleted = self.proposals.get(proposalKey)!;
         self.proposals.delete(proposalKey);
-        destroy(deleted);
       } catch (err: any) {
         self.loader.error(err.toString());
       }
