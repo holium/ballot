@@ -1,12 +1,18 @@
-:: ***********************************************************
 ::
-::  @author  : ~lodlev-migdev (p.james)
-::  @purpose :
-::    Ball app agent for contexts, booths, proposals, and participants.
+::  @author  :  ~lodlev-migdev
 ::
-:: ***********************************************************
+::    -  manages direct http interface (API) used by the frontend UI
+::    -  agent-to-agent communications (i.e. pokes, subscriptions, etc.)
+::
+::  Configurable/dynamic aspects of ballot:
+::
+::   - strategies - single-choice, multi-choice
+::   - post voting results actions (e.g. boot member from group)
+::   - security (e.g. pub/priv key signing, ring sig, etc...)
+::
 /-  *group, group-store, ballot-store
-/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor
+/+  store=group-store, default-agent, dbug, resource, pill
+
 |%
 +$  card  card:agent:gall
 +$  versioned-state
@@ -14,44 +20,28 @@
   ==
 +$  state-0  [%0 polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store mq=mq:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json))]
 --
+
 %-  agent:dbug
 =|  state-0
 =*  state  -
+
 ^-  agent:gall
 |_  =bowl:gall
+
 +*  this  .
     def   ~(. (default-agent this %.n) bowl)
+
 ++  on-init
   ^-  (quip card _this)
-
-  :: *************************************************************
-  ::  WARNING: DO NOT REMOVE THIS CODE
-  ::
-  :: @~lodlev-migdev - this code is used to compile/load a lib at runtime
-  :: =/  lb=vase  .^(vase %ca /~zod/base/(scot %da now.bowl)/lib/ps-lib/hoon)
-
-  :: @~lodlev-migdev - here we see how to call a method (arm - %limb) in the lib
-  ::    using Hoon slam/slap. Note: %say-hi is the name of the arm. In this
-  ::    case the say-hi method takes a string as input and echoes the string
-  ::    back to the caller as the return value (stored in rs)
-  :: =/  rs  (slam (slap lb [%limb %say-hi]) !>('hello from runtime lib!'))
-  ::  @p.names - print return value (string in this case)
-  ::    ~&  >>  rs
-  ::  END OF RUNTIME LIB LOADING BLOCK
-  :: *************************************************************
 
   :_  this
 
       ::  initialize agent booths (ship, groups, etc...)
   :~  [%pass /ballot %agent [our.bowl %ballot] %poke %initialize !>(~)]
-      ::  our ship can watch across all booths
-      :: [%pass /booths %agent [our.bowl %ballot] %watch /booths]
       ::   setup route for direct http request/response handling
       [%pass /bind-route %arvo %e %connect `/'ballot'/'api'/'booths' %ballot]
   :: ==
   ==
-
-  :: `this
 
 ::
 ++  on-save
@@ -71,309 +61,59 @@
 ++  on-poke
   |=  [=mark =vase]
   ^-  (quip card _this)
+
   |^
-  :: ~&  [mark vase]
-  ?+    mark  (on-poke:def mark vase)
-      %sub-groups
-        =^  cards  state
 
-          (sub-groups ~)
-
-        [cards this]
-
-      %unsub-groups
-        =^  cards  state
-
-          (unsub-groups ~)
-
-        [cards this]
-
-      %print-groups
-        =^  cards  state
-
-          (print-groups ~)
-
-        [cards this]
-
-      %vote-cast
-        =^  cards  state
-
-        =/  jon  !<(json vase)
-
-          (handle-vote-cast jon)
-
-        [cards this]
-
-      %invitation
-        =^  cards  state
-
-        =/  jon  !<(json vase)
-
-          (handle-invitation jon)
-
-        [cards this]
+  ?+  mark  (on-poke:def mark vase)
 
       %initialize
-         =^  cards  state
-
-          (initialize-booths ~)
-
-         [cards this]
-
-      :: ~lodlev-migdev - if the mark is JSON, it means this is a poke
-      ::   from eyre which uses channeling to route responses/acks back
-      ::   to the calling client
-      %json
         =^  cards  state
-
-        =/  jon  !<(json vase)
-
-          (handle-channel-poke jon)
-
-        ::   =/  effects=(list card)  (~(handle-wire core bowl) jon)
-
-        :: [effects state]
-
+          (initialize-booths ~)
         [cards this]
 
+      :: %json can either come from eyre or direct agent pokes
+      %json
+        =^  cards  state
+          =/  jon  !<(json vase)
+          (on-json-poke jon)
+        [cards this]
+
+      :: direct http interface w/ eyre
       %handle-http-request
         =^  cards  state
-
-        =/  req  !<((pair @ta inbound-request:eyre) vase)
-
-        :: =/  effects=(list card)  (~(handle-api-request core bowl) req req-args)
-
-        :: [effects state]
-
-        :: parse query string portion of url into map of arguments (key/value pair)
-        =/  req-args
-              (my q:(need `(unit (pair pork:eyre quay:eyre))`(rush url.request.q.req ;~(plug apat:de-purl:html yque:de-purl:html))))
-
-        %-  (slog leaf+"ballot: [on-poke] => processing request at endpoint {<(stab url.request.q.req)>}" ~)
-
-        =/  path  (stab url.request.q.req)
-
-        ?+    method.request.q.req
-                (send-error req 'unsupported')
-              %'PUT'
-                ?+    path
-                        (send-error req 'route not found')
-
-                  [%ballot %api %booths ~]
-                    :: null in last parameter indicates we are creating a booth
-                    (handle-save-booth req req-args ~)
-
-                  :: update a particular booth
-                  [%ballot %api %booths @ ~]
-                    =/  key  (key-from-path:util i.t.t.t.path)
-                    (handle-save-booth req req-args key)
-
-                  :: create a proposal in the booth
-                  [%ballot %api %booths @ %proposals ~]
-                    =/  booth-key  (key-from-path:util i.t.t.t.path)
-                    :: null in last parameter indicates we are creating a proposal
-                    (handle-save-proposal req req-args booth-key ~)
-
-                  :: update a particular proposal
-                  [%ballot %api %booths @ %proposals @t ~]
-                    =/  booth-key  (key-from-path:util i.t.t.t.path)
-                    =/  proposal-key  i.t.t.t.t.t.path
-                    (handle-save-proposal req req-args booth-key proposal-key)
-
-                  :: create a participant in the booth
-                  [%ballot %api %booths @ %participants ~]
-                    =/  booth-key  (key-from-path:util i.t.t.t.path)
-                    :: null in last parameter indicates we are adding a participant
-                    (handle-save-participant req req-args booth-key ~)
-
-                  :: update a particular proposal
-                  [%ballot %api %booths @ %participants @t ~]
-                    =/  booth-key  (key-from-path:util i.t.t.t.path)
-                    =/  participant-key  i.t.t.t.t.t.path
-                    (handle-save-participant req req-args booth-key participant-key)
-
-                ==
-
-              %'DELETE'
-                ?+    path
-                        (send-error req 'route not found')
-
-                  :: update a particular booth
-                  [%ballot %api %booths @ ~]
-                    =/  key  (key-from-path:util i.t.t.t.path)
-                    (handle-delete-booth req req-args key)
-
-                  :: update a particular proposal
-                  [%ballot %api %booths @ %proposals @t ~]
-                    =/  booth-key  (key-from-path:util i.t.t.t.path)
-                    =/  proposal-key  i.t.t.t.t.t.path
-                    (handle-delete-proposal req req-args booth-key proposal-key)
-
-                  :: update a particular proposal
-                  [%ballot %api %booths @ %participants @t ~]
-                    =/  booth-key  (key-from-path:util i.t.t.t.path)
-                    =/  participant-key  i.t.t.t.t.t.path
-                    (handle-delete-participant req req-args booth-key participant-key)
-
-                ==
-
-              :: votes are cast via a http POST
-              %'POST'
-                ?+    path
-                        (send-error req 'route not found')
-
-                  [%ballot %api %booths ~]
-                    (handle-resource-action req req-args ~)
-
-                  ::  do booth specific things (e.g. invite a participant)
-                  [%ballot %api %booths @ ~]
-                    =/  key  (key-from-path:util i.t.t.t.path)
-                    (handle-resource-action req req-args key)
-
-                    :: =/  effects=(list card)  (handle-post:core req req-args)
-                    :: =/  effects=(list card)  (~(handle-post core bowl) req req-args)
-
-                    :: [effects state]
-
-                  [%ballot %api %booths @ %proposals ~]
-                    =/  key  (key-from-path:util i.t.t.t.path)
-                    (handle-resource-action req req-args ~)
-
-                  :: update a particular proposal
-                  [%ballot %api %booths @ %proposals @t %vote ~]
-                    =/  booth-key  (key-from-path:util i.t.t.t.path)
-                    =/  proposal-key  i.t.t.t.t.t.path
-                    (handle-cast-vote req req-args booth-key proposal-key)
-
-                ==
-        ==
+          (on-http-request !<((pair @ta inbound-request:eyre) vase))
         [cards this]
     ==
 
-    ++  scry
-      |*  [=mold =path]
-      ^-  mold
-      ?>  ?=(^ path)
-      ?>  ?=(^ t.path)
-      .^  mold
-        (cat 3 %g i.path)
-        (scot %p our.bowl)
-        i.t.path
-        (scot %da now.bowl)
-        t.t.path
-      ==
-
-    ++  sub-groups
-      |=  [jon=json]
-      :_  state
-      :~
-        [%pass /group %agent [our.bowl %group-store] %watch /groups]
-      ==
-
-    ++  unsub-groups
-      |=  [jon=json]
-      :_  state
-      :~
-        [%pass /group %agent [our.bowl %group-store] %leave ~]
-      ==
-
-    ++  group-to-booth
-      |=  [booths=booths:ballot-store r=resource]
-      ^-  (map @t json)
-
-      =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-
-      =/  meta=json
-      %-  pairs:enjs:format
-      :~
-        ['tag' ~]
-      ==
-
-      =/  group-key  (spat /(scot %p entity.r)/groups/(scot %tas name.r))
-      =/  group-name  name.r
-
-      ::  create booth metadata
-      =/  booth=json
-      %-  pairs:enjs:format
-      :~
-        ['type' s+'group']
-        ['key' s+group-key]
-        ['name' s+group-name]
-        ['image' ~]
-        ['owner' s+(crip "{<our.bowl>}")]
-        ['created' s+timestamp]
-        ['policy' s+'invite-only']
-        ['meta' meta]
-      ==
-
-      ::  add the group booth to the map
-      =/  result   (~(put by booths) group-key booth)
-
-      result
-
-    ++  groups-to-booths
-      |=  [res=(set resource)]
-      %-  ~(rep in res)
-      |=  [r=resource o=(map @t json)]
-      =.  o  (group-to-booth o r)
-      ^-  (map @t json)
-      o
-
-    ++  to-booth-sub
-      |=  [jon=json]
-      ^-  card
-      =/  booth  ((om json):dejs:format jon)
-      =/  booth-key  (so:dejs:format (~(got by booth) 'key'))
-      =/  owner  (so:dejs:format (~(got by booth) 'owner'))
-      =/  booth-ship=@p  `@p`(slav %p owner)
-      ::  send out notifications to all subscribers of this booth
-      =/  destpath=path  `path`/booths/(scot %tas booth-key)
-      ~&  >>  "ballot: subscribing to {<destpath>}..."
-      :: convert json to [%pass /booth/<booth-key> ... /booth/<booth-key>] subscription
-      [%pass destpath %agent [booth-ship %ballot] %watch destpath]
-
-    ++  booths-to-subscriptions
-      |=  [m=(map @t json)]
-      ^-  (list card)
-      =/  l  ~(val by m)
-      =/  r=(list card)  (turn l to-booth-sub)
-      [r]
-
-    ++  print-groups
-      |=  [j=json]
-
-      =/  groups=(set resource)  (scry (set resource) /y/group-store/groups)
-      =/  c=(map @t json)  (groups-to-booths groups)
-      ~&  >>  "ballot: groups => {<c>}"
-
-      `state
-
+    ::
+    ::  ARM:  ++  initialize-booths
+    ::
+    ::   Called when the agent is initialized (on-init). Perform
+    ::     one-time initialization; mainly setting up the ship's default
+    ::     booth and subscribing to the ship's group store to sync booths
+    ::     with groups.
+    ::
     ++  initialize-booths
       |=  [jon=json]
 
-      ~&  >>  'ballot: initializing ballot-store...'
+      %-  (slog leaf+"ballot: initializing..." ~)
 
+      ::  add the default booth for our ship
       =/  owner  `@t`(scot %p our.bowl)
+      ::  friendly epoch timestamp as cord
       =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
 
-      :: =/  booth-key  (spat /(scot %p our.bowl))
-      =/  booth-key  (crip "{<our.bowl>}")
+      =/  booth-key   (crip "{<our.bowl>}")
       =/  booth-name  (crip "{<our.bowl>}")
 
+      ::  optional metadata to be associated with the booth
       =/  meta=json
       %-  pairs:enjs:format
       :~
         ['tag' ~]
       ==
 
-      ::  ~lodlev-migdev
-      ::   steps:
-      ::
-      ::    1) create a folder for our ship and add a /booths sub-folder to it
-      ::    2) create a default booth for our ship (e.g. ~zod) and add it
-      ::          to this ship's booths folder
-      ::
-      =|  booths=booths:ballot-store
+      =|  booths=(map @t json)
 
       =/  booth=json
       %-  pairs:enjs:format
@@ -391,6 +131,7 @@
 
       =.  booths  (~(put by booths) booth-key booth)
 
+      ::  add this ship as the default booth's owner and as a participant
       =/  participant-key  (crip "{<our.bowl>}")
 
       =|  booth-participants=(map @t json)
@@ -409,625 +150,132 @@
 
       ~&  >  'ballot: context initialized!'
 
-      ::  fetch groups from group-store
-      :: =/  groups=(set resource)  (scry (set resource) /y/group-store/groups)
-      :: :: ::  transform group set to context map
-      :: =/  group-booths=(map @t json)  (groups-to-booths groups)
-      :: :: ::  append group contexts to context-store
-      :: =.  booths  (~(gas by booths) ~(tap by group-booths))
-
-      =/  effects  (booths-to-subscriptions booths)
-
-      %-  (slog leaf+"subscribing to /groups..." ~)
-      =/  effects  (snoc effects [%pass /group %agent [our.bowl %group-store] %watch /groups])
-
       :_  state(booths booths, participants (~(put by participants.state) booth-key booth-participants))
 
-      [effects]
-
-      :: :~  [%pass /booths %agent [our.bowl %ballot] %watch /booths]
-      :: ==
-
-    ++  dump
-      |=  [msg=@t dat=*]
-      ~&  >>>  dat
-      ~|(msg !!)
-
-    ++  handle-invitation
-      |=  [jon=json]
-      ^-  (quip card _state)
-
-      ~&  >>  "ballot: handle-invitation => ?"
-
-      =/  booth  ((om json):dejs:format jon)
-      =/  booth-key  (so:dejs:format (~(got by booth) 'key'))
-      =/  booth-owner  (so:dejs:format (~(got by booth) 'owner'))
-      =/  booth-ship=@p  `@p`(slav %p booth-owner)
-
-      ?>  =(src.bowl booth-ship)
-
-      `state(booths (~(put by booths.state) booth-key jon))
-
-    ++  handle-vote-cast
-      |=  [jon=json]
-      ^-  (quip card _state)
-
-      =/  ballot  ((om json):dejs:format jon)
-
-      :: :: extract the booth key
-      =/  booth-key  (so:dejs:format (~(got by ballot) 'booth'))
-      =/  proposal-key  (so:dejs:format (~(got by ballot) 'proposal'))
-      =/  participant-key  (so:dejs:format (~(got by ballot) 'participant'))
-      =/  choice-label  (so:dejs:format (~(got by ballot) 'choice-label'))
-      =/  caston-timestamp  (so:dejs:format (~(got by ballot) 'caston'))
-
-      =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-
-      :: does the booth exist? check agains the booth store.
-      =/  booth  (~(get by booths.state) booth-key)
-
-      ?~  booth
-        (dump 'booth not found' [%handle-vote-cast jon])
-
-      =/  booth  (need booth)
-      =/  booth  ((om json):dejs:format booth)
-
-      :: does this booth have proposals?
-      =/  booth-proposals  (~(get by proposals.state) booth-key)
-      ?~  booth-proposals
-        (dump 'booth proposals not found' [%handle-vote-cast jon])
-
-      =/  booth-proposals  (need booth-proposals)
-
-      :: does this booth have a specific proposal
-      =/  proposal  (~(get by booth-proposals) proposal-key)
-      ?~  proposal
-        (dump 'proposal not found' [%handle-vote-cast jon])
-
-      =/  proposal=json  (need proposal)
-
-      ::  convert the proposal json to (map @t json)
-      =/  proposal  ((om json):dejs:format proposal)
-
-      ::  get the current list of votes for this particular booth/proposal
-      =/  votes  (~(get by proposal) 'votes')
-      =/  votes
-            ?~  votes
-              [%o ~]
-            (need votes)
-
-      ::  convert the votes json to (map @t json)
-      =/  votes  ((om json):dejs:format votes)
-
-      ::  this ship is casting the vote
-      =/  participant-key  (crip "{<our.bowl>}")
-      ::  ensure this ship hasn't already voted
-      ?:  (~(has by votes) participant-key)
-        :: send error indicating ship has already voted
-        (dump 'error: participant vote already casts' [%handle-vote-cast jon])
-
-      =/  vote-meta
-        %-  pairs:enjs:format
-        :~
-          ['proposal' s+proposal-key]
-          ['participant' s+participant-key]
-          ['choice-label' s+choice-label]
-          ['caston' s+caston-timestamp]
-          ['recorded' s+timestamp]
-        ==
-
-      ::  record this ship's vote
-      =/  votes  (~(put by votes) participant-key vote-meta)
-      ::  commit the updated votes to the proposal
-      =/  proposal  (~(put by proposal) 'votes' [%o votes])
-      ::  commit the updated proposal record to the store
-      =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal])
-
-      =/  destpath  `path`/booths/(crip "{<booth-key>}")
-
-      :_  state(proposals (~(put by proposals.state) booth-key booth-proposals))
-      :~  [%give %fact ~[destpath] %json !>(vote-meta)]
+      :~  [%pass /booths/(scot %tas booth-key) %agent [our.bowl %ballot] %watch /booths/(scot %tas booth-key)]
+          [%pass /group %agent [our.bowl %group-store] %watch /groups]
       ==
 
-
-    ::  ARM: ++  handle-channel-poke
-    ::  ~lodlev-migdev - handle actions coming in from eyre channeling mechanism
     ::
-    ::   @see: https://urbit-org-j1prh9inz-urbit.vercel.app/docs/arvo/eyre/external-api-ref
-    ::    for more information
-    ++  handle-channel-poke
+    ::  ARM:  ++  on-http-request
+    ::
+    ::   Called when http request received from Eyre. All actions come into
+    ::    our agent as POST requests.
+    ::
+    ++  on-http-request
+      |=  [req=(pair @ta inbound-request:eyre)]
+
+      :: parse query string portion of url into map of arguments (key/value pair)
+      =/  req-args
+            (my q:(need `(unit (pair pork:eyre quay:eyre))`(rush url.request.q.req ;~(plug apat:de-purl:html yque:de-purl:html))))
+
+      %-  (slog leaf+"ballot: [on-poke] => processing request at endpoint {<(stab url.request.q.req)>}" ~)
+
+      =/  path  (stab url.request.q.req)
+
+      ::  all actions come in as POST method requests over http
+      ?+    method.request.q.req  (send-api-error req 'unsupported')
+
+            %'POST'
+
+              ?+  path  (send-api-error req 'route not found')
+
+                [%ballot %api %booths ~]
+                  (handle-resource-action req req-args)
+
+              ==
+      ==
+
+      ++  handle-resource-action
+        |=  [req=(pair @ta inbound-request:eyre) args=(map @t @t)]
+        ^-  (quip card _state)
+
+        ::  all POST payloads are action payloads (see ARM comments)
+        =/  payload  (extract-payload req)
+
+        =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+        =/  action  (so:dejs:format (~(got by payload) 'action'))
+        =/  resource  (so:dejs:format (~(got by payload) 'resource'))
+
+        ?+  [resource action]  `state
+
+              [%booth %invite]
+                =/  key  (so:dejs:format (~(got by context) 'booth'))
+                %-  (slog leaf+"ballot: invite {<key>}..." ~)
+                (invite-api req payload key)
+
+              [%booth %accept]
+                =/  key  (so:dejs:format (~(got by context) 'booth'))
+                %-  (slog leaf+"ballot: accept {<key>}..." ~)
+                (accept-api req payload key)
+
+              [%proposal %save-proposal]
+                =/  key  (so:dejs:format (~(got by context) 'booth'))
+                %-  (slog leaf+"ballot: save-proposal {<key>}..." ~)
+                (save-proposal-api req payload)
+
+              [%proposal %delete-proposal]
+                =/  key  (so:dejs:format (~(got by context) 'booth'))
+                %-  (slog leaf+"ballot: delete-proposal {<key>}..." ~)
+                (delete-proposal-api req payload key)
+
+              [%proposal %cast-vote]
+                %-  (slog leaf+"ballot: cast-vote received over http..." ~)
+                (cast-vote-api req payload)
+
+              [%participant %delete-participant]
+                =/  key  (so:dejs:format (~(got by context) 'booth'))
+                %-  (slog leaf+"ballot: delete-participant {<key>}..." ~)
+                (delete-participant-api req payload key)
+
+        ==
+
+    ++  on-json-poke
       |=  [jon=json]
 
-      =/  contract=(map @t json)  ((om json):dejs:format jon)
+      =/  payload=(map @t json)  ((om json):dejs:format jon)
 
-      :: :: :: all poke json payloads must include an action (req'd)
-      ?.  (~(has by contract) 'action')
-            ::   context attribute is required
-            (send-channel-error s+'error: action attribute required')
+      :: all poke json payloads must include an action (req'd)
+      =/  action  (~(get by payload) 'action')
+      ?~  action
+        (give-error s+'error: action attribute required')
 
-      =/  act  (~(got by contract) 'action')
+      =/  action  (so:dejs:format (need action))
 
-      ?+    p.+.act  (send-channel-error s+'error: unrecognized action')
-        %save-booth
-            (save-booth contract)
-        %delete-booth
-            (delete-booth contract)
-        %save-proposal
-            (save-proposal contract)
-
-        %receive-invitation
-          (receive-invitation contract)
-
-        ::  remote ship is requesting to join a booth in our ship
-        %join
-          %-  (slog leaf+"ballot: %join action received..." ~)
-          (handle-join-booth contract)
-
-        %join-response
-          %-  (slog leaf+"ballot: %join-response action received..." ~)
-          (handle-join-response contract)
+      ?+  action  (give-error s+'error: unrecognized action')
 
         %invite
-          %-  (slog leaf+"ballot: %invite action received..." ~)
-          (invite-participant-wire contract)
+          %-  (slog leaf+"ballot: %invite action {<src.bowl>} received..." ~)
+          (invite-wire payload)
 
         %invite-response
-          %-  (slog leaf+"ballot: %invite-response action received..." ~)
-          (invite-participant-wire-response contract)
+          %-  (slog leaf+"ballot: %invite-response action from {<src.bowl>} received..." ~)
+          (invite-wire-response payload)
 
         %accept
           %-  (slog leaf+"ballot: %accept from {<src.bowl>}..." ~)
-          (invite-accepted-wire contract)
+          (accept-wire payload)
 
         %delete-proposal
           %-  (slog leaf+"ballot: %delete-proposal from {<src.bowl>}..." ~)
-          (delete-proposal-wire contract)
+          (delete-proposal-wire payload)
 
         %delete-participant
           %-  (slog leaf+"ballot: %delete-participant from {<src.bowl>}..." ~)
-          (delete-participant-wire contract)
+          (delete-participant-wire payload)
 
         %cast-vote
           %-  (slog leaf+"ballot: %cast-vote from {<src.bowl>}..." ~)
-          (cast-vote-wire contract)
+          (cast-vote-wire payload)
+
       ==
 
-      ++  send-nack
-        |=  [=path m=(map @t json)]
-        =/  m  (~(put by m) 'reaction' s+'nack')
-        :_  state
-        :~  [%give %fact ~[path] %json !>([%o m])]
-        ==
-
-      ++  send-channel-error
+      ++  give-error
         |=  [jon=json]
         :_  state
         :~  [%give %fact ~[/errors] %json !>(jon)]
         ==
 
-      ::  ARM:  save-booth
-      ::  @author:  ~lodlev-migdev
-      ::    Create/update booth in store
-      :: {
-      ::   action: string, // save-booth
-      ::   name: string,   // booth name
-      ::   content: {
-      ::     name:  string,  // optional
-      ::     image: string|null, // optional,
-      ::     meta: {
-      ::       ...
-      ::     }
-      ::   }
-      :: }
-      ++  save-booth
-        |=  [contract=(map @t json)]
-
-        ::  does the path key exist in the payload
-        ?.  (~(has by contract) 'name')
-          :: nope. send error indicating path doesn't exist in payload
-          (send-channel-error s+'error: name attribute required')
-
-        =/  key  (so:dejs:format (~(got by contract) 'name'))
-
-        ::  does the context exist in our store?
-        ?.  (~(has by booths.state) key)
-          :: nope. send error indicating context doesn't exist in store
-          (send-channel-error s+'error: booth not found')
-
-        ::  the key was found. use it to extract the map entry
-        =/  booth=(map @t json)  ((om json):dejs:format (~(got by booths.state) key))
-
-        ::  get the content
-        =/  content
-          ?.  (~(has by contract) 'content')
-              ~
-            ((om json):dejs:format (~(got by contract) 'content'))
-
-        =/  updated-booth  (~(gas by booth) ~(tap by contract))
-
-        :_  state(booths (~(put by booths.state) key [%o updated-booth]))
-
-        :~  [%give %fact ~[/booths] %json !>(s+'booth saved')]
-        ==
-
-      ::  ARM:  delete-booth
-      ::  @author:  ~lodlev-migdev
-      ::    Delete booth from store
-      :: {
-      ::   action: string, // delete-booth
-      ::   name: string   // booth name
-      :: }
-      ++  delete-booth
-        |=  [contract=(map @t json)]
-
-        ::  does the path key exist in the payload
-        ?.  (~(has by contract) 'name')
-          :: nope. send error indicating path doesn't exist in payload
-          (send-channel-error s+'error: name attribute required')
-
-        =/  key  (so:dejs:format (~(got by contract) 'name'))
-
-        ::  does the context exist in our store?
-        ?.  (~(has by booths.state) key)
-          :: nope. send error indicating context doesn't exist in store
-          (send-channel-error s+'error: booth not found')
-
-        :_  state(booths (~(del by booths.state) key))
-
-        :~  [%give %fact ~[/booths] %json !>(s+'booth deleted')]
-        ==
-
-      ::  ARM:  save-proposal
-      ::  @author:  ~lodlev-migdev
-      ::    Create/update proposal in proposal store
-      :: {
-      ::   action: string, // save-proposal
-      ::   booth:  string, // booth name
-      ::   name:   string, // proposal name
-      ::   content: {
-      ::        title: string,
-      ::        body: string,
-      ::        strategy: 'single-choice'|'multi-choice',
-      ::        status: 'draft'|'active'|'complete'|'cancelled',
-      ::        published: true|false,
-      ::        hideIndividualVote: true|false,
-      ::        choices: [{
-      ::          label: string,
-      ::          description: string,
-      ::        }],
-      ::        start: timestamp, // epoch (milliseconds since 1970),
-      ::        end:   timestamp, // epoch (milliseconds since 1970),
-      ::        createdBy: string, // ship (@p)
-      ::        createdAt: timestamp, // epoch (milliseconds since 1970),
-      ::   }
-      :: }
-      ++  save-proposal
-        |=  [contract=(map @t json)]
-
-        ::  does the path key exist in the payload
-        ?.  (~(has by contract) 'booth')
-          :: nope. send error indicating path doesn't exist in payload
-          (send-channel-error s+'error: booth attribute required')
-
-        ::  does the path key exist in the payload
-        ?.  (~(has by contract) 'name')
-          :: nope. send error indicating path doesn't exist in payload
-          (send-channel-error s+'error: name attribute required')
-
-        =/  booth-key  (so:dejs:format (~(got by contract) 'booth'))
-        =/  proposal-key  (so:dejs:format (~(got by contract) 'name'))
-
-        =/  booth-proposals  (~(get by proposals.state) booth-key)
-        =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
-
-        =/  proposal  (~(get by booth-proposals) proposal-key)
-
-        =/  proposal
-              ?~  proposal
-                 ~
-              ((om json):dejs:format (need proposal))
-
-        =/  content
-          ?.  (~(has by contract) 'content')
-              ~
-            ((om json):dejs:format (~(got by contract) 'content'))
-
-        =/  updated-proposal  (~(gas by proposal) ~(tap by content))
-        =/  updated-booth-proposals  (~(gas by booth-proposals) ~(tap by updated-proposal))
-
-        :_  state(proposals (~(put by proposals) booth-key updated-booth-proposals))
-
-        :~  [%give %fact ~[/updates] %json !>(s+'proposal saved')]
-        ==
-
-      ::  ARM:  delete-proposal
-      ::  @author:  ~lodlev-migdev
-      ::    Delete proposal from proposal store
-      :: {
-      ::   action: string, // delete-proposal
-      ::   booth:  string, // booth name
-      ::   name:   string, // proposal name
-      :: }
-      ++  delete-proposal
-        |=  [contract=(map @t json)]
-
-        ::  does the path key exist in the payload
-        ?.  (~(has by contract) 'booth')
-          :: nope. send error indicating path doesn't exist in payload
-          (send-channel-error s+'error: booth attribute required')
-
-        ::  does the path key exist in the payload
-        ?.  (~(has by contract) 'name')
-          :: nope. send error indicating path doesn't exist in payload
-          (send-channel-error s+'error: name attribute required')
-
-        =/  booth-key  (so:dejs:format (~(got by contract) 'booth'))
-        =/  proposal-key  (so:dejs:format (~(got by contract) 'name'))
-
-        =/  booth-proposals  (~(get by proposals.state) booth-key)
-        =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
-
-        =/  booth-proposals  (~(del by booth-proposals) proposal-key)
-
-        :_  state(proposals (~(put by proposals.state) booth-key booth-proposals))
-
-        :~  [%give %fact ~[/booths] %json !>(s+'proposal deleted')]
-        ==
-
-      ::  ARM:  delete-participant
-      ::  @author:  ~lodlev-migdev
-      ::    Delete participant from participant store
-      :: {
-      ::   action: string, // delete-participant
-      ::   booth:  string, // booth name
-      ::   name:   string, // participant name
-      :: }
-      ++  delete-participant
-        |=  [contract=(map @t json)]
-
-        ::  does the path key exist in the payload
-        ?.  (~(has by contract) 'booth')
-          :: nope. send error indicating path doesn't exist in payload
-          (send-channel-error s+'error: booth attribute required')
-
-        ::  does the path key exist in the payload
-        ?.  (~(has by contract) 'name')
-          :: nope. send error indicating path doesn't exist in payload
-          (send-channel-error s+'error: name attribute required')
-
-        =/  booth-key  (so:dejs:format (~(got by contract) 'booth'))
-        =/  participant-key  (so:dejs:format (~(got by contract) 'name'))
-
-        =/  booth-participants  (~(get by participants.state) booth-key)
-        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
-
-        =/  booth-participants  (~(del by booth-participants) participant-key)
-
-        :_  state(participants (~(put by participants.state) booth-key booth-participants))
-
-        :~  [%give %fact ~[/booths] %json !>(s+'participant deleted')]
-        ==
-
-      ++  handle-join-response
-        |=  [contract=(map @t json)]
-
-        =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-
-        ::  rewrite action back to original requesting action of 'join'
-        =/  contract  (~(put by contract) 'action' s+'join')
-
-        :: the join succeeded. the response will have the booth in the data element
-        ::  use that to commit the booth to our local store
-        =/  booth-key  (so:dejs:format (~(got by contract) 'key'))
-        =/  booth  (~(got by contract) 'data')
-
-        ::  send good news out to all this booth's subscribers
-        :: =/  booth-ship  `@p`(slav %p booth-key)
-        :: =/  destpath=path  `path`/booths
-        :_  state(booths (~(put by booths.state) booth-key booth))
-        :~  [%give %fact [/booths]~ %json !>([%o contract])]
-        ==
-
-      ::  ARM:  invite-participant
-      ::  @author:  ~lodlev-migdev
-      ::    Invite a participant (e.g. ship) to a booth
-      :: {
-      ::   action: string, // join
-      ::   resource: string, // 'booth'
-      ::   key: string, // booth key
-      :: }
-      ++  handle-join-booth
-        |=  [data=(map @t json)]
-
-        =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-
-        ::=/  requesting-ship=@p  `@p`(slav %p src.bowl)
-        ::  send out notifications to all subscribers of this booth
-        =/  destpath=path  `path`/booths/(scot %p src.bowl)
-
-        ::  extract booth key (resource key) from the poke data
-        =/  booth-key  (so:dejs:format (~(got by data) 'key'))
-
-        ~&  >>  "fetching booth {<booth-key>}..."
-        ::  ensure the booth exists
-        =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  !!  :: crash if booth not found
-        =/  booth  ((om json):dejs:format (need booth))
-
-        ::  is the booth 'invite-only' or public?
-        =/  booth-policy  (~(get by booth) 'policy')
-        ?~  booth-policy  !!
-        =/  booth-policy  (so:dejs:format (need booth-policy))
-
-        =/  allow
-              ?+  booth-policy  %.n
-
-                %invite-only
-                  =/  inv  (~(get by invitations.state) booth-key)
-                  =/  inv  ?~(inv ~ (need inv))
-                  :: =/  requesting-ship  `@p`(slav %p src.bowl)
-
-                  ?:((~(has in inv) src.bowl) %.y %.n)
-
-                %public
-                  %.y
-
-              ==
-
-        ::  send nack on booth policy violation
-        ?.  allow
-          =/  err=(list tank)  :~  'booth policy violation. must receive invite.'  ==
-          =/  msg=(unit tang)  (some err)
-          ~&  >>  "booth policy violation. invite-only {<msg>}"
-          :_  state
-          :~  [%give %poke-ack msg]
-          ==
-
-        ::=/  booth-data  ((om json):dejs:format (~(got by contract) 'data'))
-        ::  attempt to get booth participants
-        =/  booth-participants  (~(get by participants.state) booth-key)
-        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
-
-        ::  make participant name from the calling ship's identity
-        =/  participant-name  (crip "{<src.bowl>}")
-        ::  crash if participant already exists
-        ?:  (~(has by booth-participants) participant-name)
-              (send-nack destpath data)
-
-        =/  participant
-              %-  pairs:enjs:format
-              :~
-                  ['name' s+participant-name]
-                  ['created' s+timestamp]
-              ==
-        ::  add the participant
-        =/  booth-participants  (~(put by booth-participants) participant-name participant)
-
-        ~&  >>  "{<destpath>} committing changes and returning..."
-        =/  data  (~(put by data) 'action' s+'join-response')
-        =/  data  (~(put by data) 'data' [%o booth])
-        :: commit changes to participant store
-        :_  state(participants (~(put by participants.state) booth-key booth-participants))
-        :: send the response back via Eyre
-        :~  [%pass destpath %agent [src.bowl %ballot] %poke %json !>([%o data])]
-        ==
-
-      ::  ARM:  invite-participant
-      ::  @author:  ~lodlev-migdev
-      ::    Adds the participant to the local store
-      ++  handle-invite-participant
-        |=  [booth-key=@t contract=(map @t json)]
-
-        ::  does the booth exist in the payload
-        ?.  (~(has by contract) 'key')  !!  ::  participant key required
-
-        =/  participant-key  (so:dejs:format (~(got by contract) 'key'))
-
-        ::  only support ship invites currently
-        =/  participant-ship  `(unit @p)`((slat %p) participant-key)
-        ?~  participant-ship  !!  :: only ship invites
-        =/  participant-ship=ship  (need participant-ship)
-
-        =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  !!  :: booth must exist
-        =/  booth-participants  (~(get by participants.state) booth-key)
-        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
-
-        =/  participant  (~(get by booth-participants) participant-key)
-
-        =/  participant
-              ?~  participant
-                 ~
-              ((om json):dejs:format (need participant))
-
-        ::  update participant record to indicated invited
-        =/  participant-updates=json
-        %-  pairs:enjs:format
-        :~
-          ['name' s+participant-key]
-          ['status' s+'invited']
-        ==
-        ::  convert to (map @t json)
-        =/  participant-updates  ((om json):dejs:format participant-updates)
-
-        ::  apply updates to participant by overlaying updates map
-        =/  participant  (~(gas by participant) ~(tap by participant-updates))
-
-        ::  stuff the updated participant data back into the resource action to be
-        ::   sent to remote ship and to subscribers
-        =/  contract  (~(put by contract) 'data' [%o participant])
-
-        ::  save the updated partcipant to the participants map
-        =/  booth-participants  (~(put by booth-participants) participant-key [%o participant])
-
-        ::  commit changes to the store
-        :_  state(participants (~(put by participants.state) booth-key booth-participants))
-
-            :: send message out to client that send poke
-        :~  [%give %fact ~[/updates] %participant-invited !>(contract)]
-        ==
-
-      ::  ARM:  receive-invitation
-      ::  @author:  ~lodlev-migdev
-      ::    When a ship hosting a booth adds a participant, a %json poke
-      ::      with an action of 'receive-invitation' is sent to the participant's ship.
-      ::    This is where that poke is handled.
-      ::    Here we:
-      ::      * Add the booth to our local ship's booth store
-      ::      * Add a "remote": true attribute
-      ::      * Add a "status": 'invited' attribute
-      ::      * Add the booth object to our local store
-      :: {
-      ::   action: string, // receive-invitation
-      ::   booth: json,    // booth object
-      :: }
-      ::  TODO:  better error handling???
-      ++  receive-invitation
-        |=  [contract=(map @t json)]
-
-        :: ::  does the booth exist in the payload
-        ?.  (~(has by contract) 'booth')
-          ~&  >>>  'ballot: [receive-invitation] error: booth attribute required'
-          `state
-
-        =/  remote-booth  ((om json):dejs:format (~(got by contract) 'booth'))
-        =/  remote-booth-key  (so:dejs:format (~(got by remote-booth) 'key'))
-        =/  remote-booth-owner  (so:dejs:format (~(got by remote-booth) 'owner'))
-        =/  remote-booth-ship  `@p`(slav %p remote-booth-owner)
-
-        =/  local-ship-booth  remote-booth
-        =/  local-ship-booth  (~(put by local-ship-booth) 'remote' b+%.y)
-        =/  local-ship-booth  (~(put by local-ship-booth) 'status' s+'invited')
-
-        `state(booths (~(put by booths.state) remote-booth-key [%o local-ship-booth]))
-
-      :: ******************************************************
-      ::  REST API implementation
-      ::
-
-      ::  ARM: ++  send-error
-      ::  ~lodlev-migdev - send a 500 as plain text content back to the
-      ::    calling client. The second argument is the body/payload
-      ::    as a plain text string (@t).
-      ++  send-error
-        |=  [req=(pair @ta inbound-request:eyre) msg=@t]
-          =/  data=octs
-            (as-octs:mimes:html msg)
-          =/  =response-header:http
-            :-  500
-            :~  ['Content-Type' 'text/plain']
-            ==
-          :_  state
-          :~
-            [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-            [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-            [%give %kick [/http-response/[p.req]]~ ~]
-          ==
-
-      ++  null-map
-        |=  [~]
-        ^-  (map @t json)
-        ~
       ::  ARM:  extract-payload
       ::    Takes in an inbound http request, and extracts the metadata/header
       ::     and data portions of the payload and returns then as (map @t json).
@@ -1045,7 +293,6 @@
         ::  variable to convert $json (payload) as map : key => json pairs
         ((om json):dejs:format payload)
 
-      ::  if we get this, bad news we've been kicked from the booth
       ++  delete-participant-wire
         |=  [payload=(map @t json)]
 
@@ -1177,15 +424,15 @@
         ==
 
       ++  cast-vote-wire
-        |=  [contract=(map @t json)]
+        |=  [payload=(map @t json)]
 
-        =/  context  ((om json):dejs:format (~(got by contract) 'context'))
+        =/  context  ((om json):dejs:format (~(got by payload) 'context'))
 
         =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
         =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
         =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
 
-        =/  vote  ((om json):dejs:format (~(got by contract) 'data'))
+        =/  vote  ((om json):dejs:format (~(got by payload) 'data'))
         =/  vote  (~(put by vote) 'status' s+'recorded')
 
         =/  booth-proposals  (~(get by votes.state) booth-key)
@@ -1203,7 +450,7 @@
         =/  proposal-votes  (~(put by proposal-votes) participant-key [%o participant-vote])
         =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal-votes])
 
-        =/  vote-update  (~(put by contract) 'data' [%o vote])
+        =/  vote-update  (~(put by payload) 'data' [%o vote])
 
         =/  vote-effect=json
         %-  pairs:enjs:format
@@ -1231,13 +478,10 @@
             [%give %fact [booth-path]~ %json !>([%o vote-update])]
         ==
 
-      ::  ARM:  ++  invite-accepted-wire
-      ::   Sent by a remote ship when they've accepted an invite we sent to them
-      ::     at an earlier time.
-      ++  invite-accepted-wire
-        |=  [contract=(map @t json)]
+      ++  accept-wire
+        |=  [payload=(map @t json)]
 
-        =/  context  ((om json):dejs:format (~(got by contract) 'context'))
+        =/  context  ((om json):dejs:format (~(got by payload) 'context'))
         ::  grab the booth key from the action payload
         =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
         =/  booth  ((om json):dejs:format (~(got by booths.state) booth-key))
@@ -1255,7 +499,7 @@
         ::    invite them first
         =/  participant
               ?:  =(booth-type 'group')
-                ((om json):dejs:format (~(got by contract) 'data'))
+                ((om json):dejs:format (~(got by payload) 'data'))
               ::  get the participant from the booth participant list
               =/  participant  (~(get by booth-participants) booth-key)
               =/  participant  ?~(participant ~ ((om json):dejs:format (need participant)))
@@ -1290,16 +534,16 @@
           ['effects' [%a [participant-effect]~]]
         ==
 
-        ~&  >>  "invite-accepted-wire: {<our.bowl>} {<src.bowl>}"
+        ~&  >>  "accept-wire: {<our.bowl>} {<src.bowl>}"
 
         :_  state(participants (~(put by participants.state) booth-key booth-participants))
         :~  [%give %fact [/booths]~ %json !>(effects)]
         ==
 
-      ++  invite-participant-wire-response
-        |=  [contract=(map @t json)]
+      ++  invite-wire-response
+        |=  [payload=(map @t json)]
 
-        =/  context  ((om json):dejs:format (~(got by contract) 'context'))
+        =/  context  ((om json):dejs:format (~(got by payload) 'context'))
         =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
         =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
 
@@ -1331,13 +575,13 @@
           ['effects' [%a [participant-effect]~]]
         ==
 
-        ~&  >>  "invite-participant-wire-response: {<our.bowl>} {<src.bowl>}"
+        ~&  >>  "invite-wire-response: {<our.bowl>} {<src.bowl>}"
 
         :_  state(participants (~(put by participants.state) booth-key booth-participants))
         :~  [%give %fact [/booths]~ %json !>(effects)]
         ==
 
-      ++  invite-participant-wire
+      ++  invite-wire
         |=  [payload=(map @t json)]
 
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
@@ -1378,7 +622,7 @@
           ['effects' [%a [booth-effect]~]]
         ==
 
-        ~&  >>  "invite-participant-wire: {<our.bowl>} poking {<src.bowl>}"
+        ~&  >>  "invite-wire: {<our.bowl>} poking {<src.bowl>}"
 
         =/  destpath=path  `path`/booths/(scot %p src.bowl)/(scot %tas mq-key)
 
@@ -1412,11 +656,11 @@
         ^-  (quip card _state)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-error req 'missing context')
+        ?~  context  (send-api-error req 'missing context')
         =/  context  ((om json):dejs:format (need context))
 
         =/  participant-key  (~(get by context) 'participant')
-        ?~  participant-key  (send-error req 'missing context key. participant key')
+        ?~  participant-key  (send-api-error req 'missing context key. participant key')
         =/  participant-key  (so:dejs:format (need participant-key))
 
         ~&  >>  "deleting participant {<booth-key>}, {<participant-key>}"
@@ -1495,11 +739,11 @@
         ^-  (quip card _state)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-error req 'missing context')
+        ?~  context  (send-api-error req 'missing context')
         =/  context  ((om json):dejs:format (need context))
 
         =/  proposal-key  (~(get by context) 'proposal')
-        ?~  proposal-key  (send-error req 'missing context key. proposal key')
+        ?~  proposal-key  (send-api-error req 'missing context key. proposal key')
         =/  proposal-key  (so:dejs:format (need proposal-key))
 
         ~&  >>  "deleting proposal {<booth-key>}, {<proposal-key>}"
@@ -1562,24 +806,16 @@
           [%give %fact [remote-agent-wire]~ %json !>([%o payload])]
         ==
 
-      ::  ARM:  ++  save-proposal-api
-      ::
-      ::   Steps:
-      ::
-      ::      1) add/update proposal on booth
-      ::      2) respond to POST w/ 200 updated payload (see #1)
-      ::      3) poke booth host w/ 'invite-accepted' action
-      ::
       ++  save-proposal-api
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
         ^-  (quip card _state)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-error req 'missing context element')
+        ?~  context  (send-api-error req 'missing context element')
         =/  context  ((om json):dejs:format (need context))
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-error req 'context missing booth')
+        ?~  booth-key  (send-api-error req 'context missing booth')
         =/  booth-key  (so:dejs:format (need booth-key))
         =/  data  (~(get by payload) 'data')
         =/  data  ?~(data ~ ((om json):dejs:format (need data)))
@@ -1655,30 +891,22 @@
           [%give %fact [remote-agent-wire]~ %json !>([%o wire-payload])]
         ==
 
-      ::  ARM:  ++  accept-invite-api
-      ::
-      ::   Steps:
-      ::
-      ::      1) set payload.data.status to 'waiting'
-      ::      2) respond to POST w/ 200 updated payload (see #1)
-      ::      3) poke booth host w/ 'invite-accepted' action
-      ::
-      ++  accept-invite-api
+      ++  accept-api
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json) booth-key=@t]
         ^-  (quip card _state)
 
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-error req 'missing context')
+        ?~  context  (send-api-error req 'missing context')
         =/  context  ((om json):dejs:format (need context))
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-error req 'missing booth key')
+        ?~  booth-key  (send-api-error req 'missing booth key')
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  (send-error req 'booth not found in store')
+        ?~  booth  (send-api-error req 'booth not found in store')
 
         =/  booth  ((om json):dejs:format (need booth))
         =/  booth  (~(put by booth) 'status' s+'pending')
@@ -1824,13 +1052,13 @@
         =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-error req 'missing context')
+        ?~  context  (send-api-error req 'missing context')
         =/  context  ((om json):dejs:format (need context))
         =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
         =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
 
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  (send-error req 'booth not found in store')
+        ?~  booth  (send-api-error req 'booth not found in store')
 
         =/  booth  ((om json):dejs:format (need booth))
 
@@ -1849,11 +1077,11 @@
         =/  participant-key  (crip "{<our.bowl>}")
         =/  participant-vote  (~(get by proposal-votes) participant-key)
         ?.  =(participant-vote ~)
-              (send-error req 'participant vote already cast')
+              (send-api-error req 'participant vote already cast')
 
         =/  payload-data  (~(get by payload) 'data')
         ?~  payload-data
-              (send-error req 'missing data')
+              (send-api-error req 'missing data')
 
         =/  payload-data  ((om json):dejs:format (need payload-data))
 
@@ -1940,18 +1168,18 @@
 
         [effects]
 
-      ++  invite-participant-api
+      ++  invite-api
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json) booth-key=@t]
         ^-  (quip card _state)
 
         =/  context  (~(get by payload) 'context')
         =/  context  ?~(context ~ ((om json):dejs:format (need context)))
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-error req 'bad context. booth missing.')
+        ?~  booth-key  (send-api-error req 'bad context. booth missing.')
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  participant-key  (~(get by context) 'participant')
-        ?~  participant-key  (send-error req 'bad data. key missing')
+        ?~  participant-key  (send-api-error req 'bad data. key missing')
         =/  participant-key  (so:dejs:format (need participant-key))
 
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
@@ -2032,7 +1260,7 @@
         =.  payload-data  (~(put by payload-data) 'booth' booth)
         =/  wire-payload  (~(put by payload) 'data' [%o payload-data])
 
-        ~&  >>  "invite-participant-api: {<our.bowl>} poking {<participant-ship>}"
+        ~&  >>  "invite-api: {<our.bowl>} poking {<participant-ship>}"
 
         ::  commit the changes to the store
         :_  state(mq mq, participants (~(put by participants.state) booth-key booth-participants))
@@ -2044,669 +1272,13 @@
           [%give %fact [/booths]~ %json !>(updates)]
           [%pass destpath %agent [participant-ship %ballot] %poke %json !>([%o wire-payload])]
         ==
-
-      ++  join-remote-booth
-        |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
-        ^-  (quip card _state)
-
-        =/  resource-key  (so:dejs:format (~(got by payload) 'key'))
-        =/  remote-booth-ship=@p  `@p`(slav %p resource-key)
-        =/  destpath=path  `path`/booths/(scot %p remote-booth-ship)
-
-        =/  timestamp  (en-json:html (time:enjs:format now.bowl))
-        =/  mq-key  (crip (weld "msg-" timestamp))
-        =/  mq  (~(put by mq.state) mq-key [%o payload])
-
-        ::=/  requesting-ship=@p  `@p`(slav %p src.bowl)
-        ::  send out notifications to all subscribers of this booth
-        =/  destpath=path  `path`/booths/(scot %p src.bowl)/(scot %tas mq-key)
-
-        ::  create the response
-        =/  =response-header:http
-          :-  200
-          :~  ['Content-Type' 'text/plain']
-          ==
-
-        =/  response  (~(put by payload) 'reaction' s+'ack')
-
-        ::  encode the proposal as a json string
-        =/  body  (crip (en-json:html [%o response]))
-
-        ::  convert the string to a form that arvo will understand
-        =/  data=octs
-              (as-octs:mimes:html body)
-
-        ::  commit the changes to the booth store
-        :_  state(mq mq)
-
-        :~
-          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-          [%give %kick [/http-response/[p.req]]~ ~]
-          :: [%pass destpath %agent [remote-booth-ship %ballot] %watch destpath]
-          [%pass destpath %agent [remote-booth-ship %ballot] %poke %json !>([%o payload])]
-        ==
-
-      ++  add-booth
-        |=  [data=(map @t json)]
-        ^-  [key=@t json]
-
-        =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-        =/  booth-key  (crip (weld "booth-" (trip timestamp)))
-        =/  booth  (~(get by booths.state) booth-key)
-        ?:  ?~  booth  %.y  %.n  ~|('booth exists' !!)
-
-        =/  new-booth=json
-        %-  pairs:enjs:format
-        :~
-          ['key' s+booth-key]
-          ['type' s+'ship']
-          ['image' ~]
-          ['owner' s+(crip "{<our.bowl>}")]
-          ['created' s+timestamp]
-          ['policy' s+'invite-only']
-        ==
-
-        =/  new-booth=(map @t json)  ((om json):dejs:format new-booth)
-        =/  new-booth  (~(gas by new-booth) ~(tap by data))
-
-        [booth-key [%o new-booth]]
-
-      ++  update-booth
-        |=  [key=@t data=(map @t json)]
-        ^-  [key=@t json]
-
-        =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-        =/  booth  (~(get by booths.state) key)
-        ?:  ?~  booth  %.y  %.n  ~|('booth exists' !!)
-        =/  booth  ((om json):dejs:format (need booth))
-        =/  booth  (~(put by booth) 'updated' s+timestamp)
-        =/  booth  (~(gas by booth) ~(tap by data))
-
-        [key [%o booth]]
-
-
-      ++  handle-save-booth
-        |=  [req=(pair @ta inbound-request:eyre) args=(map @t @t) key=@]
-        ^-  (quip card _state)
-
-        =/  payload  (extract-payload req)
-
-        =/  booth  ?~  key  (add-booth payload)  (update-booth `@t`key payload)
-
-        ::  encode the proposal as a json string
-        =/  body  (crip (en-json:html +.booth))
-
-        ::  convert the string to a form that arvo will understand
-        =/  data=octs
-              (as-octs:mimes:html body)
-
-        ::  create the response
-        =/  =response-header:http
-          :-  200
-          :~  ['Content-Type' 'application/json']
-          ==
-
-        :: =/  booth-ship=@p  `@p`(slav %p booth-key)
-        :: ::  send out notifications to all subscribers of this booth
-        :: =/  dest-path=path  `path`/booths/(scot %p booth-ship)
-
-        ::  commit updates to the proposals store
-        :_  state(booths (~(put by booths.state) -.booth +.booth))
-        :~
-          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-          [%give %kick [/http-response/[p.req]]~ ~]
-          :: [%give %fact ~[dest-path] %json !>(notification)]
-        ==
-
-      ::  ARM: ++  handle-put-booth
-      ::    payload = {
-      ::      action: "create | update | delete | join | leave",
-      ::      resource: "booth",
-      ::      key: "<booth-key>" | null,  e.g. ~zod | ~bus .. or null when action is create
-      ::      data: {
-      ::        // anything
-      ::      },
-      ::    };
-
-      ++  handle-save-proposal
-        |=  [req=(pair @ta inbound-request:eyre) args=(map @t @t) booth-key=@t pk=@]
-        ^-  (quip card _state)
-
-        =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-
-        :: if key is null (~), create new booth key; otherwise update
-        ::   the booth with the specified key
-        =/  proposal-key=@t
-              ?~  pk
-                (crip (weld "proposal-" (trip timestamp)))
-              pk
-
-        =/  til=octs
-              (tail body.request.q.req)
-
-        ::  variable to hold request body (as $json)
-        =/  payload=json  (need (de-json:html q.til))
-
-        :: ::  variable to convert $json (payload) as map : key => json pairs
-        =/  contract  ((om json):dejs:format payload)
-
-        ::  does the title key exist in the payload
-        ?.  (~(has by contract) 'title')
-          :: nope. send error indicating name doesn't exist in payload
-          (send-error req 'error: title attribute required')
-
-        ::  extract the name (s+json) as @t
-        =/  proposal-title  (so:dejs:format (~(got by contract) 'title'))
-
-        :: does the booth exist? check agains the booth store.
-        =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth
-          (send-error req 'booth not found')
-
-        ::  get a unit that contains the proposals map
-        =/  proposals  (~(get by proposals.state) booth-key)
-        ::  extract the proposals map from the unit (or null)
-        =/  proposals=(map @t json)
-              ?~  proposals
-                ~
-              (need proposals)
-
-        ::  get the proposal (unit) from the booth's proposal store
-        =/  proposal  (~(get by proposals) proposal-key)
-        ::  extract the actual proposal (json) from the unit (or null)
-        =/  proposal=json
-            ?~  proposal
-              [%o ~]
-            (need proposal)
-
-        ::  convert the proposal json to (map @t json)
-        =/  proposal  ((om json):dejs:format proposal)
-        ::  merge the incoming changes into the proposal
-        =/  proposal  (~(gas by proposal) ~(tap by contract))
-
-        =/  proposal  (~(put by proposal) 'key' s+proposal-key)
-
-        ::  if creating a new booth, tag it with some default info; otherwise
-        ::    add an updated timestamp to the booth
-        =/  proposal-meta
-              ?~  pk
-                %-  pairs:enjs:format
-                :~
-                  ['image' ~]
-                  ['owner' s+(crip "{<our.bowl>}")]
-                  ['created' s+timestamp]
-                ==
-              %-  pairs:enjs:format
-              :~
-                ['updated' s+timestamp]
-              ==
-
-        ::  merge booth metadata updates
-        =/  proposal  (~(gas by proposal) ~(tap by ((om json):dejs:format proposal-meta)))
-
-        ::  convert the proposal back to json
-        =/  proposal  [%o proposal]
-        ::  save the changes back to the proposals map
-        =/  proposals  (~(put by proposals) proposal-key proposal)
-
-        ::  encode the proposal as a json string
-        =/  body  (crip (en-json:html proposal))
-
-        ::  convert the string to a form that arvo will understand
-        =/  data=octs
-              (as-octs:mimes:html body)
-
-        ::  create the response
-        =/  =response-header:http
-          :-  200
-          :~  ['Content-Type' 'application/json']
-          ==
-
-        =/  notification=json
-          ?~  pk
-            %-  pairs:enjs:format
-            :~
-              ['action' s+'proposal-created']
-              ['data' proposal]
-            ==
-          %-  pairs:enjs:format
-          :~
-            ['action' s+'proposal-updated']
-            ['data' proposal]
-          ==
-
-        =/  booth-ship=@p  `@p`(slav %p booth-key)
-        ::  send out notifications to all subscribers of this booth
-        =/  dest-path=path  `path`/booths/(scot %p booth-ship)
-
-        ::  commit updates to the proposals store
-        :_  state(proposals (~(put by proposals.state) booth-key proposals))
-        :~
-          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-          [%give %kick [/http-response/[p.req]]~ ~]
-          [%give %fact ~[dest-path] %json !>(notification)]
-        ==
-
-      ::  ARM: ++  handle-delete-booth
-      ++  handle-delete-booth
-        |=  [req=(pair @ta inbound-request:eyre) args=(map @t @t) booth-key=@t]
-        ^-  (quip card _state)
-
-        =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-
-        ::  encode the proposal as a json string
-        =/  body  (crip (en-json:html s+booth-key))
-
-        ::  convert the string to a form that arvo will understand
-        =/  data=octs
-              (as-octs:mimes:html body)
-
-        ::  create the response
-        =/  =response-header:http
-          :-  200
-          :~  ['Content-Type' 'application/json']
-          ==
-
-        ::  commit the changes to the booth store
-        :_  state(booths (~(del by booths.state) booth-key))
-
-        :~
-          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-          [%give %kick [/http-response/[p.req]]~ ~]
-        ==
-
-      ++  handle-delete-proposal
-        |=  [req=(pair @ta inbound-request:eyre) args=(map @t @t) booth-key=@ proposal-key=@]
-        ^-  (quip card _state)
-
-        :: does the booth exist? check agains the booth store.
-        =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth
-          (send-error req 'booth not found')
-
-        ::  retrieve proposals from the store (as unit)
-        =/  proposals  (~(get by proposals.state) booth-key)
-        ::  convert the unit to proposals map
-        =/  proposals=(map @t json)
-              ?~  proposals
-                ~
-              (need proposals)
-
-        ::  remove the proposal from the proposals map
-        =/  proposals  (~(del by proposals) proposal-key)
-
-        ::  convert the string to a form that arvo will understand
-        =/  data=octs
-              (as-octs:mimes:html 'proposal deleted')
-
-        ::  create the response
-        =/  =response-header:http
-          :-  200
-          :~  ['Content-Type' 'text/plain']
-          ==
-
-        ::  commit the changes to the store
-        :_  state(proposals (~(put by proposals.state) booth-key proposals))
-
-        :~
-          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-          [%give %kick [/http-response/[p.req]]~ ~]
-        ==
-
-      ++  handle-resource-action
-        |=  [req=(pair @ta inbound-request:eyre) args=(map @t @t) booth-key=@]
-        ^-  (quip card _state)
-
-        ::  all POST payloads are action contracts (see ARM comments)
-        =/  payload  (extract-payload req)
-
-        ::  booth actions require custom data (additional attributes/elements)
-        :: ?.  (~(has by payload) 'data')
-        ::   ~&  >>>  "ballot: handle-put-booth http request payload data not found"
-        ::   `state
-
-        =/  context  ((om json):dejs:format (~(got by payload) 'context'))
-        =/  action  (so:dejs:format (~(got by payload) 'action'))
-        =/  resource  (so:dejs:format (~(got by payload) 'resource'))
-
-        ?+  [resource action]  `state
-
-              [%booth %join]
-                =/  key  (so:dejs:format (~(got by context) 'booth'))
-                %-  (slog leaf+"ballot: join {<resource>}, {<key>}..." ~)
-                (join-remote-booth req payload)
-
-              [%booth %invite]
-                =/  key  (so:dejs:format (~(got by context) 'booth'))
-                %-  (slog leaf+"ballot: invite {<key>}..." ~)
-                (invite-participant-api req payload key)
-
-              [%booth %accept]
-                =/  key  (so:dejs:format (~(got by context) 'booth'))
-                %-  (slog leaf+"ballot: accept {<key>}..." ~)
-                (accept-invite-api req payload key)
-
-              [%proposal %save-proposal]
-                =/  key  (so:dejs:format (~(got by context) 'booth'))
-                %-  (slog leaf+"ballot: save-proposal {<key>}..." ~)
-                (save-proposal-api req payload)
-
-              [%proposal %delete-proposal]
-                =/  key  (so:dejs:format (~(got by context) 'booth'))
-                %-  (slog leaf+"ballot: delete-proposal {<key>}..." ~)
-                (delete-proposal-api req payload booth-key)
-
-              [%proposal %cast-vote]
-                %-  (slog leaf+"ballot: cast-vote received over http..." ~)
-                (cast-vote-api req payload)
-
-              [%participant %delete-participant]
-                =/  key  (so:dejs:format (~(got by context) 'booth'))
-                %-  (slog leaf+"ballot: delete-participant {<key>}..." ~)
-                (delete-participant-api req payload booth-key)
-
-        ==
-
-      ++  handle-save-participant
-        |=  [req=(pair @ta inbound-request:eyre) args=(map @t @t) booth-key=@t pk=@]
-        ^-  (quip card _state)
-
-        ::  can only save participant data (e.g. invite) from our own ship
-        ?.  =(our.bowl src.bowl)
-          (send-error req 'remote participant operations not allowed')
-
-        =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-
-        =/  til=octs
-              (tail body.request.q.req)
-
-        ::  variable to hold request body (as $json)
-        =/  payload=json  (need (de-json:html q.til))
-
-        :: ::  variable to convert $json (payload) as map : key => json pairs
-        =/  contract  ((om json):dejs:format payload)
-
-        ::  does the name exist in the payload
-        ?.  (~(has by contract) 'name')
-          :: nope. send error indicating name doesn't exist in payload
-          (send-error req 'error: name attribute required')
-
-        ::  convert the name (s+json) to @t
-        =/  participant-name  (so:dejs:format (~(got by contract) 'name'))
-
-        :: does the booth exist? check agains the booth store.
-        =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth
-          (send-error req 'booth not found')
-
-        =/  booth  (need booth)
-
-        ::  retrieve the participants (unit) from the store
-        =/  participants  (~(get by participants.state) booth-key)
-        ::  extract the participants map from the unit (or null)
-        =/  participants=(map @t json)
-              ?~  participants
-                ~
-              (need participants)
-
-        ::  if a participant key was supplied in the URL, but not found in the participant list
-        ::    you can't update
-        ?:  ?&  !=(pk ~)
-                !(~(has by participants) pk)
-            ==
-            (send-error req 'error: participant not found')
-
-        :: if key is null (~), create new booth key; otherwise update
-        ::   the participant with the specified key
-        =/  participant-key
-              ?~  pk
-                 participant-name
-              `@t`pk
-
-        ::  if we're attempting to create a participant record,
-        ::   but the participant already exists by name, error
-        ?:  ?&  =(pk ~)
-                (~(has by participants) participant-name)
-            ==
-            (send-error req 'error: participant exists by name')
-
-        ?.  =(participant-key participant-name)
-              (send-error req 'error: name changes not allowed')
-
-        ::  retrieve the participant (unit) from the participants map
-        =/  participant  (~(get by participants) participant-key)
-
-        ::  extract the participant json from the unit
-        =/  participant=json
-            ?~  participant
-              [%o ~]
-            (need participant)
-
-        ::  convert the participant (json) to (map @t json)
-        =/  participant  ((om json):dejs:format participant)
-        ::  merge the existing participant map with the incoming changes
-        =/  participant  (~(gas by participant) ~(tap by contract))
-
-        =/  participant  (~(put by participant) 'key' s+participant-key)
-
-        ::  if creating a new booth, tag it with some default info; otherwise
-        ::    add an updated timestamp to the booth
-        =/  participant-meta
-              ?~  pk
-                %-  pairs:enjs:format
-                :~
-                  ['image' ~]
-                  ['status' s+'invited']
-                  ['owner' s+(crip "{<our.bowl>}")]
-                  ['created' s+timestamp]
-                ==
-              %-  pairs:enjs:format
-              :~
-                ['updated' s+timestamp]
-              ==
-
-        ::  merge booth metadata updates
-        =/  participant  (~(gas by participant) ~(tap by ((om json):dejs:format participant-meta)))
-
-        ::  convert the participant back to json
-        =/  participant  [%o participant]
-        ::  save the changes to the participants map
-        =/  participants  (~(put by participants) participant-key participant)
-
-        ::  encode the participant as json string
-        =/  body  (crip (en-json:html participant))
-
-        ::  convert the string to a form that arvo will understand
-        =/  data=octs
-              (as-octs:mimes:html body)
-
-        ::  create the response
-        =/  =response-header:http
-          :-  200
-          :~  ['Content-Type' 'application/json']
-          ==
-
-        =/  booth-ship=@p  `@p`(slav %p booth-key)
-        ::  send out notifications to all subscribers of this booth
-        =/  dest-path=path  `path`/booths/(scot %p booth-ship)
-        ::  build notification w/ 'participant-added' action to dispatch
-        ::   to all subscribers. include participant information.
-        =/  notification
-          %-  pairs:enjs:format
-          :~
-            ['action' s+'participant-added']
-            ['participant' participant]
-          ==
-
-        =/  effects=(list card)
-              :*
-                [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-                [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-                [%give %kick [/http-response/[p.req]]~ ~]
-                [%give %fact ~[dest-path] %json !>(notification)]
-                ~
-              ==
-
-        ::  poke participant ship to join this booth
-        =/  participant-ship=@p  `@p`(slav %p participant-name)
-
-        =/  effects
-              ?~  pk
-                =/  notification
-                  %-  pairs:enjs:format
-                  :~
-                    ['action' s+'receive-invitation']
-                    ['booth' booth]
-                  ==
-                (snoc effects [%pass /ballot %agent [participant-ship %ballot] %poke %json !>(notification)])
-              effects
-
-        :: ~&  >>  effects
-
-        ::  commit updates to the store
-        :_  state(participants (~(put by participants.state) booth-key participants))
-
-        [effects]
-        :: :~
-        ::   [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-        ::   [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-        ::   [%give %kick [/http-response/[p.req]]~ ~]
-        ::   ::  send out notifications to all subscribers of this booth
-        ::   [%give %fact ~[dest-path] %json !>(notification)]
-        :: ==
-
-      ++  handle-delete-participant
-        |=  [req=(pair @ta inbound-request:eyre) args=(map @t @t) booth-key=@ participant-key=@]
-        ^-  (quip card _state)
-
-        :: does the booth exist? check agains the booth store.
-        =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth
-          (send-error req 'booth not found')
-
-        ::  retrieve the participants (unit) from the store
-        =/  participants  (~(get by participants.state) booth-key)
-        ::  extract the participants map from the unit (or null)
-        =/  participants=(map @t json)
-              ?~  participants
-                ~
-              (need participants)
-
-        ::  remove the participant from the participants map
-        =/  participants  (~(del by participants) participant-key)
-
-        ::  convert the string to a form that arvo will understand
-        =/  data=octs
-              (as-octs:mimes:html 'participant deleted')
-
-        ::  create the response
-        =/  =response-header:http
-          :-  200
-          :~  ['Content-Type' 'text/plain']
-          ==
-
-        ::  commit the changes to the store
-        :_  state(participants (~(put by participants.state) booth-key participants))
-
-        :~
-          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-          [%give %kick [/http-response/[p.req]]~ ~]
-        ==
-
-      ++  handle-cast-vote
-        |=  [req=(pair @ta inbound-request:eyre) args=(map @t @t) booth-key=@ proposal-key=@]
-        ^-  (quip card _state)
-
-        =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth
-          (send-error req 'booth not found')
-
-        =/  booth  (need booth)
-        =/  booth  ((om json):dejs:format booth)
-
-        =/  booth-owner  (~(get by booth) 'owner')
-        ?~  booth-owner
-          (send-error req 'booth owner not found')
-
-        =/  booth-owner  (need booth-owner)
-        =/  booth-owner  `@p`(so:dejs:format booth-owner)
-
-        =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-
-        =/  til=octs
-              (tail body.request.q.req)
-
-        ::  variable to hold request body (as $json)
-        =/  payload=json  (need (de-json:html q.til))
-
-        :: ::  variable to convert $json (payload) as map : key => json pairs
-        =/  contract  ((om json):dejs:format payload)
-
-        ::  does the label key exist in the payload
-        ?.  (~(has by contract) 'label')
-          :: nope. send error indicating label doesn't exist in payload
-          (send-error req 'error: label attribute required')
-
-        ::  extract the name (s+json) as @t
-        =/  choice-label  (so:dejs:format (~(got by contract) 'label'))
-
-        =/  ball
-          %-  pairs:enjs:format
-          :~
-            ['booth' s+booth-key]
-            ['proposal' s+proposal-key]
-            ['participant' s+(crip "{<our.bowl>}")]
-            ['choice-label' s+choice-label]
-            ['caston' s+timestamp]
-          ==
-
-        ::  encode the vote record as a json string
-        =/  body  (crip (en-json:html s+'ballot sent'))
-
-        ::  convert the string to a form that arvo will understand
-        =/  data=octs
-              (as-octs:mimes:html body)
-
-        ::  create the response
-        =/  =response-header:http
-          :-  200
-          :~  ['Content-Type' 'application/json']
-          ==
-
-        :_  state
-
-        :~
-          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-          [%give %kick [/http-response/[p.req]]~ ~]
-          [%pass /ballot %agent [booth-owner %ballot] %poke %vote-cast !>(ball)]
-        ==
-
-      ::  END OF REST API
-      :: **********************************************
     --
 
-::  ARM:  on-watch
-::  @author:  ~lodlev-migdev
-::    Allow agents and calling clients (e.g. UI front-ends) to subscribe to
-::      various channels. Our ballot agent will write to these channels
-::      when voting related events occur (e.g. booth created).
 ++  on-watch
   |=  =path
   ^-  (quip card _this)
 
   ?+    path  (on-watch:def path)
-      ::  ~lodlev-migdev - allow external agents (including UI clients) to subscribe
-      ::    to the /contexts channel.
-      [%updates *]
-        ~&  >  "ballot: client subscribed to {(spud path)}."
-        `this
 
       [%booths ~]
         ?:  =(our.bowl src.bowl)
@@ -2714,11 +1286,6 @@
         ~&  >>  "remote ships not allowed to watch /booths"
         !!
 
-      :: crash on booth any of the following:
-      ::   !! booth not found in store
-      ::   !! booth not found in participants store
-      ::   !! participant not found in participants store
-      :: according to docs...
       ::    "The (unit tang) in the %watch-ack will be null if processing succeeded,
       ::       and non-null if it crashed, with a stack trace in the tang."
       ::  see:  https://urbit.org/docs/userspace/gall-guide/8-subscriptions
@@ -2774,12 +1341,6 @@
         :~  [%give %fact ~ %json !>(action-payload)]
         ==
 
-      ::  ~lodlev-migdev - allow external agents (including UI clients) to subscribe
-      ::    to the /notifications channel.
-      [%notifications *]
-        ~&  >  "ballot: client subscribed to {(spud path)}."
-        `this
-
       ::  ~lodlev-migdev - print message when eyre subscribes to our http-response path
       ::  TODO: Do not allow anything other than Eyre to suscribe to this path.
       [%http-response *]
@@ -2790,9 +1351,17 @@
 ::
 ++  on-leave  on-leave:def
 
+::
 ::  ARM:  on-peek
-::   Handle scry calls here
+::
+::   Scries
+::    examples:
+::
+::       -  ~/scry/ballot/booths
+::       -  ~/scry/ballot/booths/<key>/proposals
+::
 ::  reference: https://urbit-org-j1prh9inz-urbit.vercel.app/docs/userspace/gall-guide/10-scry
+::
 ++  on-peek
   |=  =path
   ^-  (unit (unit cage))
@@ -2808,21 +1377,13 @@
         ==
         ``json+!>(res)
 
-      ::  list of booths scry => /x/booths
       [%x %booths ~]
         ``json+!>([%o booths.state])
 
-      ::  ~lodlev-migdev
-      ::  list of booths scry => /x/booths/[ship|group]/proposals
-      ::  to indicate ship, put tilde (~) in front of ship name; otherwise
-      ::  for all other entities (e.g. groups), pass in just the name
-      ::    examples:
-      ::       /x/booths/~zod/proposals
-      ::       /x/booths/my-group/proposals
       [%x %booths @ %proposals ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
-        ~&  >>  "ballot: extracting proposals for booth {<key>}..."
+        %-  (slog leaf+"ballot: extracting proposals for booth {<key>}..." ~)
         =/  booth-proposals  (~(get by proposals.state) key)
         ?~  booth-proposals  ``json+!>(~)
         ``json+!>([%o (need booth-proposals)])
@@ -2830,8 +1391,7 @@
       [%x %booths @ @ @ %proposals ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
-        ::=/  key  (crip (oust [0 1] (spud /(snag 2 `(list @)`path)/(snag 3 `(list @)`path)/(snag 4 `(list @)`path))))
-        ~&  >>  "ballot: extracting proposals for booth {<key>}..."
+        %-  (slog leaf+"ballot: extracting proposals for booth {<key>}..." ~)
         =/  booth-proposals  (~(get by proposals.state) key)
         ?~  booth-proposals  ``json+!>(~)
         ``json+!>([%o (need booth-proposals)])
@@ -2839,8 +1399,8 @@
       [%x %booths @ %proposals @ %votes ~]
         =/  segments  `(list @ta)`path
         =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments))))
-        =/  proposal-key  (key-from-path:util i.t.t.t.t.path)
-        ~&  >>  "ballot: extracting votes for booth {<booth-key>}, proposal {<proposal-key>}..."
+        =/  proposal-key  `@tas`i.t.t.t.t.path
+        %-  (slog leaf+"ballot: extracting votes for booth {<booth-key>}, proposal {<proposal-key>}..." ~)
         =/  booth-proposals  (~(get by votes.state) booth-key)
         ?~  booth-proposals  ``json+!>(~)
         =/  booth-proposals  (need booth-proposals)
@@ -2852,7 +1412,7 @@
         =/  segments  `(list @ta)`path
         =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
         =/  proposal-key  (crip (oust [0 1] (spud /(snag 6 segments))))
-        ~&  >>  "ballot: extracting votes for booth {<booth-key>}, proposal {<proposal-key>}..."
+        %-  (slog leaf+"ballot: extracting votes for booth {<booth-key>}, proposal {<proposal-key>}..." ~)
         =/  booth-proposals  (~(get by votes.state) booth-key)
         ?~  booth-proposals  ``json+!>(~)
         =/  booth-proposals  (need booth-proposals)
@@ -2863,7 +1423,7 @@
       [%x %booths @ %votes ~]
         =/  segments  `(list @ta)`path
         =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments))))
-        ~&  >>  "ballot: extracting votes for booth {<booth-key>}..."
+        %-  (slog leaf+"ballot: extracting votes for booth {<booth-key>}..." ~)
         =/  booth-proposals  (~(get by votes.state) booth-key)
         ?~  booth-proposals  ``json+!>(~)
         ``json+!>([%o (need booth-proposals)])
@@ -2871,22 +1431,15 @@
       [%x %booths @ @ @ %votes ~]
         =/  segments  `(list @ta)`path
         =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
-        ~&  >>  "ballot: extracting votes for booth {<booth-key>}..."
+        %-  (slog leaf+"ballot: extracting votes for booth {<booth-key>}..." ~)
         =/  booth-proposals  (~(get by votes.state) booth-key)
         ?~  booth-proposals  ``json+!>(~)
         ``json+!>([%o (need booth-proposals)])
 
-      ::  ~lodlev-migdev
-      ::  list of booths scry => /x/booths/[ship|group]/proposals
-      ::  to indicate ship, put tilde (~) in front of ship name; otherwise
-      ::  for all other entities (e.g. groups), pass in just the name
-      ::    examples:
-      ::       /x/booths/~zod/participants
-      ::       /x/booths/my-group/participants
       [%x %booths @ %participants ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
-        ~&  >>  "ballot: extracting participants for booth {<key>}..."
+        %-  (slog leaf+"ballot: extracting participants for booth {<key>}..." ~)
         =/  participants  (~(get by participants.state) key)
         ?~  participants  ``json+!>(~)
         ``json+!>([%o (need participants)])
@@ -2894,7 +1447,7 @@
       [%x %booths @ @ @ %participants ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
-        ~&  >>  "ballot: extracting participants for booth {<key>}..."
+        %-  (slog leaf+"ballot: extracting participants for booth {<key>}..." ~)
         =/  participants  (~(get by participants.state) key)
         ?~  participants  ``json+!>(~)
         ``json+!>([%o (need participants)])
@@ -2961,14 +1514,14 @@
         ?+  -.sign  (on-agent:def wire sign)
           %poke-ack
             =/  reaction  ?~(p.sign 'nod' 'nack')
-            =/  msg-id  (key-from-path:util i.t.t.wire)
+            =/  msg-id  `@tas`i.t.t.wire
             (handle-poke-ack reaction msg-id)
         ==
 
     [%booths @ @ @ %start-poll ~]
       :: ~&  >>  [wire sign]
-      =/  booth-key  (key-from-path:util i.t.wire)
-      =/  proposal-key  (key-from-path:util i.t.t.wire)
+      =/  booth-key  `@tas`i.t.wire
+      =/  proposal-key  `@tas`i.t.t.wire
       ?+    -.sign  (on-agent:def wire sign)
           %poke-ack
             ?~  p.sign
@@ -2989,9 +1542,8 @@
       ==
 
     [%booths @ @ @ %end-poll ~]
-      :: ~&  >>  [wire sign]
-      =/  booth-key  (key-from-path:util i.t.wire)
-      =/  proposal-key  (key-from-path:util i.t.t.wire)
+      =/  booth-key  `@tas`i.t.wire
+      =/  proposal-key  `@tas`i.t.t.wire
       ?+    -.sign  (on-agent:def wire sign)
           %poke-ack
             ?~  p.sign
@@ -3014,7 +1566,6 @@
     [%booths *]
       =/  booth-key  (spud (oust [0 1] `(list @ta)`wirepath))
       =/  booth-key  (crip `tape`(oust [0 1] `(list @)`booth-key))
-      :: =/  booth-key  (key-from-path:util i.t.wire)
       ?-    -.sign
         %poke-ack
           ?~  p.sign
@@ -3080,6 +1631,7 @@
           ==
       ==
   ==
+
   ++  on-group-added
     |=  =action:group-store
     =/  booth  (booth-from-resource resource.action)
@@ -3157,15 +1709,6 @@
 
     [%give %fact [/booths]~ %json !>(effects)]
 
-  ::  1)  create new key based on ship/group name
-  ::  2)  for each group in which we are a member
-  ::  3)     add a new booth to our store for the group
-  ::  4)     set status of booth to 'initial'
-  ::  5)     send out effects to subscribers notifying of new booth
-  ::  6)  for each member that is not us
-  ::  7)     add the member to the booth as a participant
-  ::  8)     send out effects notifying
-  ::  9)     commit changes to this store
   ++  on-group-member-added
     |=  =action:group-store
     ?>  ?=(%add-members -.action)
@@ -3834,40 +2377,6 @@
       [%give %fact [/booths]~ %json !>(effects)]
     ==
 
-::  ARM:  ++  save-proposal-api
-::
-::   Steps:
-::
-::      1) add/update proposal on booth
-::      2) respond to POST w/ 200 updated payload (see #1)
-::      3) poke booth host w/ 'invite-accepted' action
-::
-++  save-proposal-wire
-  |=  [payload=(map @t json)]
-
-  =/  context  ((om json):dejs:format (~(got by payload) 'context'))
-  =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
-  =/  data  (~(get by payload) 'data')
-  =/  data  ?~(data ~ ((om json):dejs:format (need data)))
-
-  =/  timestamp  (en-json:html (time:enjs:format now.bowl))
-
-  =/  is-update  (~(has by context) 'proposal')
-  =/  proposal-key
-        ?:  is-update
-              (so:dejs:format (~(got by context) 'proposal'))
-            (crip (weld "proposal-" timestamp))
-
-  =/  booth-proposals  (~(get by proposals.state) booth-key)
-  =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
-  =/  proposal  (~(get by booth-proposals) booth-key)
-  =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
-  =/  proposal  (~(gas by proposal) ~(tap by data))
-  =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal])
-
-  ::  no changes to state. state will change when poke ack'd
-  `this(proposals (~(put by proposals.state) booth-key booth-proposals))
-
   ++  handle-poke-ack
     |=  [reaction=@t msg-id=@t]
 
@@ -3900,39 +2409,13 @@
   ++  handle-invite-ack
     |=  [reaction=@t msg-id=@t msg=(map @t json)]
 
-    ::  for now, ack or nack, just clear the message. technically, here
-    ::    means "the ship we tried to invite exists and is running", but in UI
-    ::    terms the original invite is still 'pending' until we receive an "invite-response" action
     `this(mq (~(del by mq.state) msg-id))
-
-    ::  forward all nacks to poker as effect
-    :: ?:  =(reaction 'nack')
-    ::   :_  this(mq (~(del by mq.state) msg-id))
-    ::   :~  [%give %fact [/booths]~ %json !>([%o msg])]
-    ::   ==
-
-    :: :_  this(mq (~(del by mq.state) msg-id))
-    :: :~  [%give %fact [/booths]~ %json !>([%o msg])]
-    :: ==
 
   ++  handle-invite-response-ack
     |=  [reaction=@t msg-id=@t msg=(map @t json)]
 
-    ::  for now, ack or nack, just clear the message. technically, here
-    ::    means "the ship we tried to invite exists and is running", but in UI
-    ::    terms the original invite is still 'pending' until we receive an "invite-response" action
     `this(mq (~(del by mq.state) msg-id))
 
-  ::  ARM  ++  handle-invite-accepted-ack
-  ::   Called when ack on invite-accepted poke is sent to booth host.
-  ::
-  ::   STEPS:
-  ::
-  ::     1. update booth status to 'joined'
-  ::     2. add ourselves to the partipant list w/ an initial status of 'active'
-  ::     3. subscribe to the booth host to get booth updates
-  ::     4. notify subscribers (e.g. UI) of effects
-  ::
   ++  handle-accept-ack
     |=  [reaction=@t msg-id=@t msg=(map @t json)]
 
