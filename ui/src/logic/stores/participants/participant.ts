@@ -10,6 +10,7 @@ export const ParticipantModel = types
       "pending",
       "invited",
       "error",
+      "enlisted",
       "active",
     ]),
   })

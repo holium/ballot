@@ -16,6 +16,7 @@ import { useParams } from "react-router-dom";
 import styled from "styled-components";
 import { useMst } from "../../logic/stores/root";
 import { ParticipantType } from "../../logic/types/participants";
+import { getKeyFromUrl } from "../../logic/utils/path";
 import { ParticipantModal } from "./Modal/ParticipantModal";
 import { ParticipantRow } from "./ParticipantRow";
 
@@ -102,8 +103,10 @@ export const Participants: FC<ParticipantsProps> = (
                             "success"
                           }
                           status={ship.status}
-                          canAdmin={hasAdmin && ship.status !== "owner"}
-                          key={`${ship.name}-${urlParams.boothName!}`}
+                          canAdmin={
+                            hasAdmin && !isGroup && ship.status !== "owner"
+                          }
+                          key={`${ship.name}-${getKeyFromUrl(urlParams)!}`}
                           patp={ship.name}
                           color={ship?.metadata?.color}
                           onRemove={onRemove}

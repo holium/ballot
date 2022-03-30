@@ -1,4 +1,5 @@
-import { ProposalModelType } from "./proposal";
+import { SnapshotOrInstance } from "mobx-state-tree";
+import { ProposalModel, ProposalModelType } from "./proposal";
 
 export const getProposalFilters = (proposals: ProposalModelType[]) => {
   if (!proposals) return {};
@@ -16,12 +17,14 @@ export const getProposalFilters = (proposals: ProposalModelType[]) => {
   return countedStatuses;
 };
 
-export function determineStatus(proposal: ProposalModelType) {
+export function determineStatus(
+  proposal: SnapshotOrInstance<typeof ProposalModel>
+) {
   const now = new Date().getTime();
   const startTime = new Date(proposal.start).getTime();
   const endTime = new Date(proposal.end).getTime();
 
-  let status = "Draft";
+  let status: string = "Draft";
   if (startTime > now) {
     status = "Upcoming";
   }

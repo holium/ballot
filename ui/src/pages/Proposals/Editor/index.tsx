@@ -107,7 +107,7 @@ export const ProposalEditor: FC = observer(() => {
   body =
     proposalStore && proposalStore.isLoaded ? (
       <Grid2.Row>
-        <Grid2.Column mb="12px" md={5} lg={9} xl={9}>
+        <Grid2.Column mb="12px" md={5} lg={8} xl={8}>
           <ListHeader
             title={
               <Observer>
@@ -190,7 +190,7 @@ export const ProposalEditor: FC = observer(() => {
             </Observer>
           </Card>
         </Grid2.Column>
-        <Grid2.Column reverse={["xs"]} mb="12px" sm={3} md={3} lg={3} xl={3}>
+        <Grid2.Column reverse={["xs"]} mb="12px" sm={3} md={3} lg={4} xl={4}>
           <Flex
             height={30}
             mb="12px"
@@ -226,41 +226,9 @@ export const ProposalEditor: FC = observer(() => {
             height="fit-content"
           >
             <Text fontWeight="600" variant="h6" p={12} mb={2}>
-              Configuration
+              Voting
             </Text>
             <Grid gridGap={2} pl={12} pr={12} pb={12}>
-              <Observer>
-                {() => {
-                  return (
-                    <FormControl.Field inline>
-                      <Label>Strategy</Label>
-                      <Box justifyContent="flex-end">
-                        <Select
-                          id="strategy"
-                          tabIndex={3}
-                          style={{ width: 162 }}
-                          placeholder="Select..."
-                          selectionOption={strategy.state.value}
-                          gray={false}
-                          options={[
-                            {
-                              label: "Single choice",
-                              value: "single-choice",
-                            },
-                            {
-                              label: "Multiple choice",
-                              value: "multiple-choice",
-                            },
-                          ]}
-                          onSelected={(option: any) => {
-                            strategy.actions.onChange(option.value);
-                          }}
-                        />
-                      </Box>
-                    </FormControl.Field>
-                  );
-                }}
-              </Observer>
               {/* Start time */}
               <Observer>
                 {() => {
@@ -320,6 +288,43 @@ export const ProposalEditor: FC = observer(() => {
                   );
                 }}
               </Observer>
+              {/* Counting strategy */}
+              <Observer>
+                {() => {
+                  return (
+                    <FormControl.Field inline>
+                      <Label>Counting Strategy</Label>
+                      <Box justifyContent="flex-end">
+                        <Select
+                          id="strategy"
+                          tabIndex={3}
+                          style={{ width: 162 }}
+                          placeholder="Select..."
+                          selectionOption={strategy.state.value}
+                          gray={false}
+                          options={[
+                            {
+                              label: "Single choice",
+                              value: "single-choice",
+                            },
+                            {
+                              label: "Quadratic voting",
+                              value: "quadratic-voting",
+                            },
+                            {
+                              label: "Ranked choice",
+                              value: "ranked-choice",
+                            },
+                          ]}
+                          onSelected={(option: any) => {
+                            strategy.actions.onChange(option.value);
+                          }}
+                        />
+                      </Box>
+                    </FormControl.Field>
+                  );
+                }}
+              </Observer>
               {/* Support required */}
               <Observer>
                 {() => {
@@ -337,7 +342,6 @@ export const ProposalEditor: FC = observer(() => {
                             <Icons.Percentage
                               size={1}
                               style={{ opacity: 0.5 }}
-                              ml={"8px"}
                               color="text.primary"
                               aria-hidden
                             />

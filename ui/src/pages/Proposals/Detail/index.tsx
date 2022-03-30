@@ -17,7 +17,7 @@ import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
 import { useNavigate, useParams } from "react-router";
 import { toJS } from "mobx";
-import { observer } from "mobx-react-lite";
+import { Observer, observer } from "mobx-react-lite";
 import { VoteCard } from "../../../components/VoteCard";
 import {
   createPath,
@@ -87,7 +87,7 @@ export const ProposalDetail: FC = observer((props: any) => {
                 <Text variant="h4" fontWeight={600}>
                   {proposal.title}
                 </Text>
-                <Status status={proposal.status} />
+                <Observer>{() => <Status status={proposal.status} />}</Observer>
               </Flex>
               <Flex
                 mt={2}

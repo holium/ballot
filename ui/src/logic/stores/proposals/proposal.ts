@@ -4,12 +4,15 @@ import {
   Instance,
   SnapshotIn,
   getParent,
+  getSnapshot,
   destroy,
   SnapshotOut,
   applyPatch,
   IJsonPatch,
+  castToSnapshot,
+  SnapshotOrInstance,
 } from "mobx-state-tree";
-import { ChoiceModel, ResultModel, VoteModel } from ".";
+import { ChoiceModel, determineStatus, ResultModel, VoteModel } from ".";
 
 import proposalsApi from "../../api/proposals";
 import votesApi from "../../api/votes";
@@ -85,11 +88,20 @@ export const ProposalModel = types
         const validKeys = Object.keys(response.data).filter((key: string) =>
           self.hasOwnProperty(key)
         );
-        const patches: IJsonPatch[] = validKeys.map((key: string) => ({
+        const patches: IJsonPatch[] = validKeys.map((key: string) => {
+          return {
+            op: "replace",
+            path: `/${key}`,
+            value: response.data[key],
+          };
+        });
+
+        // Add additional status patch
+        patches.push({
           op: "replace",
-          path: `/${key}`,
-          value: response.data[key],
-        }));
+          path: "/status",
+          value: determineStatus(response.data),
+        });
         applyPatch(self, patches);
         return self;
       } catch (err: any) {
@@ -158,11 +170,21 @@ export const ProposalModel = types
       const validKeys = Object.keys(update).filter((key: string) =>
         self.hasOwnProperty(key)
       );
-      const patches: IJsonPatch[] = validKeys.map((key: string) => ({
+
+      const patches: IJsonPatch[] = validKeys.map((key: string) => {
+        return {
+          op: "replace",
+          path: `/${key}`,
+          value: update[key],
+        };
+      });
+
+      // Add additional status patch
+      patches.push({
         op: "replace",
-        path: `/${key}`,
-        value: update[key],
-      }));
+        path: "/status",
+        value: determineStatus(update),
+      });
 
       applyPatch(self, patches);
       return self;

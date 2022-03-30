@@ -6,6 +6,7 @@
     "dev": "vite",
     "dev:bus": "vite --mode bus",
     "dev:moon1": "vite --mode moon1",
+    "dev:env": "vite --mode ",
     "build": "tsc && vite build",
     "serve": "vite preview",
     "test": "tsc --noEmit",

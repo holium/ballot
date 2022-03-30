@@ -17,6 +17,7 @@ import {
   VoteModel,
 } from ".";
 import proposalsApi from "../../api/proposals";
+import { BoothModelType } from "../booths";
 import { ContextModelType, EffectModelType } from "../common/effects";
 
 import { LoaderModel } from "../common/loader";
@@ -80,11 +81,23 @@ export const ProposalStore = types
         self.addLoader.set("loaded");
         // response could be null
         console.log("creating proposal ", response);
+        const parentBooth: BoothModelType = getParent(self, 2);
         const newProposal = ProposalModel.create({
           ...response.data,
           status: determineStatus(response.data),
           owner: rootStore.app.ship.patp,
           boothKey: self.boothKey,
+          // we need to set the appropriate participant count by default
+          results: {
+            didVote: false,
+            votes: {},
+            resultSummary: {
+              voteCount: 0,
+              participantCount: parentBooth.participantStore.count,
+              topChoice: undefined,
+              tallies: [],
+            },
+          },
         });
         self.proposals.set(newProposal.key, newProposal);
         return newProposal;
@@ -155,6 +168,7 @@ export const ProposalStore = types
               })
             );
         });
+        newProposal.results.generateResultSummary();
         self.proposals.set(proposal.key, newProposal);
       });
     },

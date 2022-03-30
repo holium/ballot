@@ -103,7 +103,7 @@ export class ProposalsApi extends BaseAPI {
    * @returns
    */
   async delete(boothKey: string, proposalKey: any): Promise<[any, any]> {
-    const url = `${this.baseUrl}/ballot/api/booths/${boothKey}`;
+    const url = `${this.baseUrl}/ballot/api/booths`;
     try {
       const response = await fetch(url, {
         method: "POST",

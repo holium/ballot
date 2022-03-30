@@ -1,5 +1,5 @@
 import React, { FC, useState } from "react";
-import { toJS } from "mobx";
+import { runInAction, toJS } from "mobx";
 import { useNavigate, useParams } from "react-router";
 import { observer } from "mobx-react-lite";
 
@@ -173,7 +173,7 @@ export const ProposalList: FC = observer(() => {
                     onClick: (event: React.MouseEvent<HTMLElement>) => {
                       event.stopPropagation();
                       const proposalStore = store.booth?.proposalStore!;
-                      proposalStore.proposals.delete(proposal.key);
+                      proposalStore.remove(proposal.key);
                     },
                   },
                 ]}
