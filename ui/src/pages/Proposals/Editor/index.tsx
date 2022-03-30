@@ -78,12 +78,8 @@ export const ProposalEditor: FC = observer(() => {
     }
 
     if (isNew) {
-      saveButton.current!.blur();
-      let newPath = createPath(
-        getKeyFromUrl(urlParams),
-        "proposals/editor",
-        responseProposal.key
-      );
+      saveButton.current && saveButton.current!.blur();
+      let newPath = createPath(getKeyFromUrl(urlParams), "proposals");
       navigate(newPath);
       app.setCurrentUrl(newPath);
     }

@@ -17,11 +17,12 @@ import { useMst } from "../../../logic/stores/root";
 import { ParticipantModelType } from "../../../logic/stores/participants";
 import { toJS } from "mobx";
 import { observer } from "mobx-react";
+import { getKeyFromUrl } from "../../../logic/utils/path";
 
 export const DelegationList: FC = observer(() => {
   const { app, store } = useMst();
   const urlParams = useParams();
-  const currentBooth = store.booths.get(urlParams.boothName!)!;
+  const currentBooth = store.booths.get(getKeyFromUrl(urlParams))!;
 
   const participants = currentBooth.participantStore.list;
   const totalVotingPower = participants.length;

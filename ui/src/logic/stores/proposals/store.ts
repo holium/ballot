@@ -81,7 +81,7 @@ export const ProposalStore = types
         self.addLoader.set("loaded");
         // response could be null
         console.log("creating proposal ", response);
-        const parentBooth: BoothModelType = getParent(self, 2);
+        const parentBooth: BoothModelType = getParent(self, 1);
         const newProposal = ProposalModel.create({
           ...response.data,
           status: determineStatus(response.data),
@@ -166,8 +166,8 @@ export const ProposalStore = types
               })
             );
         });
-        newProposal.results.generateResultSummary();
         self.proposals.set(proposal.key, newProposal);
+        newProposal.results.generateResultSummary();
       });
     },
 

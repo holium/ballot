@@ -15,13 +15,10 @@ export type ShipModelType = Instance<typeof ShipModel>;
 
 export const AppModel = types
   .model({
-    title: types.optional(types.string, ""),
+    title: types.optional(types.string, "Ballot"),
     currentUrl: types.optional(types.string, ""),
     currentPage: types.optional(types.string, "proposals"),
-    theme: types.optional(
-      types.enumeration("Theme", ["light", "dark"]),
-      "light"
-    ),
+    theme: types.enumeration("Theme", ["light", "dark"]),
     ship: ShipModel,
   })
   .actions((self) => ({

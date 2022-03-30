@@ -29,7 +29,6 @@ export const App: FC = observer(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const urlParams = useParams();
-  const [currentTheme, setCurrentTheme] = useState<string>("light");
   const { isShowing, toggle } = useDialog();
 
   const { store, app } = useMst();
@@ -53,14 +52,14 @@ export const App: FC = observer(() => {
   }, []);
 
   const toggleTheme = () => {
-    setCurrentTheme(currentTheme === "light" ? "dark" : "light");
+    app.setTheme(app.theme === "light" ? "dark" : "light");
   };
 
   return (
     // @ts-ignore
-    <ThemeProvider theme={theme[currentTheme]}>
+    <ThemeProvider theme={theme[app.theme]}>
       <Helmet defer={false}>
-        <title>{app.title}</title>
+        <title>{`${app.title} | ${app.ship.patp}`}</title>
       </Helmet>
       <OSViewPort bg="primary" blur={isShowing}>
         <Dialog
@@ -112,7 +111,7 @@ export const App: FC = observer(() => {
                   variant="minimal"
                   onClick={() => toggleTheme()}
                 >
-                  Theme: {currentTheme}
+                  Theme: {app.theme}
                 </Button>
               </Flex>
             ),
