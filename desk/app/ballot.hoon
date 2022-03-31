@@ -1527,9 +1527,9 @@
         ==
 
     [%booths @ @ @ %start-poll ~]
-      :: ~&  >>  [wire sign]
-      =/  booth-key  (key-from-path:util i.t.wire)
-      =/  proposal-key  (key-from-path:util i.t.t.wire)
+      =/  segments  `(list @ta)`wirepath
+      =/  booth-key  (snag 1 segments)
+      =/  proposal-key  (snag 2 segments)
       ?+    -.sign  (on-agent:def wire sign)
           %poke-ack
             ?~  p.sign
@@ -1550,9 +1550,9 @@
       ==
 
     [%booths @ @ @ %end-poll ~]
-      :: ~&  >>  [wire sign]
-      =/  booth-key  (key-from-path:util i.t.wire)
-      =/  proposal-key  (key-from-path:util i.t.t.wire)
+      =/  segments  `(list @ta)`wirepath
+      =/  booth-key  (snag 1 segments)
+      =/  proposal-key  (snag 2 segments)
       ?+    -.sign  (on-agent:def wire sign)
           %poke-ack
             ?~  p.sign
@@ -1573,9 +1573,8 @@
       ==
 
     [%booths *]
-      =/  booth-key  (spud (oust [0 1] `(list @ta)`wirepath))
-      =/  booth-key  (crip `tape`(oust [0 1] `(list @)`booth-key))
-      :: =/  booth-key  (key-from-path:util i.t.wire)
+      =/  segments  `(list @ta)`wirepath
+      =/  booth-key  (snag 1 segments)
       ?-    -.sign
         %poke-ack
           ?~  p.sign
