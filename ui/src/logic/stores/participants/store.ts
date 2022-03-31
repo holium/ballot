@@ -49,7 +49,7 @@ export const ParticipantStore = types
           self.participants.set(newParticipant.key, newParticipant);
         });
       } catch (err: any) {
-        self.loader.error(err.toString());
+        self.loader.error(err);
       }
     }),
     add: flow(function* (participantKey: string) {
@@ -67,7 +67,7 @@ export const ParticipantStore = types
         });
         self.participants.set(newParticipant.key, newParticipant);
       } catch (err: any) {
-        self.loader.error(err.toString());
+        self.loader.error(err);
       }
     }),
     remove: flow(function* (participantKey: string) {
@@ -81,7 +81,7 @@ export const ParticipantStore = types
         self.participants.delete(participantKey);
         destroy(deleted);
       } catch (err: any) {
-        self.loader.error(err.toString());
+        self.loader.error(err);
       }
     }),
     //

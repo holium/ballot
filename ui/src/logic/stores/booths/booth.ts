@@ -78,7 +78,7 @@ export const BoothModel = types
           response.status
         );
       } catch (err: any) {
-        self.loader.error(err.toString());
+        self.loader.error(err);
       }
     }),
     updateEffect(update: any) {
@@ -87,11 +87,13 @@ export const BoothModel = types
       const validKeys = Object.keys(update).filter((key: string) =>
         self.hasOwnProperty(key)
       );
+      console.log(validKeys);
       const patches: IJsonPatch[] = validKeys.map((key: string) => ({
         op: "replace",
         path: `/${key}`,
         value: update[key],
       }));
+      console.log(patches);
       applyPatch(self, patches);
     },
     remove(item: SnapshotIn<typeof self>) {

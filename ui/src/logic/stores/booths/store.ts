@@ -11,7 +11,6 @@ import {
 } from "mobx-state-tree";
 import boothApi from "../../api/booths";
 import { timeout } from "../../utils/dev";
-import { Watcher } from "../../watcher";
 import { BoothModel, BoothModelType } from "./";
 import { EffectModelType } from "../common/effects";
 import { LoaderModel } from "../common/loader";
@@ -65,9 +64,8 @@ export const BoothStore = types
           newBooth.isActive && newBooth.participantStore.getParticipants();
           self.booths.set(newBooth.key, newBooth);
         });
-        // Watcher.initialize(Object.values(response), onChannel);
       } catch (err: any) {
-        self.loader.error(err.toString());
+        self.loader.error(err);
       }
     }),
     setBooth(boothKey: string) {
@@ -139,13 +137,13 @@ export const BoothStore = types
     },
     updateEffect(key: string, data: any) {
       console.log("booth updateEffect ", key, data);
-      const oldBooth = self.booths.get(data.key);
+      const oldBooth = self.booths.get(key);
+      console.log(oldBooth);
       oldBooth?.updateEffect(data);
     },
     deleteEffect(boothKey: string) {
       console.log("booth deleteEffect ", boothKey);
-      const deleted = self.booths.get(boothKey)!;
-      destroy(deleted);
+
       self.booths.delete(boothKey);
     },
   }));

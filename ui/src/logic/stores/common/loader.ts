@@ -25,10 +25,10 @@ export const LoaderModel = types
     set(state: typeof self.state) {
       self.state = state;
     },
-    error(error: string) {
+    error(error: Error) {
       self.state = "error";
-      console.log(error);
-      self.errorMessage = error;
+      console.error(error);
+      self.errorMessage = error.toString();
     },
     clearError() {
       self.state = "initial";

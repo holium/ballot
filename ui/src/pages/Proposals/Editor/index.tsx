@@ -201,6 +201,10 @@ export const ProposalEditor: FC = observer(() => {
                 return (
                   <Button
                     ref={saveButton}
+                    isLoading={
+                      (isNew && proposalStore.isAdding) ||
+                      (!isNew && proposal.isLoading)
+                    }
                     py={1}
                     tabIndex={choices.state.value.length + 8}
                     type="submit"
