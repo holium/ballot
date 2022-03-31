@@ -43,7 +43,7 @@ Each action has a standard structure:
 
 ```js
 {
-  action: "<effect-name>",
+  action: "<action-name>",
   resource: "<resourceName>",
   context: {
     booth: boothKey,
@@ -65,7 +65,7 @@ Each reaction has a standard structure:
     '<resourceName>': resourceKey
   },
   effects: [{
-    resource: "<resourceName>"
+    resource: "<resourceName>",
     key: resourceKey,
     effect: "add",
     data: {}
@@ -83,6 +83,8 @@ Effects tell a watcher to perform operations on their local resources. A watcher
 - `initial`: create all resources in the context
 
 ## `%ballot` action API
+
+### `save-proposal` flow
 
 ### Action: `save-proposal`
 
@@ -212,20 +214,9 @@ A `reaction` is a list of `effects` that are triggered by the response to an `ac
 
 ```js
 {
-  action: "poll-scheduled-effect",
-  context: {
-    booth: "~zod",
-    proposal: "proposal-1648736647426"
-  },
-  effects: [
-    {
-      resource: "poll"
-      key: "<poll-key>",
-      effect: "add",
-      data: {},
-    }
-  ]
+  resource: "poll"
+  key: "<poll-key>",
+  effect: "add",
+  data: {},
 }
 ```
-
-### Action: `update-proposal`
