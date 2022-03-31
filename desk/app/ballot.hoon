@@ -12,7 +12,7 @@
 +$  versioned-state
   $%  state-0
   ==
-+$  state-0  [%0 polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store mq=mq:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json))]
++$  state-0  [%0 polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json))]
 --
 %-  agent:dbug
 =|  state-0
@@ -229,11 +229,6 @@
                   [%ballot %api %booths @ ~]
                     =/  key  (key-from-path:util i.t.t.t.path)
                     (handle-resource-action req req-args key)
-
-                    :: =/  effects=(list card)  (handle-post:core req req-args)
-                    :: =/  effects=(list card)  (~(handle-post core bowl) req req-args)
-
-                    :: [effects state]
 
                   [%ballot %api %booths @ %proposals ~]
                     =/  key  (key-from-path:util i.t.t.t.path)
@@ -1292,8 +1287,14 @@
 
         ~&  >>  "invite-accepted-wire: {<our.bowl>} {<src.bowl>}"
 
+        ::  add the participant that accepted the invite/enlistment to the
+        ::   payload sent out to subscribers
+        =/  payload  (~(put by contract) 'data' [%o participant])
+
         :_  state(participants (~(put by participants.state) booth-key booth-participants))
         :~  [%give %fact [/booths]~ %json !>(effects)]
+        ::  for remote subscribers, indicate over booth specific wire
+            [%give %fact [/booths/(scot %tas booth-key)]~ %json !>([%o payload])]
         ==
 
       ++  invite-participant-wire-response
@@ -1356,11 +1357,6 @@
         =/  response-payload  (~(put by payload) 'action' s+'invite-response')
         =/  response-payload  (~(put by response-payload) 'reaction' s+'ack')
 
-        ::  queue the message so that when the poke ack's we can send the nod
-        ::    to the UI
-        =/  mq-key  (crip (weld "msg-" timestamp))
-        =/  mq  (~(put by mq.state) mq-key [%o response-payload])
-
         =/  booth-effect=json
         %-  pairs:enjs:format
         :~
@@ -1380,12 +1376,10 @@
 
         ~&  >>  "invite-participant-wire: {<our.bowl>} poking {<src.bowl>}"
 
-        =/  destpath=path  `path`/booths/(scot %p src.bowl)/(scot %tas mq-key)
-
-        :_  state(mq mq, booths (~(put by booths.state) booth-key [%o booth]))
+        :_  state(booths (~(put by booths.state) booth-key [%o booth]))
 
         :~  [%give %fact [/booths]~ %json !>(effect)]
-            [%pass destpath %agent [src.bowl %ballot] %poke %json !>([%o response-payload])]
+            [%pass /booths/(scot %tas booth-key) %agent [src.bowl %ballot] %poke %json !>([%o response-payload])]
         ==
 
       ++  send-api-error
@@ -1737,24 +1731,18 @@
           ['effects' [%a [booth-effect]~]]
         ==
 
-        ::  queue the wire-payload so that we can act accordingly when the poke is ack'd
-        =/  mq-key  (crip (weld "msg-" timestamp))
-
         =/  booth-ship  (so:dejs:format (~(got by booth) 'owner'))
         =/  hostship=@p  `@p`(slav %p booth-ship)
-        ::  wirepath includes msg queue id so that it can be correlated
-        ::    when the poke is ack'd
-        =/  destpath=path  `path`/booths/(scot %p our.bowl)/(scot %tas mq-key)
 
         ::  no changes to state. state will change when poke ack'd
-        :_  state(mq (~(put by mq.state) mq-key [%o wire-payload]), booths (~(put by booths.state) booth-key [%o booth]))
+        :_  state(booths (~(put by booths.state) booth-key [%o booth]))
 
         :~
           [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
           [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
           [%give %kick [/http-response/[p.req]]~ ~]
           [%give %fact [/booths]~ %json !>(effects)]
-          [%pass destpath %agent [hostship %ballot] %poke %json !>([%o wire-payload])]
+          [%pass /booths/(scot %tas booth-key)/join %agent [hostship %ballot] %poke %json !>([%o wire-payload])]
         ==
 
       ++  add-proposal-api
@@ -1955,16 +1943,11 @@
         =/  participant-key  (so:dejs:format (need participant-key))
 
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
-        =/  mq-key  (crip (weld "msg-" timestamp))
-        =/  mq  (~(put by mq.state) mq-key [%o payload])
 
         ::  only support ship invites currently
         =/  participant-ship  `(unit @p)`((slat %p) participant-key)
         ?~  participant-ship  !!  :: only ship invites
         =/  participant-ship=ship  (need participant-ship)
-
-        :: =/  booth-ship  `(unit @p)`((slat %p) booth-key)
-        =/  destpath=path  `path`/booths/(scot %p our.bowl)/(scot %tas mq-key)
 
         =/  booth  (~(get by booths.state) booth-key)
         ?~  booth  !!  :: booth must exist
@@ -2035,56 +2018,14 @@
         ~&  >>  "invite-participant-api: {<our.bowl>} poking {<participant-ship>}"
 
         ::  commit the changes to the store
-        :_  state(mq mq, participants (~(put by participants.state) booth-key booth-participants))
+        :_  state(participants (~(put by participants.state) booth-key booth-participants))
 
         :~
           [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
           [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
           [%give %kick [/http-response/[p.req]]~ ~]
           [%give %fact [/booths]~ %json !>(updates)]
-          [%pass destpath %agent [participant-ship %ballot] %poke %json !>([%o wire-payload])]
-        ==
-
-      ++  join-remote-booth
-        |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
-        ^-  (quip card _state)
-
-        =/  resource-key  (so:dejs:format (~(got by payload) 'key'))
-        =/  remote-booth-ship=@p  `@p`(slav %p resource-key)
-        =/  destpath=path  `path`/booths/(scot %p remote-booth-ship)
-
-        =/  timestamp  (en-json:html (time:enjs:format now.bowl))
-        =/  mq-key  (crip (weld "msg-" timestamp))
-        =/  mq  (~(put by mq.state) mq-key [%o payload])
-
-        ::=/  requesting-ship=@p  `@p`(slav %p src.bowl)
-        ::  send out notifications to all subscribers of this booth
-        =/  destpath=path  `path`/booths/(scot %p src.bowl)/(scot %tas mq-key)
-
-        ::  create the response
-        =/  =response-header:http
-          :-  200
-          :~  ['Content-Type' 'text/plain']
-          ==
-
-        =/  response  (~(put by payload) 'reaction' s+'ack')
-
-        ::  encode the proposal as a json string
-        =/  body  (crip (en-json:html [%o response]))
-
-        ::  convert the string to a form that arvo will understand
-        =/  data=octs
-              (as-octs:mimes:html body)
-
-        ::  commit the changes to the booth store
-        :_  state(mq mq)
-
-        :~
-          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
-          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
-          [%give %kick [/http-response/[p.req]]~ ~]
-          :: [%pass destpath %agent [remote-booth-ship %ballot] %watch destpath]
-          [%pass destpath %agent [remote-booth-ship %ballot] %poke %json !>([%o payload])]
+          [%pass /booths/(scot %tas booth-key) %agent [participant-ship %ballot] %poke %json !>([%o wire-payload])]
         ==
 
       ++  add-booth
@@ -2375,11 +2316,6 @@
         =/  resource  (so:dejs:format (~(got by payload) 'resource'))
 
         ?+  [resource action]  `state
-
-              [%booth %join]
-                =/  key  (so:dejs:format (~(got by context) 'booth'))
-                %-  (slog leaf+"ballot: join {<resource>}, {<key>}..." ~)
-                (join-remote-booth req payload)
 
               [%booth %invite]
                 =/  key  (so:dejs:format (~(got by context) 'booth'))
@@ -2956,13 +2892,18 @@
           ==
       ==
 
-    [%booths @ @ ~]
+    [%booth @ ~]
 
         ?+  -.sign  (on-agent:def wire sign)
           %poke-ack
-            =/  reaction  ?~(p.sign 'nod' 'nack')
-            =/  msg-id  (key-from-path:util i.t.t.wire)
-            (handle-poke-ack reaction msg-id)
+            =/  segments  `(list @ta)`path
+            =/  msg-id  (crip (oust [0 1] (spud /(snag 1 segments))))
+            =/  msg  (~(get by mq.state) msg-id)
+            ?~  msg
+              ~&  >>>  "ballot: %poke-ack msg {<msg-id>} not found"
+              `this
+            =/  msg  ((om json):dejs:format (need msg))
+            (handle-message-ack msg)
         ==
 
     [%booths @ @ @ %start-poll ~]
@@ -3075,11 +3016,15 @@
                 %cast-vote
                   (handle-cast-vote booth-key payload)
 
+                %accept
+                  (handle-accept booth-key payload)
+
               ==
 
           ==
       ==
   ==
+
   ++  on-group-added
     |=  =action:group-store
     =/  booth  (booth-from-resource resource.action)
@@ -3656,6 +3601,79 @@
       [%give %fact [/booths]~ %json !>(effects)]
     ==
 
+  ++  handle-accept
+    |=  [booth-key=@t payload=(map @t json)]
+
+    =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
+
+    =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+    =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+    =/  booth  ((om json):dejs:format (~(got by booths.state) booth-key))
+    =/  booth-ship  (so:dejs:format (~(got by booth) 'owner'))
+
+    =/  participant  ((om json):dejs:format (~(got by payload) 'data'))
+    =/  participant-key  (so:dejs:format (~(got by participant) 'key'))
+    =/  participant-ship  (slav %p participant-key)
+
+    ::  if this ship is the new participant:
+    ::    - set booth status to 'active'
+    ::    - set participant status to 'active'
+    =/  booth=(map @t json)
+          ?:  =(our.bowl participant-ship)
+            (~(put by booth) 'status' s+'active')
+          [booth]
+
+    =/  booth-participants  (~(get by participants.state) booth-key)
+    =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+    =/  booth-participants  (~(put by booth-participants) participant-key [%o participant])
+
+    =/  booth-effect
+      %-  pairs:enjs:format
+      :~
+        ['resource' s+'booth']
+        ['effect' s+'update']
+        ['key' s+booth-key]
+        ['data' [%o booth]]
+      ==
+
+    =/  effect  ?:(=(our.bowl participant-ship) 'update' 'add')
+    =/  participant-effect
+      %-  pairs:enjs:format
+      :~
+        ['resource' s+'participant']
+        ['effect' s+effect]
+        ['key' s+participant-key]
+        ['data' [%o participant]]
+      ==
+
+    =/  effect-list=(list json)  [participant-effect booth-effect ~]
+    =/  effects
+      %-  pairs:enjs:format
+      :~
+        ['action' s+'accept-effect']
+        ['context' [%o context]]
+        ['effects' [%a effect-list]]
+      ==
+
+    =/  hostship=@p  `@p`(slav %p booth-ship)
+    ::  send out notifications to all subscribers of this booth
+    =/  wirepath=path  /booths/(scot %tas booth-key)
+
+    =/  fx=(list card)
+      :~  [%give %fact [/booths]~ %json !>(effects)]
+      ==
+
+    ::  if this is the ship that was added to the booth, subscribe to the
+    ::    booth to start receiving updates
+    =/  fx  ?:  =(our.bowl participant-ship)
+        ::  subscribe to booth host messages
+        (snoc fx [%pass wirepath %agent [hostship %ballot] %watch wirepath])
+      [fx]
+
+    ::  commit updates to store
+    :_  this(booths (~(put by booths.state) booth-key [%o booth]), participants (~(put by participants.state) booth-key booth-participants))
+
+    [fx]
 
   ++  handle-initial
     |=  [payload=(map @t json)]
@@ -3867,142 +3885,6 @@
 
   ::  no changes to state. state will change when poke ack'd
   `this(proposals (~(put by proposals.state) booth-key booth-proposals))
-
-  ++  handle-poke-ack
-    |=  [reaction=@t msg-id=@t]
-
-    =/  msg  (~(get by mq.state) msg-id)
-    ?~  msg
-          ~&  >>  "message {<msg-id>} not found. skipping..."
-          `this
-
-    =/  msg  ((om json):dejs:format (need msg))
-    =/  msg  (~(put by msg) 'reaction' s+reaction)
-
-    =/  action  (so:dejs:format (~(got by msg) 'action'))
-
-    ?+  `@tas`action  `this
-
-      ::  remote ship received and processed invite poke
-      %invite
-        (handle-invite-ack reaction msg-id msg)
-
-      ::   remote ship received and processed accept poke
-      %accept
-        (handle-accept-ack reaction msg-id msg)
-
-      ::   remote ship received and processed invite-response poke
-      %invite-response
-        (handle-invite-response-ack reaction msg-id msg)
-
-    ==
-
-  ++  handle-invite-ack
-    |=  [reaction=@t msg-id=@t msg=(map @t json)]
-
-    ::  for now, ack or nack, just clear the message. technically, here
-    ::    means "the ship we tried to invite exists and is running", but in UI
-    ::    terms the original invite is still 'pending' until we receive an "invite-response" action
-    `this(mq (~(del by mq.state) msg-id))
-
-    ::  forward all nacks to poker as effect
-    :: ?:  =(reaction 'nack')
-    ::   :_  this(mq (~(del by mq.state) msg-id))
-    ::   :~  [%give %fact [/booths]~ %json !>([%o msg])]
-    ::   ==
-
-    :: :_  this(mq (~(del by mq.state) msg-id))
-    :: :~  [%give %fact [/booths]~ %json !>([%o msg])]
-    :: ==
-
-  ++  handle-invite-response-ack
-    |=  [reaction=@t msg-id=@t msg=(map @t json)]
-
-    ::  for now, ack or nack, just clear the message. technically, here
-    ::    means "the ship we tried to invite exists and is running", but in UI
-    ::    terms the original invite is still 'pending' until we receive an "invite-response" action
-    `this(mq (~(del by mq.state) msg-id))
-
-  ::  ARM  ++  handle-invite-accepted-ack
-  ::   Called when ack on invite-accepted poke is sent to booth host.
-  ::
-  ::   STEPS:
-  ::
-  ::     1. update booth status to 'joined'
-  ::     2. add ourselves to the partipant list w/ an initial status of 'active'
-  ::     3. subscribe to the booth host to get booth updates
-  ::     4. notify subscribers (e.g. UI) of effects
-  ::
-  ++  handle-accept-ack
-    |=  [reaction=@t msg-id=@t msg=(map @t json)]
-
-    ::  forward all nacks to poker as effect
-    ?:  =(reaction 'nack')
-      ~&  >>>  'ballot: nack reaction received'
-      `this(mq (~(del by mq.state) msg-id))
-
-    =/  context  ((om json):dejs:format (~(got by msg) 'context'))
-    =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
-    =/  booth  ((om json):dejs:format (~(got by booths.state) booth-key))
-    =/  booth  (~(put by booth) 'status' s+'active')
-    =/  booth-ship  (so:dejs:format (~(got by booth) 'owner'))
-
-    =/  booth-participants  (~(get by participants.state) booth-key)
-    =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
-
-    =/  participant-key  (crip "{<our.bowl>}")
-
-    =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-
-    =/  participant
-      %-  pairs:enjs:format
-      :~
-        ['key' s+participant-key]
-        ['name' s+participant-key]
-        ['status' s+'active']
-        ['created' s+timestamp]
-      ==
-
-    =/  booth-participants  (~(put by booth-participants) participant-key participant)
-
-    =/  booth-effect
-      %-  pairs:enjs:format
-      :~
-        ['resource' s+'booth']
-        ['effect' s+'update']
-        ['key' s+booth-key]
-        ['data' [%o booth]]
-      ==
-
-    =/  participant-effect
-      %-  pairs:enjs:format
-      :~
-        ['resource' s+'participant']
-        ['effect' s+'add']
-        ['key' s+participant-key]
-        ['data' participant]
-      ==
-
-    =/  effect-list=(list json)  [participant-effect booth-effect ~]
-    =/  effects
-      %-  pairs:enjs:format
-      :~
-        ['action' s+'accept-effect']
-        ['context' [%o context]]
-        ['effects' [%a effect-list]]
-      ==
-
-    =/  hostship=@p  `@p`(slav %p booth-ship)
-    ::  send out notifications to all subscribers of this booth
-    =/  wirepath=path  /booths/(scot %tas booth-key)
-
-    ::  commit updates to store
-    :_  this(mq (~(del by mq.state) msg-id), booths (~(put by booths.state) booth-key [%o booth]), participants (~(put by participants.state) booth-key booth-participants))
-        ::  notifiy subscribers (e.g. UI) of the effect
-    :~  [%give %fact [/booths]~ %json !>(effects)]
-        ::  subscribe to booth host messages
-        [%pass wirepath %agent [hostship %ballot] %watch wirepath]
-    ==
 
   --
 
