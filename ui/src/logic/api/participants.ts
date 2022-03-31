@@ -29,7 +29,7 @@ export class ParticipantsApi extends BaseAPI {
    * @param participant - patp of the ship to invite
    */
   addParticipant = async (boothKey: string, participant: string) => {
-    const scryUrl = `${this.baseUrl}/ballot/api/booths/${boothKey}`;
+    const scryUrl = `${this.baseUrl}/ballot/api/booths`;
     try {
       const response = await fetch(scryUrl, {
         method: "POST",
@@ -60,7 +60,7 @@ export class ParticipantsApi extends BaseAPI {
    * @returns 200 on success w/ a string message in the body
    */
   deleteParticipant = async (boothKey: string, participantKey: string) => {
-    const scryUrl = `${this.baseUrl}/ballot/api/booths/${boothKey}`;
+    const scryUrl = `${this.baseUrl}/ballot/api/booths`;
     try {
       const response = await fetch(scryUrl, {
         method: "POST",
