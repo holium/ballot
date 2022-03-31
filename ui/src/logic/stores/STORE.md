@@ -43,7 +43,7 @@ Each action has a standard structure:
 
 ```js
 {
-  action: "<effect-name>",
+  action: "<action-name>",
   resource: "<resourceName>",
   context: {
     booth: boothKey,
@@ -65,7 +65,7 @@ Each reaction has a standard structure:
     '<resourceName>': resourceKey
   },
   effects: [{
-    resource: "<resourceName>"
+    resource: "<resourceName>",
     key: resourceKey,
     effect: "add",
     data: {}
@@ -111,7 +111,7 @@ It produces the following effects as a `reaction`:
 
 A `reaction` is a list of `effects` that are triggered by the response to an `action`.
 
-### Reaction: `save-proposal-effect`
+### Reaction: `save-proposal-reaction`
 
 ```js
 {
