@@ -89,8 +89,31 @@ Effects tell a watcher to perform operations on their local resources. A watcher
 - **Resource**: `proposal`
 - **Method**: `POST`
 - **Route**: `/ballot/api/booths`
+- **Body**:
 
-**Body**:
+```js
+  {
+    id: '<id>',
+    action: "save-proposal",
+    resource: "proposal",
+    context: {
+      booth: boothKey,
+    },
+    data: {
+      start: {
+        mode: 'immediate', // start: 1648702800999
+
+      },
+      end: {
+        mode: 'timer'
+        date: 1649307600999
+      },
+      ...proposal
+    },
+  }
+```
+
+**Response**:
 
 ```js
 {
@@ -99,7 +122,30 @@ Effects tell a watcher to perform operations on their local resources. A watcher
   context: {
     booth: boothKey,
   },
-  data: proposal,
+  data: {
+    source: 'xyz123',
+    proposal: {}
+  },
+}
+```
+
+```js
+{
+  end: {
+    mode: 'timer'
+    date: 1649307600999
+  },
+  end: {
+    mode: 'vote-threshold'
+    threshold: .70
+  },
+  start: {
+    mode: 'immediate', // start: 1648702800999
+  },
+  start: {
+    mode: 'timer'
+    date: 1648702800999
+  },
 }
 ```
 
@@ -109,10 +155,11 @@ It produces the following effects as a `reaction`:
 
 A `reaction` is a list of `effects` that are triggered by the response to an `action`.
 
-#### Reaction: `save-proposal-effect`
+#### Reaction: `save-proposal-reaction`
 
 ```js
 {
+  source: '<id>',
   action: "save-proposal-reaction",
   context: {
     booth: "~zod",
@@ -125,12 +172,27 @@ A `reaction` is a list of `effects` that are triggered by the response to an `ac
       effect: "add",
       data: {},
     },
+  ]
+}
+```
+
+#### Reaction: `poll-started-reaction`
+
+```js
+{
+  source: '<id>',
+  action: "poll-started-reaction",
+  context: {
+    booth: "~zod",
+    proposal: "proposal-1648736647426"
+  },
+  effects: [
     {
-      resource: "poll"
-      key: "<poll-key>",
+      resource: "proposal"
+      key: "proposal-1648736647426",
       effect: "add",
       data: {},
-    }
+    },
   ]
 }
 ```
