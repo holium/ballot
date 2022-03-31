@@ -84,6 +84,8 @@ Effects tell a watcher to perform operations on their local resources. A watcher
 
 ## `%ballot` action API
 
+### `save-proposal` flow
+
 ### Action: `save-proposal`
 
 - **Resource**: `proposal`
@@ -109,7 +111,7 @@ It produces the following effects as a `reaction`:
 
 A `reaction` is a list of `effects` that are triggered by the response to an `action`.
 
-#### Reaction: `save-proposal-effect`
+### Reaction: `save-proposal-effect`
 
 ```js
 {
@@ -150,20 +152,10 @@ A `reaction` is a list of `effects` that are triggered by the response to an `ac
 
 ```js
 {
-  action: "poll-scheduled-effect",
-  context: {
-    booth: "~zod",
-    proposal: "proposal-1648736647426"
-  },
-  effects: [
-    {
-      resource: "poll"
-      key: "<poll-key>",
-      effect: "add",
-      data: {},
-    }
-  ]
+  resource: "poll"
+  key: "<poll-key>",
+  effect: "add",
+  data: {},
 }
 ```
 
-### Action: `update-proposal`
