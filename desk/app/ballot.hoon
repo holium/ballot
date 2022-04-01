@@ -344,7 +344,11 @@
         =/  booth-proposals  (~(del by proposals.state) booth-key)
         =/  booth-polls  (~(del by polls.state) booth-key)
         =/  booth-invitations  (~(del by invitations.state) booth-key)
-        =/  new-booths  (~(del by booths.state) booth-key)
+
+        =/  new-booths
+          ?.  =(our.bowl booth-ship)
+            (~(del by booths.state) booth-key)
+          booths.state
 
         =/  participant-effect=json
         %-  pairs:enjs:format
@@ -358,7 +362,7 @@
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'delete-participant-effect']
+          ['action' s+'delete-participant-reaction']
           ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
@@ -418,7 +422,7 @@
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'delete-proposal-effect']
+          ['action' s+'delete-proposal-reaction']
           ['context' [%o context]]
           ['effects' [%a [proposal-effect]~]]
         ==
@@ -489,7 +493,7 @@
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'cast-vote-effect']
+          ['action' s+'cast-vote-reaction']
           ['context' [%o context]]
           ['effects' [%a [vote-effect]~]]
         ==
@@ -557,7 +561,7 @@
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'accept-effect']
+          ['action' s+'accept-reaction']
           ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
@@ -604,7 +608,7 @@
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'invite-effect']
+          ['action' s+'invite-reaction']
           ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
@@ -646,7 +650,7 @@
         =/  effect=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'invite-effect']
+          ['action' s+'invite-reaction']
           ['context' [%o context]]
           ['effects' [%a [booth-effect]~]]
         ==
@@ -729,7 +733,7 @@
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'delete-participant-effect']
+          ['action' s+'delete-participant-reaction']
           ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
@@ -807,7 +811,7 @@
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'delete-proposal-effect']
+          ['action' s+'delete-proposal-reaction']
           ['context' [%o context]]
           ['effects' [%a [proposal-effect]~]]
         ==
@@ -889,7 +893,7 @@
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'save-proposal-effect']
+          ['action' s+'save-proposal-reaction']
           ['context' [%o context]]
           ['effects' [%a [proposal-effect]~]]
         ==
@@ -996,7 +1000,7 @@
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'accept-effect']
+          ['action' s+'accept-reaction']
           ['context' [%o context]]
           ['effects' [%a [booth-effect]~]]
         ==
@@ -1112,7 +1116,7 @@
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'cast-vote-effect']
+          ['action' s+'cast-vote-reaction']
           ['context' [%o context]]
           ['effects' [%a [vote-effect]~]]
         ==
@@ -1222,7 +1226,7 @@
         =/  updates=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'invite-effect']
+          ['action' s+'invite-reaction']
           ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
@@ -1730,7 +1734,7 @@
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'booth-effect']
+      ['action' s+'booth-reaction']
       ['context' context]
       ['effects' [%a [status-effect]~]]
     ==
@@ -1890,35 +1894,96 @@
     [participants]
 
   ++  count-vote
-    |:  [vote=`json`~ results=`(map @t json)`~]
+    |:  [voter-count=`@ud`1 vote=`[@t json]`[%null ~] results=`(map @t json)`~]
 
-    %-  (slog leaf+"count-vote called. [vote={<vote>}, results={<results>}]" ~)
+    ::  no voters? move on
+    ?:  =(voter-count 0)  results
+    :: ::  move on if vote is null
+    ?:  =(-.vote %null)  results
 
-    =/  v  ((om json):dejs:format vote)
+    =/  v  ((om json):dejs:format +.vote)
     =/  choice  ((om json):dejs:format (~(got by v) 'choice'))
     =/  label  (so:dejs:format (~(got by choice) 'label'))
-    =/  choice-count=@ud  (ni:dejs:format (~(got by results) label))
-    =/  choice-count=@ud  (add choice-count 1) :: plug in delegate count here
 
-    =/  choice-count=@ta  `@ta`choice-count
-    =.  results  (~(put by results) label [%n choice-count])
+    ::  label, count, percentage
+    =/  result  (~(get by results) label)
+    =/  result  ?~(result ~ ((om json):dejs:format (need result)))
 
+    =/  choice-count  (~(get by result) 'count')
+    =/  choice-count  ?~(choice-count 0 (ni:dejs:format (need choice-count)))
+    =/  choice-count  (add choice-count 1) :: plug in delegate count here
+
+    =/  percentage  (div (div choice-count voter-count) 100)
+
+    =.  result  (~(put by result) 'count' [%n choice-count])
+    =.  result  (~(put by result) 'percentage' [%n percentage])
+
+    =.  results  (~(put by results) label [%o result])
     results
+
+  :: ++  get-vote-count
+  ::   |=  [a=@ b=@]
+
+  ::   =/  a-val  (ni:dejs:format q.a)
+  ::   =/  b-val  (ni:dejs:format q.b)
+
+  ::   (gth a-val b-val)
 
   ++  tally-results
     |=  [booth-key=@t proposal-key=@t]
 
-    %-  (slog leaf+"tally-results called. [booth-key='{<booth-key>}', proposal-key='{<proposal-key>}']" ~)
+    %-  (slog leaf+"tally-results called. [booth-key={<booth-key>}, proposal-key={<proposal-key>}]" ~)
+
+    =/  booth-proposals  (~(get by proposals.state) booth-key)
+    =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
+    =/  proposal  (~(get by booth-proposals) proposal-key)
+    =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
+    =/  threshold  (~(get by proposal) 'threshold')
+    =/  threshold  ?~(threshold 1 (ni:dejs:format (need threshold)))
+
+    =/  booth-participants  (~(get by participants.state) booth-key)
+    =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
 
     =/  booth-proposals  (~(get by votes.state) booth-key)
-    =/  booth-proposals  (need booth-proposals)
+    =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
 
     =/  proposal-votes  (~(get by booth-proposals) proposal-key)
-    =/  proposal-votes  ((om json):dejs:format (need proposal-votes))
+    =/  proposal-votes  ?~(proposal-votes ~ ((om json):dejs:format (need proposal-votes)))
 
-    =/  votes  ~(val by proposal-votes)
+    =/  participants  ~(val by booth-participants)
+    =/  participant-count  (lent participants)
 
-    =/  results  (roll votes count-vote)
+    =/  votes  `(list [@t json])`~(tap by proposal-votes)
+    =/  vote-count  (lent votes)
+
+    =/  turnout  (div vote-count participant-count)
+    =/  tallies=(map @t json)
+          ?:  (gte turnout threshold)
+            %-  roll
+            :-  votes
+            |:  [vote=`[@t json]`[%null ~] results=`(map @t json)`~]
+            (count-vote participant-count vote results)
+            :: (roll votes |:([vote=`[@t json]`[%null ~] results=`(map @t json)`~] (count-vote participant-count vote results)))
+            :: (roll votes count-vote)
+          ~
+
+    ~&  >>  "ballot: tally => {<tallies>}"
+
+    ::  sort list by choice/vote count
+    =/  tallies  ~(val by tallies)
+    :: =/  tallies  ?~(tallies ~ (sort tallies get-vote-count))
+    ::  after list is sorted, top choice will be first item in list
+    :: =/  top-choice  (snag 0 tallies)
+
+
+    =/  results
+      %-  pairs:enjs:format
+      :~
+        ['voteCount' [%n vote-count]]
+        ['participantCount' [%n participant-count]]
+        ['topChoice' s+'?']
+        ['tallies' [%a tallies]]
+      ==
 
     results
 
@@ -1951,7 +2016,7 @@
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'booth-effect']
+      ['action' s+'booth-reaction']
       ['context' context]
       ['effects' [%a [status-effect]~]]
     ==
@@ -1983,7 +2048,7 @@
     %-  pairs:enjs:format
     :~
       ['status' s+'ended']
-      ['results' [%o poll-results]]
+      ['results' poll-results]
     ==
 
     =/  results-effect=json
@@ -1997,7 +2062,7 @@
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'booth-effect']
+      ['action' s+'booth-reaction']
       ['context' context]
       ['effects' [%a [results-effect]~]]
     ==
@@ -2058,7 +2123,7 @@
           =/  effects=json
           %-  pairs:enjs:format
           :~
-            ['action' s+'save-proposal-effect']
+            ['action' s+'save-proposal-reaction']
             ['context' context]
             ['effects' [%a [error-effect]~]]
           ==
@@ -2224,7 +2289,7 @@
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'cast-vote-effect']
+      ['action' s+'cast-vote-reaction']
       ['context' [%o context]]
       ['effects' [%a [vote-effect]~]]
     ==
@@ -2284,7 +2349,7 @@
     =/  effects
       %-  pairs:enjs:format
       :~
-        ['action' s+'accept-effect']
+        ['action' s+'accept-reaction']
         ['context' [%o context]]
         ['effects' [%a effect-list]]
       ==
@@ -2333,7 +2398,7 @@
     =/  effects
       %-  pairs:enjs:format
       :~
-        ['action' s+'accept-effect']
+        ['action' s+'accept-reaction']
         ['context' [%o context]]
         ['effects' [%a effect-list]]
       ==
@@ -2385,7 +2450,7 @@
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'initial-effect']
+      ['action' s+'initial-reaction']
       ['context' context]
       ['effects' [%a [initial-effect]~]]
     ==
@@ -2430,7 +2495,7 @@
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'save-proposal-effect']
+      ['action' s+'save-proposal-reaction']
       ['context' [%o context]]
       ['effects' [%a [proposal-effect]~]]
     ==
@@ -2468,7 +2533,7 @@
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'delete-proposal-effect']
+      ['action' s+'delete-proposal-reaction']
       ['context' [%o context]]
       ['effects' [%a [proposal-effect]~]]
     ==
@@ -2508,7 +2573,7 @@
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'delete-participant-effect']
+      ['action' s+'delete-participant-reaction']
       ['context' [%o context]]
       ['effects' [%a [participant-effect]~]]
     ==
