@@ -134,6 +134,8 @@ export const Participants: FC<ParticipantsProps> = (
         {pages > 0 && (
           <Flex
             mt={2}
+            ml={1}
+            mr={1}
             position="relative"
             justifyContent="space-between"
             alignItems="center"
@@ -150,7 +152,7 @@ export const Participants: FC<ParticipantsProps> = (
             <Box>
               <Text opacity={0.7} variant="hint">
                 {" "}
-                {`Page ${page} of ${pages}`}
+                {`${page + 1} of ${pages + 1}`}
               </Text>
             </Box>
             <Box top="4px" left="unset" right="8px" bottom="unset">
