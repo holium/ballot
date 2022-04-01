@@ -27,6 +27,16 @@ export const BoothStore = types
     get list() {
       return Array.from(self.booths.values());
     },
+    get ships() {
+      return Array.from(self.booths.values()).filter(
+        (booth: BoothModelType) => booth.type === "ship"
+      );
+    },
+    get groups() {
+      return Array.from(self.booths.values()).filter(
+        (booth: BoothModelType) => booth.type === "group"
+      );
+    },
     get booth() {
       return self.booths.get(self.activeBooth);
     },

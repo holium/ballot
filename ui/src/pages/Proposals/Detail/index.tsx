@@ -29,6 +29,7 @@ import { DetailHeader, DetailCentered, DetailBody } from "./Detail.styles";
 import { Status } from "../../../components/Status";
 import { useMst } from "../../../logic/stores/root";
 import { ProposalModelType } from "../../../logic/stores/proposals";
+import { ProposalResult } from "./ProposalResults";
 
 export const ProposalDetail: FC = observer((props: any) => {
   const navigate = useNavigate();
@@ -79,7 +80,7 @@ export const ProposalDetail: FC = observer((props: any) => {
         <Grid2.Column mb="16px" lg={9} xl={9}>
           <Card
             padding={0}
-            style={{ borderColor: "transparent" }}
+            style={{ borderColor: "transparent", borderWidth: 0 }}
             elevation="lifted"
           >
             <DetailHeader>
@@ -102,6 +103,9 @@ export const ProposalDetail: FC = observer((props: any) => {
                 />
               </Flex>
             </DetailHeader>
+            {proposal.status === "Ended" && (
+              <ProposalResult proposal={proposal} />
+            )}
             <DetailBody>
               <MDEditor.Markdown
                 style={{
@@ -114,53 +118,58 @@ export const ProposalDetail: FC = observer((props: any) => {
             </DetailBody>
           </Card>
         </Grid2.Column>
-        <Grid2.Column md={2} lg={3} style={{ height: "fit-content" }}>
-          <VoteCard
-            disabled={!isActive}
-            choices={proposal.choices}
-            title={proposal.title}
-            loading={proposal.isLoading}
-            currentUser={app.ship}
-            strategy={proposal.strategy}
-            onVote={onVote}
-            chosenOption={chosenVote && chosenVote.choice}
-            voteResults={proposal.results!.resultSummary}
-            voteSubmitted={proposal.results!.didVote}
-          />
-          {/* <Card
-            padding={12}
-            style={{ borderColor: "transparent" }}
-            elevation="lifted"
-            height="fit-content"
-          >
-            <Text fontWeight="600" variant="h6" mb="12px">
-              Configuration
-            </Text>
-            <Grid gridTemplateRows="auto" gridRowGap="12px">
-              <KPI mt={1} inline label="Strategy" value={proposal.strategy} />
-              <KPI inline label="Support" value={`${proposal.support}%`} />
-              <KPI
-                inline
-                label="Start date"
-                value={new Date(proposal.start).toISOString().split("T")[0]}
-              />
-              <KPI
-                inline
-                label="End date"
-                value={new Date(proposal.end).toISOString().split("T")[0]}
-              />
-              <KPI
-                inline
-                label="Created at"
-                value={
-                  new Date(parseInt(proposal.created!))
-                    .toISOString()
-                    .split("T")[0]
-                }
-              />
-              <KPI inline label="Host" value={proposal.owner} />
-            </Grid>
-          </Card> */}
+        <Grid2.Column md={2} lg={3}>
+          <Grid2.Row>
+            <VoteCard
+              disabled={!isActive}
+              choices={proposal.choices}
+              title={proposal.title}
+              loading={proposal.isVoteLoading}
+              currentUser={app.ship}
+              strategy={proposal.strategy}
+              onVote={onVote}
+              timeLeft={descriptiveTimeString(proposal.start, proposal.end)}
+              chosenOption={chosenVote && chosenVote.choice}
+              voteResults={proposal.results!.resultSummary}
+              voteSubmitted={proposal.results!.didVote}
+            />
+          </Grid2.Row>
+          {/* <Grid2.Row>
+            <Card
+              padding={12}
+              style={{ top: 300, borderColor: "transparent", borderWidth: 0 }}
+              elevation="lifted"
+              // height="fit-content"
+            >
+              <Text fontWeight="600" variant="h6" mb="12px">
+                Configuration
+              </Text>
+              <Grid gridTemplateRows="auto" gridRowGap="12px">
+                <KPI mt={1} inline label="Strategy" value={proposal.strategy} />
+                <KPI inline label="Support" value={`${proposal.support}%`} />
+                <KPI
+                  inline
+                  label="Start date"
+                  value={new Date(proposal.start).toISOString().split("T")[0]}
+                />
+                <KPI
+                  inline
+                  label="End date"
+                  value={new Date(proposal.end).toISOString().split("T")[0]}
+                />
+                <KPI
+                  inline
+                  label="Created at"
+                  value={
+                    new Date(parseInt(proposal.created!))
+                      .toISOString()
+                      .split("T")[0]
+                  }
+                />
+                <KPI inline label="Host" value={proposal.owner} />
+              </Grid>
+            </Card>
+          </Grid2.Row> */}
         </Grid2.Column>
       </Grid2.Row>
     );

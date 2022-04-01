@@ -87,6 +87,10 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
                       value: "",
                     },
                     {
+                      label: "Create new project",
+                      value: "create-new-project",
+                    },
+                    {
                       label: "Invite member",
                       value: "invite-member",
                     },

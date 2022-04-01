@@ -105,14 +105,6 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
             flexDirection={["column", "row", "row"]}
             justifyContent="space-between"
           >
-            {status !== "Ended" ? (
-              <KPI
-                icon={<TlonIcon icon="Clock" />}
-                value={descriptiveTimeString(proposal.start, proposal.end)}
-              />
-            ) : (
-              <KPI value="Not enough support" />
-            )}
             <Observer>
               {() => {
                 const booth = store.booths!.get(store.activeBooth!)!;
@@ -127,14 +119,47 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
                   () => Math.round((voteCount / participantCount) * 1000) / 10,
                   [voteCount, participantCount]
                 );
-                if (proposalModel.isLoading) {
-                  return <Skeleton style={{ height: 18, width: 60 }} />;
+                if (proposalModel.isVoteLoading) {
+                  return <Skeleton style={{ height: 16, width: 60 }} />;
                 }
                 return (
-                  <KPI
-                    icon={<TlonIcon icon="Users" />}
-                    value={`${voteCount}/${participantCount} (${percentage}%)`}
-                  />
+                  <>
+                    {status !== "Ended" ? (
+                      <KPI
+                        icon={<TlonIcon icon="Clock" />}
+                        value={descriptiveTimeString(
+                          proposal.start,
+                          proposal.end
+                        )}
+                      />
+                    ) : (
+                      <Flex flexDirection="row" alignItems="center">
+                        <Text
+                          fontSize={2}
+                          opacity={0.7}
+                          variant="body"
+                          display="flex"
+                          flexDirection="row"
+                          alignItems="center"
+                        >
+                          Winning option:
+                        </Text>
+                        <Text
+                          ml={1}
+                          fontSize={2}
+                          fontWeight="500"
+                          color="brand.primary"
+                        >
+                          {proposalModel.results.resultSummary.topChoice}
+                        </Text>
+                      </Flex>
+                    )}
+
+                    <KPI
+                      icon={<TlonIcon icon="Users" />}
+                      value={`${voteCount}/${participantCount} (${percentage}%)`}
+                    />
+                  </>
                 );
               }}
             </Observer>

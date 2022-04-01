@@ -39,8 +39,20 @@ export const getNameFromUrl = (urlParams: {
   boothName?: string;
   groupName?: string;
 }) => {
-  if (urlParams.groupName) {
-    return urlParams.groupName!;
+  const nameArr = urlParams.boothName && urlParams.boothName!.split("-groups-");
+
+  if (nameArr?.length === 2) {
+    return `${nameArr[0]}/${nameArr[1]}`;
   }
   return urlParams.boothName!;
 };
+
+// export const getNameFromUrl = (urlParams: {
+//   boothName?: string;
+//   groupName?: string;
+// }) => {
+//   if (urlParams.groupName) {
+//     return urlParams.groupName!;
+//   }
+//   return urlParams.boothName!;
+// };

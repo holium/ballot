@@ -16,6 +16,7 @@ export const ResultSummaryModel = types.model({
   topChoice: types.maybe(types.string),
   tallies: types.array(TallyModel),
 });
+
 export type ResultSummaryType = Instance<typeof ResultSummaryModel>;
 
 export const ResultModel = types

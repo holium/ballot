@@ -35,7 +35,8 @@ export const ProposalStore = types
   .views((self) => ({
     get list() {
       // return Array.from(self.proposals.values()).sort(
-      //   (a: ProposalModelType, b: ProposalModelType) => a.created - b.created
+      //   (a: ProposalModelType, b: ProposalModelType) =>
+      //     a.status === "Active" || b.status === ? 0 : -1
       // );
       return Array.from(self.proposals.values());
     },
@@ -82,6 +83,7 @@ export const ProposalStore = types
           proposalForm
         );
         if (error) throw error;
+
         // response could be null
         console.log("creating proposal ", response);
         const parentBooth: BoothModelType = getParent(self, 1);
