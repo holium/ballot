@@ -23,6 +23,7 @@ export const VoteBreakdownBar = (props: VoteBreakdownBarProps) => {
           {ourChoice && (
             <Icons.CheckCircle
               ml={3}
+              opacity={win ? 1 : 0.4}
               color={win ? "brand.primary" : "text.primary"}
             />
           )}

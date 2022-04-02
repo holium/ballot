@@ -20,7 +20,7 @@ export const ProposalResult: FC<ProposalResultType> = (
       <Flex flexDirection="row" alignItems="center">
         <Text
           opacity={0.7}
-          fontSize={3}
+          fontSize={2}
           variant="body"
           display="flex"
           flexDirection="row"
@@ -30,7 +30,7 @@ export const ProposalResult: FC<ProposalResultType> = (
         </Text>
         <Text
           ml={1}
-          fontSize={3}
+          fontSize={2}
           variant="body"
           fontWeight="500"
           color="brand.primary"
