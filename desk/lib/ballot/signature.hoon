@@ -13,6 +13,7 @@
 ::
 ++  sign
   |=  [our=ship now=time data=json]
+  ^-  signature:ballot
   =/  our-life             (jael-scry ,=life our %life now /(scot %p our))
   =/  our-private-key      (jael-scry ,=ring our %vein now /(scot %ud our-life))
   =/  our-crub             (nol:nu:crub:crypto our-private-key)   :: create a +crub core

@@ -5,7 +5,7 @@
 ::    Ball app agent for contexts, booths, proposals, and participants.
 ::
 :: ***********************************************************
-/-  *group, group-store, ballot-store
+/-  *group, group-store, ballot-store, ballot
 /+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature
 |%
 +$  card  card:agent:gall
@@ -455,6 +455,8 @@
       ++  cast-vote-wire
         |=  [contract=(map @t json)]
 
+        ~&  >>  (en-json:html [%o contract])
+
         =/  context  ((om json):dejs:format (~(got by contract) 'context'))
 
         =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
@@ -464,9 +466,23 @@
         =/  vote  ((om json):dejs:format (~(got by contract) 'data'))
         =/  vote  (~(put by vote) 'status' s+'recorded')
 
-        =/  signature  (~(get by vote) 'sig')
-        =/  signature  ?~(signature ~ (so:dejs:format (need signature)))
-        =/  verified  (verify src.bowl vote signature)
+        =/  j-sig  (~(get by vote) 'sig')
+        =/  j-sig  ?~(j-sig ~ ((om json):dejs:format (need j-sig)))
+        =/  hash  (~(get by j-sig) 'hash')
+        ?~  hash  ~&  >>>  "ballot: invalid vote signature. hash not found."  !!
+        =/  hash  `@ux`((se %ux):dejs:format (need hash))
+        =/  voter-ship  (~(get by j-sig) 'voter')
+        ?~  voter-ship  ~&  >>>  "ballot: invalid vote signature. voter not found."  !!
+        =/  voter-ship  ((se %p):dejs:format (need voter-ship))
+        =/  life  (~(get by j-sig) 'life')
+        ?~  life  ~&  >>>  "ballot: invalid vote signature. life not found."  !!
+        =/  life  (ni:dejs:format (need life))
+        =/  sign=signature:ballot  [p=hash q=voter-ship r=life]
+        %-  (slog leaf+"ballot: verifying vote signature {<sign>}..." ~)
+        =/  verified  (verify:sig our.bowl now.bowl sign)
+        ?~  verified
+              ~&  >>>  "ballot: vote could not be verified"  !!
+        %-  (slog leaf+"ballot: signature verified" ~)
 
         =/  booth-proposals  (~(get by votes.state) booth-key)
         =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
@@ -1027,59 +1043,6 @@
           [%pass /booths/(scot %tas booth-key)/msg/(scot %tas msg-id) %agent [hostship %ballot] %poke %json !>([%o wire-payload])]
         ==
 
-      ++  sign
-        |=  [data=@]
-        ^-  @t
-        =/  our-life             .^(@ud %j /=life=/(scot %p our.bowl))
-        =/  our-private-key      .^(@uw %j /=vein=/our-life)
-        =/  our-crub             (nol:nu:crub:crypto our-private-key)   :: create a +crub core
-        =/  signed               `@t`(sign:as:our-crub (jam data))       :: signs msg
-        ::  should probably handle a null return in the case of bad key
-        signed
-
-      ++  verify
-        |=  [voter=@p raw-data=(map @t json) signed-data=@]
-        ^-  (unit @f)
-        =/  participant-life         .^(@ud %j /=life=/(scot %p voter))
-        =/  participant-pub-key      -:+:.^([life pass (unit @ux)] %j /=deed=/(scot %p voter)/participant-life)
-        =/  participant-crub         (com:nu:crub:crypto participant-pub-key)  :: create a +crub core
-        =/  verified                 `@t`+:(sure:as:participant-crub signed-data)  :: should be cast to vote data type
-        ::  should check the signed-data contents against the raw data: raw-data=@
-        =/  verified  (de-json:html verified)
-        ?~  verified
-          %-  (slog leaf+"ballot: invalid json" ~)  ~
-        =/  verified  ((om json):dejs:format (need verified))
-        =/  signed-key  (~(get by verified) 'key')
-        ?~  signed-key
-          %-  (slog leaf+"ballot: missing key" ~)  ~
-        =/  signed-key  (so:dejs:format (need signed-key))
-        =/  signed-choice  (~(get by verified) 'choice')
-        ?~  signed-choice
-          %-  (slog leaf+"ballot: missing choice" ~)  ~
-        =/  signed-choice  ((om json):dejs:format (need signed-choice))
-        =/  signed-label  (~(get by verified) 'label')
-        ?~  signed-label
-          %-  (slog leaf+"ballot: missing label" ~)  ~
-        =/  signed-label  (so:dejs:format (need signed-label))
-
-        =/  participant-key  (~(get by raw-data) 'key')
-        ?~  participant-key
-            %-  (slog leaf+"ballot: missing key (raw)" ~)  ~
-        =/  participant-key  (so:dejs:format (need participant-key))
-        =/  choice  (~(get by raw-data) 'choice')
-        ?~  choice
-          %-  (slog leaf+"ballot: missing choice (raw)" ~)  ~
-        =/  choice  ((om json):dejs:format (need choice))
-        =/  label  (~(get by choice) 'label')
-        ?~  label
-          %-  (slog leaf+"ballot: missing label (raw)" ~)  ~
-        =/  label  (so:dejs:format (need label))
-        =/  is-valid  ?:  ?&
-                =(label signed-label)
-                =(signed-key participant-key)
-                ==  %.y  %.n
-        (some is-valid)
-
       ++  cast-vote-api :: req payload booth-key
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
         ^-  (quip card _state)
@@ -1127,16 +1090,6 @@
                 (~(put by payload-data) 'status' s+'recorded')
               (~(put by payload-data) 'status' s+'pending')
 
-        :: %-  (slog leaf+"ballot: getting life value..." ~)
-        :: =/  our-life  .^((unit @ud) %j /=lyfe=/(scot %p our.bowl))
-        :: =/  our-life
-        ::       ?~  our-life
-        ::         ~&  >>  "ballot: life is null. defaulting to 0."
-        ::         0
-        ::       (need our-life)
-        :: %-  (slog leaf+"ballot: {<our-life>}" ~)
-        :: =/  payload-data  (~(put by payload-data) 'life' [%n our-life])
-
         ::  add voter information
         =/  payload-data  (~(put by payload-data) 'voter' s+participant-key)
         ::  timestamp the vote
@@ -1145,14 +1098,20 @@
         ::  TODO sign the vote here
         %-  (slog leaf+"ballot: signing vote payload..." ~)
         =/  signature  (sign:sig our.bowl now.bowl [%o payload-data])
-        ~&  >>  [signature]       
-        :: =/  signature=@t  (sign (crip (en-json:html [%o payload-data])))
+        ~&  >>  [signature]
         %-  (slog leaf+"ballot: {<signature>}" ~)
 
-        =/  voting-record  payload-data
-        :: =/  voting-record  (~(put by voting-record) 'sig' signature)
+        =/  j-sig=json
+        %-  pairs:enjs:format
+        :~
+          ['hash' s+`@t`(scot %ux p.signature)]
+          ['voter' s+(crip "{<q.signature>}")]
+          ['life' (numb:enjs:format r.signature)]
+        ==
 
-        =/  proposal-votes  (~(put by proposal-votes) participant-key [%o voting-record])
+        =/  payload-data  (~(put by payload-data) 'sig' j-sig)
+
+        =/  proposal-votes  (~(put by proposal-votes) participant-key [%o payload-data])
         =/  booth-votes  (~(put by booth-proposals) proposal-key [%o proposal-votes])
 
         ::  create the response
@@ -2313,9 +2272,9 @@
         %-  (slog leaf+"ballot: end date not found in payload. no need to reschedule poll end." ~)
         [effects poll]
 
-    =/  poll-key  (crip "poll-{<(scot %t timestamp)>}")
+    =/  poll-key  (crip (weld "poll-" (trip timestamp)))
     =/  poll  (~(put by poll.result) 'key' s+poll-key)
-    =/  poll  (~(put by poll.result) 'status' s+'scheduled')
+    =/  poll  (~(put by poll) 'status' s+'scheduled')
     =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
 
     ::  in case of scheduling change:
