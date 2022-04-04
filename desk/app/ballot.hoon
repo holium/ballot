@@ -6,7 +6,7 @@
 ::
 :: ***********************************************************
 /-  *group, group-store, ballot-store
-/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor
+/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature
 |%
 +$  card  card:agent:gall
 +$  versioned-state
@@ -1127,14 +1127,14 @@
                 (~(put by payload-data) 'status' s+'recorded')
               (~(put by payload-data) 'status' s+'pending')
 
-        %-  (slog leaf+"ballot: getting life value..." ~)
-        =/  our-life  .^((unit @ud) %j /=lyfe=/(scot %p our.bowl))
-        =/  our-life
-              ?~  our-life
-                ~&  >>  "ballot: life is null. defaulting to 0."
-                0
-              (need our-life)
-        %-  (slog leaf+"ballot: {<our-life>}" ~)
+        :: %-  (slog leaf+"ballot: getting life value..." ~)
+        :: =/  our-life  .^((unit @ud) %j /=lyfe=/(scot %p our.bowl))
+        :: =/  our-life
+        ::       ?~  our-life
+        ::         ~&  >>  "ballot: life is null. defaulting to 0."
+        ::         0
+        ::       (need our-life)
+        :: %-  (slog leaf+"ballot: {<our-life>}" ~)
         :: =/  payload-data  (~(put by payload-data) 'life' [%n our-life])
 
         ::  add voter information
@@ -1142,12 +1142,15 @@
         ::  timestamp the vote
         =/  payload-data  (~(put by payload-data) 'created' s+timestamp)
 
+        ::  TODO sign the vote here
         %-  (slog leaf+"ballot: signing vote payload..." ~)
-        =/  signature=@t  (sign (crip (en-json:html [%o payload-data])))
+        =/  signature  (sign:sig our.bowl now.bowl [%o payload-data])
+        ~&  >>  [signature]       
+        :: =/  signature=@t  (sign (crip (en-json:html [%o payload-data])))
         %-  (slog leaf+"ballot: {<signature>}" ~)
 
         =/  voting-record  payload-data
-        =/  voting-record  (~(put by voting-record) 'sig' s+signature)
+        :: =/  voting-record  (~(put by voting-record) 'sig' signature)
 
         =/  proposal-votes  (~(put by proposal-votes) participant-key [%o voting-record])
         =/  booth-votes  (~(put by booth-proposals) proposal-key [%o proposal-votes])

@@ -16,22 +16,7 @@ tar zxvf ./darwin.tgz --strip=1
 
 Now you should have the urbit files in the `ships` folder. This folder is ignored by GIT.
 
-#### Booting a fake ship for development
-
-```zsh
-# The -F will create a fake zod
-./urbit -F zod
-
-# Optional:
-#   Fake bus for networking between fake ships
-./urbit -F bus
-```
-
-This will start booting a comet and may take a while.
-
-[See more docs for working with the developer environment.](https://urbit.org/docs/development/environment)
-
-#### Symbolic linking base-dev and garden-dev
+#### Download latest urbit pill
 
 First, you need to download the urbit repo and you will need `git-lfs`
 
@@ -47,6 +32,23 @@ git clone https://github.com/urbit/urbit
 ```
 
 This will add a `urbit` folder to your local repo which is ignored by git.
+
+#### Booting a fake ship for development
+
+```zsh
+# The -F will create a fake zod
+./urbit -F zod -B ../urbit/bin/multi-brass.pill
+
+# Optional:
+#   Fake bus for networking between fake ships
+./urbit -F bus -B ../urbit/bin/multi-brass.pill
+```
+
+This will start booting a comet and may take a while.
+
+[See more docs for working with the developer environment.](https://urbit.org/docs/development/environment)
+
+#### Symbolic linking base-dev and garden-dev
 
 Now, you can symbolic link the urbit dev desks `base-dev` and `garden-dev`.
 
@@ -70,9 +72,13 @@ In addition to the linkages to base-dev and garden-dev discussed above, you will
 `Option 2` - Copy the following `./urbit/pkg/landscape` files to the corresponding `./urbit/pkg/ballot` folder:
 
 ```zsh
+app/group-store.hoon
 lib/group-store.hoon
-lib/group-view.hoon
 lib/resource.hoon
+lib/migrate.hoon
+lib/naive.hoon      # in %base
+lib/tiny.hoon       # in %base
+mar/css.hoon
 mar/group/update.hoon
 mar/group/view-action.hoon
 mar/group/view-update.hoon
@@ -80,6 +86,7 @@ mar/group/action.hoon
 mar/group/update-0.hoon
 sur/group/hoon
 sur/resource.hoon
+sur/dice.hoon
 sur/group-store.hoon
 sur/group-view.hoon
 ```
