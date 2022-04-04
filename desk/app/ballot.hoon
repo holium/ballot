@@ -478,6 +478,7 @@
         ?~  life  ~&  >>>  "ballot: invalid vote signature. life not found."  !!
         =/  life  (ni:dejs:format (need life))
         =/  sign=signature:ballot  [p=hash q=voter-ship r=life]
+        ~&  >>  [sign]
         %-  (slog leaf+"ballot: verifying vote signature {<sign>}..." ~)
         =/  verified  (verify:sig our.bowl now.bowl sign)
         ?~  verified

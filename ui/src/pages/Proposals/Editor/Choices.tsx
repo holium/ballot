@@ -86,16 +86,19 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
                       label: "No action",
                       value: "",
                     },
-                    {
-                      label: "Create new project",
-                      value: "create-new-project",
-                    },
+                    // {
+                    //   label: "Create new project",
+                    //   disbaled: true,
+                    //   value: "create-new-project",
+                    // },
                     {
                       label: "Invite member",
+                      disabled: true,
                       value: "invite-member",
                     },
                     {
                       label: "Kick member",
+                      disabled: true,
                       value: "kick-member",
                     },
                   ]}

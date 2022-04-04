@@ -22,13 +22,13 @@
   `signature:ballot`[signed our our-life]
 ::
 ++  verify
+  ::  TODO handle cases where the life is not found
   |=  [our=ship now=time signature=signature:ballot]
-  :: =/  participant-life         (jael-scry ,=life our %life now /(scot %p participant))
-  :: =/  participant-pub-key      (jael-scry ,deed=[a=life b=pass c=(unit @ux)] our %deed now /(scot %p q.signature)/(scot %ud r.signature))
-  :: =/  participant-pub-key      -:+:.^([life pass (unit @ux)] %j /=deed=/(scot %p participant)/participant-life)
-  =/  participant-pub-key      (jael-scry ,deed=@ our %deed now /(scot %p q.signature)/(scot %ud r.signature))
-  =/  participant-crub         (com:nu:crub:crypto participant-pub-key)  :: create a +crub core
+  =/  participant-pub-key      -:+:(jael-scry ,=[life=life pub=pass unit=(unit @ux)] our %deed now /(scot %p q.signature)/(scot %ud r.signature))
+  =/  participant-crub         (com:nu:crub:crypto pub.participant-pub-key)  :: create a +crub core
   =/  verified                 +:(sure:as:participant-crub p.signature)  :: should be cast to vote data type
-  ::  will be null if not valid, so check for that
+  :: ~&  >>  [verified]
+  :: ::  will be null if not valid, so check for that
   verified
+
 --

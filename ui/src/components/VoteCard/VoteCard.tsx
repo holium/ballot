@@ -157,11 +157,9 @@ export const VoteCard: any = (props: VoteCardProps) => {
       ref={ref}
       elevation="lifted"
       style={{
-        position: "fixed",
+        // position: "sticky",
         borderColor: "transparent",
         padding: "12px",
-        minWidth: "250px",
-        width: "300px",
       }}
     >
       {blurred && (

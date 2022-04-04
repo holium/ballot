@@ -17,6 +17,7 @@ import {
   VoteModel,
 } from ".";
 import proposalsApi from "../../api/proposals";
+import voteApi from "../../api/votes";
 import { BoothModelType } from "../booths";
 import { ContextModelType, EffectModelType } from "../common/effects";
 
@@ -56,7 +57,9 @@ export const ProposalStore = types
       self.loader.set("loading");
       try {
         const [response, error] = yield proposalsApi.getAll(self.boothKey);
+        const [voteResponse, voteError] = yield voteApi.getAll(self.boothKey);
         if (error) throw error;
+        if (voteError) throw voteError;
         // response could be null
         Object.values(response || []).forEach((proposal: any) => {
           const newProposal = ProposalModel.create({
@@ -64,8 +67,11 @@ export const ProposalStore = types
             status: determineStatus(proposal),
             boothKey: self.boothKey,
           });
-          newProposal.getVotes();
           self.proposals.set(newProposal.key, newProposal);
+          // if there is a vote map, and there is a map for our proposal, set the votes
+          voteResponse &&
+            voteResponse[proposal.key] &&
+            newProposal.setVotes(voteResponse[proposal.key]);
         });
         self.loader.set("loaded");
       } catch (err: any) {
@@ -151,6 +157,18 @@ export const ProposalStore = types
           // this.initialEffect(payload);
           break;
       }
+    },
+    onPollEffect(effect: EffectModelType, proposalKey: string) {
+      const data: any = effect.data;
+      const oldProposal = self.proposals.get(proposalKey)!;
+      let update: any = {};
+      if (data.status === "started") {
+        update.status = "Active";
+      } else {
+        update.status = "Ended";
+      }
+      const updated: any = oldProposal.onPollEffect(update)!;
+      self.proposals.set(proposalKey, updated);
     },
     initialEffect(proposalMap: any, voteMap: any) {
       console.log("proposal initialEffect proposalMap ", proposalMap);

@@ -25,7 +25,7 @@ import {
   getNameFromUrl,
 } from "../../../logic/utils/path";
 import { descriptiveTimeString } from "../../../logic/utils/time";
-import { DetailHeader, DetailCentered, DetailBody } from "./Detail.styles";
+import { DetailHeader, DetailBody } from "./Detail.styles";
 import { Status } from "../../../components/Status";
 import { useMst } from "../../../logic/stores/root";
 import { ProposalModelType } from "../../../logic/stores/proposals";
@@ -77,11 +77,14 @@ export const ProposalDetail: FC = observer((props: any) => {
     const startTime = new Date(proposal.start * 1000);
     const endTime = new Date(proposal.end * 1000);
     content = (
-      <Grid2.Row justify="center">
-        <Grid2.Column mb="16px" lg={9} xl={9}>
+      <Grid2.Row reverse={["xs"]} justify="center">
+        <Grid2.Column mb="16px" md={6} lg={9} xl={9}>
           <Card
             padding={0}
-            style={{ borderColor: "transparent", borderWidth: 0 }}
+            style={{
+              borderColor: "transparent",
+              borderWidth: 0,
+            }}
             elevation="lifted"
           >
             <DetailHeader>
@@ -103,7 +106,12 @@ export const ProposalDetail: FC = observer((props: any) => {
                   value={descriptiveTimeString(proposal.start, proposal.end)}
                 />
               </Flex>
-              <Flex flex={1} flexDirection="row" justifyContent="space-between">
+              <Flex
+                mt={3}
+                flex={1}
+                flexDirection="row"
+                justifyContent="space-between"
+              >
                 <KPI
                   icon={<TlonIcon icon="Clock" />}
                   value={
@@ -129,6 +137,9 @@ export const ProposalDetail: FC = observer((props: any) => {
               <MDEditor.Markdown
                 style={{
                   padding: 16,
+                  borderBottomLeftRadius: 6,
+                  borderBottomRightRadius: 6,
+                  background: "transparent",
                   fontFamily: "Inter, sans-serif",
                 }}
                 source={proposal.content}
@@ -137,22 +148,21 @@ export const ProposalDetail: FC = observer((props: any) => {
             </DetailBody>
           </Card>
         </Grid2.Column>
-        <Grid2.Column md={2} lg={3}>
-          <Grid2.Row>
-            <VoteCard
-              disabled={!isActive}
-              choices={proposal.choices}
-              title={proposal.title}
-              loading={proposal.isVoteLoading}
-              currentUser={app.ship}
-              strategy={proposal.strategy}
-              onVote={onVote}
-              timeLeft={descriptiveTimeString(proposal.start, proposal.end)}
-              chosenOption={chosenVote && chosenVote.choice}
-              voteResults={proposal.results!.resultSummary}
-              voteSubmitted={proposal.results!.didVote}
-            />
-          </Grid2.Row>
+        <Grid2.Column mb="16px" md={2} lg={3}>
+          <VoteCard
+            disabled={!isActive}
+            choices={proposal.choices}
+            title={proposal.title}
+            loading={proposal.isVoteLoading}
+            currentUser={app.ship}
+            strategy={proposal.strategy}
+            onVote={onVote}
+            timeLeft={descriptiveTimeString(proposal.start, proposal.end)}
+            chosenOption={chosenVote && chosenVote.choice}
+            voteResults={proposal.results!.resultSummary}
+            voteSubmitted={proposal.results!.didVote}
+          />
+
           {/* <Grid2.Row>
             <Card
               padding={12}

@@ -137,6 +137,7 @@ export const ProposalModel = types
         self.loader.error(err);
       }
     }),
+
     getVotes: flow(function* () {
       self.voteLoader.set("loading");
       yield timeout(500);
@@ -160,6 +161,23 @@ export const ProposalModel = types
         self.voteLoader.error(err);
       }
     }),
+    /**
+     *
+     * setVotes: sets the entire vote map
+     *
+     * @param {[voter: string]: VoteModelType} voteMap
+     */
+    setVotes(voteMap: any) {
+      Object.values(voteMap || []).forEach((vote: any) => {
+        const newVote = VoteModel.create(vote);
+        if (newVote.voter === rootStore.app.ship.patp) {
+          self.results!.didVote = true;
+        }
+        self.results!.votes.set(vote.voter, newVote);
+      });
+      self.results!.generateResultSummary();
+      self.voteLoader.set("loaded");
+    },
     onVoteEffect(payload: EffectModelType | any, context: ContextModelType) {
       console.log("in vote effect, ", payload, context);
       const newVote = VoteModel.create(payload.data!);
@@ -173,6 +191,20 @@ export const ProposalModel = types
           vote!.status = payload.data.status;
           break;
       }
+    },
+    onPollEffect(update: any) {
+      const validKeys = Object.keys(update).filter((key: string) =>
+        self.hasOwnProperty(key)
+      );
+      const patches: IJsonPatch[] = validKeys.map((key: string) => {
+        return {
+          op: "replace",
+          path: `/${key}`,
+          value: update[key],
+        };
+      });
+      applyPatch(self, patches);
+      return self;
     },
     updateEffect(update: any) {
       const validKeys = Object.keys(update).filter((key: string) =>
