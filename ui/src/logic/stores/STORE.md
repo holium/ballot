@@ -169,7 +169,7 @@ A `reaction` is a list of `effects` that are triggered by the response to an `ac
   },
   effects: [
     {
-      resource: "proposal"
+      resource: "proposal",
       key: "proposal-1648736647426",
       effect: "add",
       data: {},
@@ -190,11 +190,11 @@ A `reaction` is a list of `effects` that are triggered by the response to an `ac
   },
   effects: [
     {
-      resource: "proposal"
-      key: "proposal-1648736647426",
+      resource: "poll",
+      key: "<poll-key>",
       effect: "add",
       data: {},
-    },
+    }
   ]
 }
 ```
@@ -203,7 +203,7 @@ A `reaction` is a list of `effects` that are triggered by the response to an `ac
 
 ```js
 {
-  resource: "proposal"
+  resource: "proposal",
   key: "proposal-1648736647426",
   effect: "add",
   data: {},
@@ -214,7 +214,7 @@ A `reaction` is a list of `effects` that are triggered by the response to an `ac
 
 ```js
 {
-  resource: "poll"
+  resource: "poll",
   key: "<poll-key>",
   effect: "add",
   data: {},

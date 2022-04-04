@@ -13,11 +13,7 @@
 ::
 ++  sign
   |=  [our=ship now=time data=json]
-  :: ~&  >>  ['signing vote' bowl .^(life k+/(scot %p our.bowl)/life/(scot %da now.bowl)/(scot %p our.bowl))] 
-  :: =/  our-life             .^(@ud %j /(scot %p our.bowl)/life/(scot %da now.bowl)/(scot %p our.bowl))
   =/  our-life             (jael-scry ,=life our %life now /(scot %p our))
-  ~&  >>  ['signing vote']
-  ~&  >>  [our-life]
   =/  our-private-key      (jael-scry ,=ring our %vein now /(scot %ud our-life))
   =/  our-crub             (nol:nu:crub:crypto our-private-key)   :: create a +crub core
   =/  signed               `@ux`(sign:as:our-crub (jam data))     :: signs msg
