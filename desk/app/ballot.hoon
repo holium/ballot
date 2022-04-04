@@ -6,7 +6,7 @@
 ::
 :: ***********************************************************
 /-  *group, group-store, ballot-store
-/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor
+/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature
 |%
 +$  card  card:agent:gall
 +$  versioned-state
@@ -1070,6 +1070,12 @@
         =/  payload-data  (~(put by payload-data) 'voter' s+participant-key)
         ::  timestamp the vote
         =/  payload-data  (~(put by payload-data) 'created' s+timestamp)
+
+        ::  TODO sign the vote here
+        ~&  >>  ['vote data']
+        ~&  >>  [payload-data]
+        =/  signed-vote  (sign:sig our.bowl now.bowl [%o payload-data])
+        ~&  >>  [signed-vote]
 
         =/  proposal-votes  (~(put by proposal-votes) participant-key [%o payload-data])
         =/  booth-votes  (~(put by booth-proposals) proposal-key [%o proposal-votes])

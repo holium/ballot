@@ -70,7 +70,7 @@ export const ResultModel = types
       self.resultSummary = ResultSummaryModel.create({
         voteCount: self.voteCount,
         participantCount,
-        topChoice: tallies[0].label,
+        topChoice: self.voteCount > 0 ? tallies[0].label : "None",
         tallies,
       });
       // return self.resultSummary;

@@ -11,3 +11,4 @@ stats.html
 .env.moon1
 .env.moon2
 !.env.local-example
+.env.*

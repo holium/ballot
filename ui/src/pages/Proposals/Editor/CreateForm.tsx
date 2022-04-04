@@ -4,28 +4,13 @@ import { clone, unprotect } from "mobx-state-tree";
 import * as yup from "yup";
 import { ChoiceType } from "./Choices";
 
-export const createProposalForm = () => {
-  // const proposalBooth = booth?.name;
-  const form = createForm({
-    onSubmit({ values }) {
-      values.start = new Date(values.start).valueOf();
-      values.end = new Date(values.end).valueOf();
-      values.status = "draft";
-      return values;
-    },
-  });
-
-  return {
-    form,
-  };
-};
-
 export const createProposalFormFields = (defaults: any = {}) => {
   const form = createForm({
     onSubmit({ values }) {
       values.redacted = Boolean(values.redacted);
-      values.start = new Date(values.start).valueOf();
-      values.end = new Date(values.end).valueOf();
+      values.start = Math.round(new Date(values.start).valueOf() / 1000);
+      values.end = Math.round(new Date(values.end).valueOf() / 1000);
+      console.log(values);
       return values;
     },
   });
@@ -60,26 +45,28 @@ export const createProposalFormFields = (defaults: any = {}) => {
   });
 
   const newStartTime = new Date();
-  newStartTime.setHours(0);
+  newStartTime.setHours(newStartTime.getHours() + 1);
   newStartTime.setMinutes(0);
   newStartTime.setSeconds(0);
   const newEndTime = new Date();
   newEndTime.setDate(newStartTime.getDate() + 7);
-  newEndTime.setHours(0);
+  newEndTime.setHours(newStartTime.getHours());
   newEndTime.setMinutes(0);
   newEndTime.setSeconds(0);
 
   const startTime = createField({
     id: "start",
     form,
-    initialValue: defaults.start ? new Date(defaults.start) : newStartTime,
+    initialValue: defaults.start
+      ? new Date(defaults.start * 1000)
+      : newStartTime,
     validationSchema: yup.date().required("Must have a start time."),
   });
 
   const endTime = createField({
     id: "end",
     form,
-    initialValue: defaults.end ? new Date(defaults.end) : newEndTime,
+    initialValue: defaults.end ? new Date(defaults.end * 1000) : newEndTime,
     validationSchema: yup.date().required("Must have an end time."),
   });
 
