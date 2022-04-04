@@ -2025,10 +2025,10 @@
     =/  proposal-votes  ?~(proposal-votes ~ ((om json):dejs:format (need proposal-votes)))
 
     =/  participants  ~(val by booth-participants)
-    =/  participant-count  (lent participants)
+    =/  participant-count  ?~(participants 0 (lent participants))
 
     =/  votes  `(list [@t json])`~(tap by proposal-votes)
-    =/  vote-count  (lent votes)
+    =/  vote-count  ?~(proposal-votes 0 (lent votes))
 
     =/  turnout  (div vote-count participant-count)
     =/  tallies=(map @t json)
@@ -2053,10 +2053,10 @@
     =/  results
       %-  pairs:enjs:format
       :~
-        ['voteCount' [%n vote-count]]
-        ['participantCount' [%n participant-count]]
+        ['voteCount' [%n (scot %ta vote-count)]]
+        ['participantCount' [%n (scot %ta participant-count)]]
         ['topChoice' s+'?']
-        ['tallies' [%a tallies]]
+        ['tallies' ?~(tallies ~ [%a tallies])]
       ==
 
     results
@@ -2064,6 +2064,16 @@
   ++  on-start-poll
     |=  [booth-key=@t proposal-key=@t]
     ^-  (quip card _this)
+
+    =/  booth-polls  (~(get by polls.state) booth-key)
+    =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
+    =/  poll  (~(get by booth-polls) proposal-key)
+    =/  poll  ?~(poll ~ ((om json):dejs:format (need poll)))
+
+    =/  poll-key  (~(get by poll) 'key')
+    =/  poll-key  ?~  poll-key
+      ~&  >>>  "poll not found"  !!
+    (so:dejs:format (need poll-key))
 
     %-  (slog leaf+"on-start-poll called" ~)
     =/  context=json
@@ -2082,15 +2092,16 @@
     =/  status-effect=json
     %-  pairs:enjs:format
     :~
-      ['resource' s+'booth']
-      ['effect' s+'update']
+      ['resource' s+'poll']
+      ['key' s+poll-key]
+      ['effect' s+'add']
       ['data' status-data]
     ==
 
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'booth-reaction']
+      ['action' s+'poll-started-reaction']
       ['context' context]
       ['effects' [%a [status-effect]~]]
     ==
@@ -2106,6 +2117,15 @@
     ^-  (quip card _this)
 
     %-  (slog leaf+"on-end-poll called" ~)
+    =/  booth-polls  (~(get by polls.state) booth-key)
+    =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
+    =/  poll  (~(get by booth-polls) proposal-key)
+    =/  poll  ?~(poll ~ ((om json):dejs:format (need poll)))
+
+    =/  poll-key  (~(get by poll) 'key')
+    =/  poll-key  ?~  poll-key
+      ~&  >>>  "poll not found"  !!
+    (so:dejs:format (need poll-key))
 
     =/  poll-results  (tally-results booth-key proposal-key)
 
@@ -2128,7 +2148,8 @@
     =/  results-effect=json
     %-  pairs:enjs:format
     :~
-      ['resource' s+'booth']
+      ['resource' s+'poll']
+      ['key' s+poll-key]
       ['effect' s+'update']
       ['data' results-data]
     ==
@@ -2136,7 +2157,7 @@
     =/  effects=json
     %-  pairs:enjs:format
     :~
-      ['action' s+'booth-reaction']
+      ['action' s+'poll-ended-reaction']
       ['context' context]
       ['effects' [%a [results-effect]~]]
     ==
@@ -2189,7 +2210,7 @@
           =/  error-effect=json
           %-  pairs:enjs:format
           :~
-            ['resource' s+'booth']
+            ['resource' s+'poll']
             ['effect' s+'error']
             ['data' error-data]
           ==
@@ -2289,6 +2310,8 @@
         %-  (slog leaf+"ballot: end date not found in payload. no need to reschedule poll end." ~)
         [effects poll]
 
+    =/  poll-key  (crip "poll-{<(scot %t timestamp)>}")
+    =/  poll  (~(put by poll.result) 'key' s+poll-key)
     =/  poll  (~(put by poll.result) 'status' s+'scheduled')
     =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
 
