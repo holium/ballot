@@ -1,6 +1,6 @@
 import { BaseAPI } from "./base";
 export class VotesApi extends BaseAPI {
-  fetchAll = async (boothKey: string) => {
+  getAll = async (boothKey: string) => {
     const scryUrl = `${this.baseUrl}/~/scry/ballot/booths/${boothKey}/votes`;
     try {
       const response = await fetch(scryUrl, {

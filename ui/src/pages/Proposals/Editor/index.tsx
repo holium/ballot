@@ -307,14 +307,17 @@ export const ProposalEditor: FC = observer(() => {
                               label: "Single choice",
                               value: "single-choice",
                             },
-                            {
-                              label: "Quadratic voting",
-                              value: "quadratic-voting",
-                            },
+
                             {
                               label: "Ranked choice",
+                              disabled: true,
                               value: "ranked-choice",
                             },
+                            // {
+                            //   label: "Quadratic voting",
+                            //   disabled: true,
+                            //   value: "quadratic-voting",
+                            // },
                           ]}
                           onSelected={(option: any) => {
                             strategy.actions.onChange(option.value);
