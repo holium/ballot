@@ -21,8 +21,8 @@ export function determineStatus(
   proposal: SnapshotOrInstance<typeof ProposalModel>
 ) {
   const now = new Date().getTime();
-  const startTime = new Date(proposal.start).getTime();
-  const endTime = new Date(proposal.end).getTime();
+  const startTime = new Date(proposal.start * 1000).getTime();
+  const endTime = new Date(proposal.end * 1000).getTime();
 
   let status: string = "Draft";
   if (startTime > now) {

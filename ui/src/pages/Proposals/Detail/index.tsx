@@ -74,7 +74,8 @@ export const ProposalDetail: FC = observer((props: any) => {
     const chosenVote = proposal.results!.getMyVote;
 
     const isActive = proposal.status === "Active";
-
+    const startTime = new Date(proposal.start * 1000);
+    const endTime = new Date(proposal.end * 1000);
     content = (
       <Grid2.Row justify="center">
         <Grid2.Column mb="16px" lg={9} xl={9}>
@@ -100,6 +101,24 @@ export const ProposalDetail: FC = observer((props: any) => {
                 <KPI
                   icon={<TlonIcon icon="Clock" />}
                   value={descriptiveTimeString(proposal.start, proposal.end)}
+                />
+              </Flex>
+              <Flex flex={1} flexDirection="row" justifyContent="space-between">
+                <KPI
+                  icon={<TlonIcon icon="Clock" />}
+                  value={
+                    startTime.toLocaleDateString() +
+                    " " +
+                    startTime.toLocaleTimeString()
+                  }
+                />
+                <KPI
+                  icon={<TlonIcon icon="Clock" />}
+                  value={
+                    endTime.toLocaleDateString() +
+                    " " +
+                    endTime.toLocaleTimeString()
+                  }
                 />
               </Flex>
             </DetailHeader>
