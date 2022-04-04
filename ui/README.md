@@ -21,7 +21,7 @@ Then in the `ballot/ui` folder run `yarn link "@holium/design-system"`.
 
 When you have installed the dependencies and linked the design system, run `yarn dev` to start the app on `localhost:3000`.
 
-Run `yarn dev:bus` to start another ui instance for the `~bus` fake ship. Will run on `localhost:3001`.
+Run `yarn dev:env bus` to start another ui instance for the `~bus` fake ship. Will run on `localhost:3001`. Yu will need to make a new `.env.bus` file with the variables set appropriately.
 
 Once running try to load: `http://localhost:3000/apps/ballot/booth/ship/~zod/proposals`
 

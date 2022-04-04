@@ -9,3 +9,4 @@ interface ImportMeta {
 
 declare module "mobx-rest-fetch-adapter";
 declare module "urbit-ob";
+// declare module "@holium/design-system";

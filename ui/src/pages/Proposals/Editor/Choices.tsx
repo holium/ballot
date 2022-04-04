@@ -67,7 +67,7 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
                     marginRight: 12,
                   }}
                   menuWidth={200}
-                  minWidth={150}
+                  minWidth={120}
                   pt={1}
                   pb={1}
                   bg="transparent"
@@ -85,6 +85,10 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
                     {
                       label: "No action",
                       value: "",
+                    },
+                    {
+                      label: "Create new project",
+                      value: "create-new-project",
                     },
                     {
                       label: "Invite member",

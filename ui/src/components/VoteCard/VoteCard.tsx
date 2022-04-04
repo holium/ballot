@@ -17,6 +17,7 @@ import { VoteBreakdownBar } from "../VoteBreakdownBar";
 import { VoteCardButton } from "./VoteCard.styles";
 import { pluralize } from "../../logic/utils/text";
 import {
+  ChoiceModelType,
   ResultSummaryType,
   TallyType,
   VoteModelType,
@@ -34,10 +35,11 @@ export type VoteCardProps = {
   title: string;
   blurred?: boolean;
   loading?: boolean;
+  timeLeft?: string;
   castingLoading?: boolean;
   strategy: string;
   choices: [];
-  chosenOption?: string;
+  chosenOption?: ChoiceModelType;
   voteResults?: ResultSummaryType;
   voteSubmitted?: boolean;
   onClick: (option: string) => any;
@@ -52,6 +54,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
     currentUser,
     choices,
     strategy,
+    timeLeft,
     title,
     blurred,
     // if user exists in list of votes submitted for this proposal, then make voteSubmitted=true, and make chosenOption=the choice object of their vote + proposalId
@@ -123,20 +126,31 @@ export const VoteCard: any = (props: VoteCardProps) => {
       </VoteCardButton>
     ));
   } else if (chosenOption) {
-    middleSection =
-      voteResults &&
-      voteResults.tallies.map((vote: TallyType) => {
-        return (
-          <VoteBreakdownBar
-            win={vote.label === voteResults.topChoice}
-            label={vote.label}
-            percentage={vote.percentage}
-            width="250px"
-            overlay={true}
-            key={vote.label}
-          />
-        );
-      });
+    middleSection = voteResults && (
+      <>
+        {voteResults.tallies.map((vote: TallyType) => {
+          return (
+            <VoteBreakdownBar
+              win={vote.label === voteResults.topChoice}
+              ourChoice={vote.label === chosenOption.label}
+              label={vote.label}
+              percentage={vote.percentage}
+              width="250px"
+              overlay={true}
+              key={vote.label}
+            />
+          );
+        })}
+        <Flex justifyContent="flex-start" mt={3}>
+          <Text opacity={0.6} variant="hint">{`${
+            voteResults?.voteCount
+          } ${pluralize(
+            "vote",
+            voteResults?.voteCount! || 0
+          )} • ${timeLeft}`}</Text>
+        </Flex>
+      </>
+    );
   }
   return (
     <Card
@@ -185,8 +199,8 @@ export const VoteCard: any = (props: VoteCardProps) => {
             color={currentUser.metadata.color}
             textOpacity={1}
           />
-          <Text variant="hint" opacity={0.7}>
-            {1} {pluralize("vote", 1)}
+          <Text variant="hint" opacity={0.5}>
+            {`1 ${pluralize("vote", 1)}`}
           </Text>
         </Flex>
         <Text mt={3} mb={3} variant="body">
@@ -195,6 +209,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
         <Grid gridTemplateRows="auto" gridRowGap={1}>
           {middleSection}
         </Grid>
+
         <VoteCardButton
           isLoading={castingLoading}
           additionalVariant="submit"
@@ -206,7 +221,10 @@ export const VoteCard: any = (props: VoteCardProps) => {
           }
           onClick={() => !disabled && onVote(chosenVote)}
         >
-          {chosenOption ? <Icons.CheckCircle /> : "Confirm"}
+          {/* {chosenOption ? <Icons.CheckCircle /> : "Confirm"} */}
+          {/* {loading && <Spinner size={0} />} */}
+          {!loading && chosenOption && "Voted"}
+          {!loading && !chosenOption && "Confirm"}
         </VoteCardButton>
 
         {/* {chosenOption && (

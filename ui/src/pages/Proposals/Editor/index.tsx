@@ -78,12 +78,8 @@ export const ProposalEditor: FC = observer(() => {
     }
 
     if (isNew) {
-      saveButton.current!.blur();
-      let newPath = createPath(
-        getKeyFromUrl(urlParams),
-        "proposals/editor",
-        responseProposal.key
-      );
+      saveButton.current && saveButton.current!.blur();
+      let newPath = createPath(getKeyFromUrl(urlParams), "proposals");
       navigate(newPath);
       app.setCurrentUrl(newPath);
     }
@@ -205,6 +201,10 @@ export const ProposalEditor: FC = observer(() => {
                 return (
                   <Button
                     ref={saveButton}
+                    isLoading={
+                      (isNew && proposalStore.isAdding) ||
+                      (!isNew && proposal.isLoading)
+                    }
                     py={1}
                     tabIndex={choices.state.value.length + 8}
                     type="submit"

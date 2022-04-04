@@ -17,11 +17,12 @@ import { useMst } from "../../../logic/stores/root";
 import { ParticipantModelType } from "../../../logic/stores/participants";
 import { toJS } from "mobx";
 import { observer } from "mobx-react";
+import { getKeyFromUrl, getNameFromUrl } from "../../../logic/utils/path";
 
 export const DelegationList: FC = observer(() => {
   const { app, store } = useMst();
   const urlParams = useParams();
-  const currentBooth = store.booths.get(urlParams.boothName!)!;
+  const currentBooth = store.booths.get(getKeyFromUrl(urlParams))!;
 
   const participants = currentBooth.participantStore.list;
   const totalVotingPower = participants.length;
@@ -34,7 +35,7 @@ export const DelegationList: FC = observer(() => {
     >
       <Header
         title="Delegation"
-        subtitle={{ text: currentBooth.key, patp: true }}
+        subtitle={{ text: getNameFromUrl(urlParams), patp: true }}
         rightContent={
           <Flex style={{ opacity: 0.7 }}>
             <Icons.Team mr={1} />

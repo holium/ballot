@@ -16,6 +16,7 @@ export const ResultSummaryModel = types.model({
   topChoice: types.maybe(types.string),
   tallies: types.array(TallyModel),
 });
+
 export type ResultSummaryType = Instance<typeof ResultSummaryModel>;
 
 export const ResultModel = types
@@ -62,8 +63,7 @@ export const ResultModel = types
           return TallyModel.create({
             label,
             count,
-            percentage:
-              Math.round((count / participantCount) * 1000 * 10) / 100,
+            percentage: Math.round((count / participantCount) * 1000) / 10,
           });
         })
         .sort((a: TallyType, b: TallyType) => b!.count - a!.count);

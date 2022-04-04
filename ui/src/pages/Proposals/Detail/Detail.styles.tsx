@@ -45,3 +45,15 @@ export const DetailBody = styled.div`
     }
   } */
 `;
+
+export const ProposalResultSection = styled.div`
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: ${(props: SignalCardProps) => props.theme.colors.bg.inset};
+  border-bottom: 1px solid
+    ${(props: SignalCardProps) => props.theme.colors.ui.borderColor};
+  box-sizing: border-box;
+`;

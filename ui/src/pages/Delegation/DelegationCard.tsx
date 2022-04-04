@@ -17,6 +17,7 @@ import {
 } from "@holium/design-system";
 import { pluralize } from "../../logic/utils/text";
 import { ShipModelType } from "../../logic/stores/app";
+import { getNameFromUrl } from "../../logic/utils/path";
 
 type DelegationCardProps = {
   votingPower: number;
@@ -29,7 +30,8 @@ export const DelegationCard: FC<DelegationCardProps> = (
 ) => {
   const { ship, votingPower } = props;
   const urlParams = useParams();
-  const currentBooth = urlParams.boothName!;
+  // const currentBooth = getKeyFromUrl(urlParams);
+  const currentBooth = getNameFromUrl(urlParams);
   // console.log(totalVotingPower);
   const { form, delegate } = useMemo(createDelegateForm, []);
 

@@ -29,20 +29,25 @@ export const ProposalStore = types
     loader: types.optional(LoaderModel, { state: "initial" }),
     addLoader: types.optional(LoaderModel, { state: "initial" }),
     proposals: types.map(ProposalModel),
-    activeProposal: types.optional(types.string, ""),
+    selectedProposal: types.maybe(types.reference(ProposalModel)),
+    // TODO add sort map
   })
   .views((self) => ({
     get list() {
       // return Array.from(self.proposals.values()).sort(
-      //   (a: ProposalModelType, b: ProposalModelType) => a.created - b.created
+      //   (a: ProposalModelType, b: ProposalModelType) =>
+      //     a.status === "Active" || b.status === ? 0 : -1
       // );
       return Array.from(self.proposals.values());
     },
     get proposal() {
-      return self.proposals.get(self.activeProposal);
+      return self.selectedProposal;
     },
     get isLoaded() {
       return self.loader.isLoaded;
+    },
+    get isAdding() {
+      return self.addLoader.isLoading;
     },
   }))
   .actions((self) => ({
@@ -64,7 +69,7 @@ export const ProposalStore = types
         });
         self.loader.set("loaded");
       } catch (err: any) {
-        self.loader.error(err.toString());
+        self.loader.error(err);
       }
     }),
     //
@@ -78,10 +83,10 @@ export const ProposalStore = types
           proposalForm
         );
         if (error) throw error;
-        self.addLoader.set("loaded");
+
         // response could be null
         console.log("creating proposal ", response);
-        const parentBooth: BoothModelType = getParent(self, 2);
+        const parentBooth: BoothModelType = getParent(self, 1);
         const newProposal = ProposalModel.create({
           ...response.data,
           status: determineStatus(response.data),
@@ -100,9 +105,10 @@ export const ProposalStore = types
           },
         });
         self.proposals.set(newProposal.key, newProposal);
+        self.addLoader.set("loaded");
         return newProposal;
       } catch (err: any) {
-        self.loader.error(err.toString());
+        self.loader.error(err);
         return;
       }
     }),
@@ -110,7 +116,7 @@ export const ProposalStore = types
     // setActive
     //
     setActive(proposal: Instance<typeof ProposalModel>) {
-      self.activeProposal = proposal.key;
+      self.selectedProposal = proposal;
     },
     //
     // remove
@@ -124,7 +130,7 @@ export const ProposalStore = types
         if (error) throw error;
         self.proposals.delete(proposalKey);
       } catch (err: any) {
-        self.loader.error(err.toString());
+        self.loader.error(err);
       }
     }),
     //
@@ -166,19 +172,30 @@ export const ProposalStore = types
               })
             );
         });
-        newProposal.results.generateResultSummary();
         self.proposals.set(proposal.key, newProposal);
+        newProposal.results.generateResultSummary();
       });
     },
 
     addEffect(proposal: any) {
       console.log("proposal addEffect ", proposal);
+      const parentBooth: BoothModelType = getParent(self, 1);
       self.proposals.set(
         proposal.key,
         ProposalModel.create({
           ...proposal,
           status: determineStatus(proposal),
           boothKey: self.boothKey,
+          results: {
+            didVote: false,
+            votes: {},
+            resultSummary: {
+              voteCount: 0,
+              participantCount: parentBooth.participantStore.count,
+              topChoice: undefined,
+              tallies: [],
+            },
+          },
         })
       );
     },

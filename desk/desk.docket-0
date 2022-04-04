@@ -1,7 +1,7 @@
 :~  title+'Ballot'
     info+'An app that allows you to vote with other ships. Built by Holium.'
-    color+0xeb.d1b9
-    image+'https://lomder-librun.sfo3.digitaloceanspaces.com/tiles/voting-app-tile.svg'
+    color+0xce.bef0
+    image+'https://lomder-librun.sfo3.digitaloceanspaces.com/tiles/ballot-app-tile.svg'
     glob-http+['https://bootstrap.urbit.org/glob-0v5.hurm4.ejod5.ngg9h.iub9i.n1j7o.glob' 0v5.hurm4.ejod5.ngg9h.iub9i.n1j7o]
     base+'ballot'
     version+[0 0 1]

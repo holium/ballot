@@ -18,11 +18,7 @@ const RootModel = types.model("RootStore", {
 
 let initialState = RootModel.create({
   store: {},
-  app: {
-    ship: {
-      patp: `~${ShipModel.patp!}`,
-    },
-  },
+  app: loadStoreSnapshot("app"),
 });
 
 // // @ts-ignore
@@ -38,6 +34,20 @@ let initialState = RootModel.create({
 // }
 
 export const rootStore = initialState;
+
+function loadStoreSnapshot(storeName: string) {
+  const rootState = localStorage.getItem("rootState");
+  if (rootState) {
+    return JSON.parse(rootState)[storeName];
+  }
+  return {
+    title: "Ballot",
+    theme: "light",
+    ship: {
+      patp: `~${ShipModel.patp!}`,
+    },
+  };
+}
 
 onSnapshot(rootStore, (snapshot) => {
   // console.log("Snapshot: ", snapshot);

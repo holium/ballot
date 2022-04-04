@@ -12,6 +12,7 @@ import {
   castToSnapshot,
   SnapshotOrInstance,
 } from "mobx-state-tree";
+import { type } from "os";
 import { ChoiceModel, determineStatus, ResultModel, VoteModel } from ".";
 
 import proposalsApi from "../../api/proposals";
@@ -31,6 +32,7 @@ export const ProposalModel = types
     owner: types.string,
     title: types.string,
     content: types.string,
+    created: types.maybe(types.string),
     start: types.number,
     end: types.number,
     status: types.optional(types.string, "Draft"),
@@ -45,6 +47,7 @@ export const ProposalModel = types
       { label: "Reject" },
     ]),
     loader: types.optional(LoaderModel, { state: "initial" }),
+    voteLoader: types.optional(LoaderModel, { state: "initial" }),
     results: types.optional(ResultModel, {
       didVote: false,
       votes: {},
@@ -63,6 +66,9 @@ export const ProposalModel = types
     get isLoading() {
       return self.loader.isLoading;
     },
+    get isVoteLoading() {
+      return self.voteLoader.isLoading;
+    },
     get participantCount(): number {
       const parentBooth: BoothModelType = getParent(self, 3);
       return parentBooth.participantStore.count;
@@ -79,6 +85,7 @@ export const ProposalModel = types
     },
     update: flow(function* (proposalForm: Instance<typeof self>) {
       try {
+        self.loader.set("loading");
         const [response, error] = yield proposalsApi.update(
           self.boothKey,
           self.key,
@@ -103,9 +110,10 @@ export const ProposalModel = types
           value: determineStatus(response.data),
         });
         applyPatch(self, patches);
+        self.loader.set("loaded");
         return self;
       } catch (err: any) {
-        self.loader.error(err.toString());
+        self.loader.error(err);
         return;
       }
     }),
@@ -126,11 +134,11 @@ export const ProposalModel = types
         self.results!.didVote = true;
         self.results.generateResultSummary();
       } catch (err: any) {
-        self.loader.error(err.toString());
+        self.loader.error(err);
       }
     }),
     getVotes: flow(function* () {
-      self.loader.set("loading");
+      self.voteLoader.set("loading");
       yield timeout(500);
       try {
         const [response, error] = yield votesApi.initialVotes(
@@ -147,9 +155,9 @@ export const ProposalModel = types
           self.results!.votes.set(vote.voter, newVote);
         });
         self.results!.generateResultSummary();
-        self.loader.set("loaded");
+        self.voteLoader.set("loaded");
       } catch (err: any) {
-        self.loader.error(err.toString());
+        self.voteLoader.error(err);
       }
     }),
     onVoteEffect(payload: EffectModelType | any, context: ContextModelType) {

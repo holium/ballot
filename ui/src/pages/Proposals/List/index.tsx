@@ -1,5 +1,5 @@
 import React, { FC, useState } from "react";
-import { runInAction, toJS } from "mobx";
+import { toJS } from "mobx";
 import { useNavigate, useParams } from "react-router";
 import { observer } from "mobx-react-lite";
 
@@ -9,7 +9,6 @@ import {
   VirtualizedList,
   Text,
   Flex,
-  Grid,
   Grid2,
   Button,
 } from "@holium/design-system";
@@ -168,7 +167,10 @@ export const ProposalList: FC = observer(() => {
                   {
                     label: "Delete",
                     intent: "alert",
-                    disabled: !hasAdmin || proposal.status === "Active",
+                    disabled:
+                      !hasAdmin ||
+                      proposal.status === "Active" ||
+                      proposal.status === "Ended",
                     section: 2,
                     onClick: (event: React.MouseEvent<HTMLElement>) => {
                       event.stopPropagation();
@@ -214,7 +216,72 @@ export const ProposalList: FC = observer(() => {
             <Grid2.Column xs={4} sm={3} md={3} lg={3}>
               <Participants
                 loading={participantLoading}
-                participants={participants}
+                participants={[
+                  ...participants,
+                  // {
+                  //   created: "1648727455199",
+                  //   key: "~dev",
+                  //   metadata: { color: "#365" },
+                  //   name: "~dev",
+                  //   status: "active",
+                  // },
+                  // {
+                  //   created: "1648727455199",
+                  //   key: "~mul",
+                  //   metadata: { color: "#779" },
+                  //   name: "~mul",
+                  //   status: "active",
+                  // },
+                  // {
+                  //   created: "1648727455199",
+                  //   key: "~lux",
+                  //   metadata: { color: "#861" },
+                  //   name: "~lux",
+                  //   status: "active",
+                  // },
+                  // {
+                  //   created: "1648727455199",
+                  //   key: "~rib",
+                  //   metadata: { color: "#026" },
+                  //   name: "~rib",
+                  //   status: "active",
+                  // },
+                  // {
+                  //   created: "1648727455199",
+                  //   key: "~hal",
+                  //   metadata: { color: "#311" },
+                  //   name: "~hal",
+                  //   status: "active",
+                  // },
+                  // {
+                  //   created: "1648727455199",
+                  //   key: "~dib",
+                  //   metadata: { color: "#0a9e11" },
+                  //   name: "~dib",
+                  //   status: "active",
+                  // },
+                  // {
+                  //   created: "1648727455199",
+                  //   key: "~hocnus",
+                  //   metadata: { color: "#311" },
+                  //   name: "~hocnus",
+                  //   status: "active",
+                  // },
+                  // {
+                  //   created: "1648727455199",
+                  //   key: "~dovnus",
+                  //   metadata: { color: "#9e4500" },
+                  //   name: "~dovnus",
+                  //   status: "active",
+                  // },
+                  // {
+                  //   created: "1648727455199",
+                  //   key: "~sap",
+                  //   metadata: { color: "#000" },
+                  //   name: "~sap",
+                  //   status: "active",
+                  // },
+                ]}
                 onAdd={(patp: string) => {
                   store.booth!.participantStore.add(patp);
                 }}

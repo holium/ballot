@@ -1,5 +1,5 @@
 import styled, { css } from "styled-components";
-import { ThemeType } from "@holium/design-system";
+import type { ThemeType } from "@holium/design-system";
 
 export type MarkdownEditorProps = {
   theme: ThemeType;
