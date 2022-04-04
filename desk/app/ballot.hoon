@@ -2071,9 +2071,6 @@
 
     %-  (slog leaf+"sending poll started effect to subcribers => {<effects>}..." ~)
 
-    ::  commit updates to store
-    :_  this(mq (~(del by mq.state) msg-id), booths (~(put by booths.state) booth-key [%o booth]), participants (~(put by participants.state) booth-key booth-participants))
-
     :_  this
     :~  [%give %fact [/booths]~ %json !>(effects)]
         [%give %fact [/booths/(scot %tas booth-key)]~ %json !>(effects)]
