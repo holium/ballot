@@ -192,6 +192,20 @@ export const ProposalModel = types
           break;
       }
     },
+    onPollEffect(update: any) {
+      const validKeys = Object.keys(update).filter((key: string) =>
+        self.hasOwnProperty(key)
+      );
+      const patches: IJsonPatch[] = validKeys.map((key: string) => {
+        return {
+          op: "replace",
+          path: `/${key}`,
+          value: update[key],
+        };
+      });
+      applyPatch(self, patches);
+      return self;
+    },
     updateEffect(update: any) {
       const validKeys = Object.keys(update).filter((key: string) =>
         self.hasOwnProperty(key)

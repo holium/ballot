@@ -68,7 +68,10 @@ export const ProposalStore = types
             boothKey: self.boothKey,
           });
           self.proposals.set(newProposal.key, newProposal);
-          newProposal.setVotes(voteResponse[proposal.key]);
+          // if there is a vote map, and there is a map for our proposal, set the votes
+          voteResponse &&
+            voteResponse[proposal.key] &&
+            newProposal.setVotes(voteResponse[proposal.key]);
         });
         self.loader.set("loaded");
       } catch (err: any) {
@@ -154,6 +157,18 @@ export const ProposalStore = types
           // this.initialEffect(payload);
           break;
       }
+    },
+    onPollEffect(effect: EffectModelType, proposalKey: string) {
+      const data: any = effect.data;
+      const oldProposal = self.proposals.get(proposalKey)!;
+      let update: any = {};
+      if (data.status === "started") {
+        update.status = "Active";
+      } else {
+        update.status = "Ended";
+      }
+      const updated: any = oldProposal.onPollEffect(update)!;
+      self.proposals.set(proposalKey, updated);
     },
     initialEffect(proposalMap: any, voteMap: any) {
       console.log("proposal initialEffect proposalMap ", proposalMap);
