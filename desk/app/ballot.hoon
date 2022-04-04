@@ -1127,16 +1127,6 @@
                 (~(put by payload-data) 'status' s+'recorded')
               (~(put by payload-data) 'status' s+'pending')
 
-        :: %-  (slog leaf+"ballot: getting life value..." ~)
-        :: =/  our-life  .^((unit @ud) %j /=lyfe=/(scot %p our.bowl))
-        :: =/  our-life
-        ::       ?~  our-life
-        ::         ~&  >>  "ballot: life is null. defaulting to 0."
-        ::         0
-        ::       (need our-life)
-        :: %-  (slog leaf+"ballot: {<our-life>}" ~)
-        :: =/  payload-data  (~(put by payload-data) 'life' [%n our-life])
-
         ::  add voter information
         =/  payload-data  (~(put by payload-data) 'voter' s+participant-key)
         ::  timestamp the vote
@@ -1145,12 +1135,19 @@
         ::  TODO sign the vote here
         %-  (slog leaf+"ballot: signing vote payload..." ~)
         =/  signature  (sign:sig our.bowl now.bowl [%o payload-data])
-        ~&  >>  [signature]       
-        :: =/  signature=@t  (sign (crip (en-json:html [%o payload-data])))
-        %-  (slog leaf+"ballot: {<signature>}" ~)
+        ~&  >>  [signature]
+        =/  j-sig=json
+          %-  pairs:enjs:format
+          :~
+            ['hash' s+`@t`(scot %ux p.signature)]
+            ['voter' s+(crip "{<q.signature>}")]
+            ['life' (numb:enjs:format r.signature)]
+          ==       
+        :: =/  signature-txt  (crip (en-json:html [%o (pairs:enjs:format ~[[p='p' q=s+`@t`p.signature] [p='q' q=s+`@t`q.signature] [p='r' q=s+`@ta`r.signature]])]))
+        %-  (slog leaf+"ballot: {<j-sig>}" ~)
 
         =/  voting-record  payload-data
-        :: =/  voting-record  (~(put by voting-record) 'sig' signature)
+        =/  voting-record  (~(put by voting-record) 'sig' j-sig)
 
         =/  proposal-votes  (~(put by proposal-votes) participant-key [%o voting-record])
         =/  booth-votes  (~(put by booth-proposals) proposal-key [%o proposal-votes])

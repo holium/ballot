@@ -24,6 +24,8 @@ export const descriptiveTime = ({
         descriptiveString = `${minutes} minute`;
       } else if (minutes > 0) {
         descriptiveString = `${minutes} minutes`;
+      } else {
+        descriptiveString = `less than a minute`;
       }
     }
   }
