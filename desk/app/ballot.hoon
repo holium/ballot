@@ -878,6 +878,17 @@
         =/  booth-key  (~(get by context) 'booth')
         ?~  booth-key  (send-api-error req 'context missing booth')
         =/  booth-key  (so:dejs:format (need booth-key))
+
+        =/  booth  (~(get by booths.state) booth-key)
+        ?~  booth  ~&  >>>  "ballot: booth {<booth-key>} not found"  !!
+        =/  booth  ((om json):dejs:format (need booth))
+        =/  booth-owner  (~(get by booth) 'owner')
+        ?~  booth-owner  ~&  >>>  "ballot: booth {<booth-key>} missing owner"  !!
+        =/  booth-owner  (so:dejs:format (need booth-owner))
+        =/  booth-ship=@p  `@p`(slav %p booth-owner)
+        ?.  =(booth-ship our.bowl)
+          ~&  >>>  "ballot: save-proposal error. only booth owner can edit proposals."  !!
+
         =/  data  (~(get by payload) 'data')
         =/  data  ?~(data ~ ((om json):dejs:format (need data)))
 
@@ -1679,11 +1690,81 @@
                 %accept
                   (handle-accept booth-key payload)
 
+                %poll-started-reaction
+                  (handle-poll-started-reaction payload)
+
+                %poll-ended-reaction
+                  (handle-poll-ended-reaction payload)
+
               ==
 
           ==
       ==
   ==
+  ++  handle-poll-started-reaction
+    |=  [payload=(map @t json)]
+
+    %-  (slog leaf+"ballot: poll-started-reaction received..." ~)
+
+    =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+    =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+    =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
+    =/  poll-key  (so:dejs:format (~(got by context) 'poll'))
+
+    :: =/  effects  (~(get by payload) 'effects')
+    :: ?~  effects  ~&  >>>  "ballot: effects not found"  !!
+    :: =/  effects=(list json)  ((as json):dejs:format (need effects))
+    :: %-  run
+    :: :-  effects
+    :: |=  [jon=json]
+    ::   (dispatch-effect payload jon)
+
+    =/  effects  (~(get by payload) 'effects')
+    ?~  effects  ~&  >>>  "ballot: effects not found"  !!
+    =/  effects=(list json)  ~(tap in ((as json):dejs:format (need effects)))
+    =/  effect  ((om json):dejs:format (snag 0 effects))
+    =/  data  ((om json):dejs:format (~(got by effect) 'data'))
+
+    =/  poll-proposals  (~(get by polls.state) booth-key)
+    =/  poll-proposals  ?~(poll-proposals ~ (need poll-proposals))
+    =/  poll-proposal  (~(get by poll-proposals) proposal-key)
+    =/  poll-proposal  ?~(poll-proposal ~ ((om json):dejs:format (need poll-proposal)))
+    =/  poll-proposal  (~(gas by poll-proposal) ~(tap by data))
+    =/  poll-proposals  (~(put by poll-proposals) proposal-key [%o poll-proposal])
+
+    :_  this(polls (~(put by polls.state) booth-key poll-proposals))
+
+    :~  [%give %fact [/booths]~ %json !>(effects)]
+    ==
+
+  ++  handle-poll-ended-reaction
+    |=  [payload=(map @t json)]
+
+    %-  (slog leaf+"ballot: poll-started-reaction received..." ~)
+
+    =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+    =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+    =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
+    =/  poll-key  (so:dejs:format (~(got by context) 'poll'))
+
+    =/  effects  (~(get by payload) 'effects')
+    ?~  effects  ~&  >>>  "ballot: effects not found"  !!
+    =/  effects=(list json)  ~(tap in ((as json):dejs:format (need effects)))
+    =/  effect  ((om json):dejs:format (snag 0 effects))
+    =/  data  ((om json):dejs:format (~(got by effect) 'data'))
+
+    =/  poll-proposals  (~(get by polls.state) booth-key)
+    =/  poll-proposals  ?~(poll-proposals ~ (need poll-proposals))
+    =/  poll-proposal  (~(get by poll-proposals) proposal-key)
+    =/  poll-proposal  ?~(poll-proposal ~ ((om json):dejs:format (need poll-proposal)))
+    =/  poll-proposal  (~(gas by poll-proposal) ~(tap by data))
+    =/  poll-proposals  (~(put by poll-proposals) proposal-key [%o poll-proposal])
+
+    :_  this(polls (~(put by polls.state) booth-key poll-proposals))
+
+    :~  [%give %fact [/booths]~ %json !>(effects)]
+    ==
+
   ++  handle-message-ack
     |=  [msg-id=@t ack=@t msg=json]
 
@@ -1950,10 +2031,11 @@
     =/  choice-count  ?~(choice-count 0 (ni:dejs:format (need choice-count)))
     =/  choice-count  (add choice-count 1) :: plug in delegate count here
 
-    =/  percentage  (div (div choice-count voter-count) 100)
+    =/  percentage  (div choice-count voter-count)
 
-    =.  result  (~(put by result) 'count' [%n choice-count])
-    =.  result  (~(put by result) 'percentage' [%n percentage])
+    =.  result  (~(put by result) 'label' s+label)
+    =.  result  (~(put by result) 'count' (numb:enjs:format choice-count))
+    =.  result  (~(put by result) 'percentage' (numb:enjs:format percentage))
 
     =.  results  (~(put by results) label [%o result])
     results
@@ -2000,8 +2082,6 @@
             :-  votes
             |:  [vote=`[@t json]`[%null ~] results=`(map @t json)`~]
             (count-vote participant-count vote results)
-            :: (roll votes |:([vote=`[@t json]`[%null ~] results=`(map @t json)`~] (count-vote participant-count vote results)))
-            :: (roll votes count-vote)
           ~
 
     ~&  >>  "ballot: tally => {<tallies>}"
@@ -2009,16 +2089,38 @@
     ::  sort list by choice/vote count
     =/  tallies  ~(val by tallies)
     :: =/  tallies  ?~(tallies ~ (sort tallies get-vote-count))
+    =/  tallies
+          ?.  =(tallies ~)
+            %-  sort
+            :-  tallies
+            |=  [a=json b=json]
+            =/  a  ((om json):dejs:format a)
+            =/  b  ((om json):dejs:format b)
+            =/  val-a  (~(get by a) 'count')
+            =/  val-a  ?~(val-a 0 (ni:dejs:format (need val-a)))
+            =/  val-b  (~(get by b) 'count')
+            =/  val-b  ?~(val-b 0 (ni:dejs:format (need val-b)))
+            (gth val-a val-b)
+          ~
+
+    =/  top-choice  ?:  ?&  !=(~ tallies)
+            (gth (lent tallies) 0)
+        ==
+          =/  top-choice  ((om json):dejs:format (snag 0 tallies))
+          =/  label  (~(get by top-choice) 'label')
+          =/  label  ?~(label '?' (so:dejs:format (need label)))
+          label
+        ~
+
     ::  after list is sorted, top choice will be first item in list
-    :: =/  top-choice  (snag 0 tallies)
 
 
     =/  results
       %-  pairs:enjs:format
       :~
-        ['voteCount' [%n (scot %ta vote-count)]]
-        ['participantCount' [%n (scot %ta participant-count)]]
-        ['topChoice' s+'?']
+        ['voteCount' (numb:enjs:format vote-count)]
+        ['participantCount' (numb:enjs:format participant-count)]
+        ['topChoice' ?~(top-choice ~ s+top-choice)]
         ['tallies' ?~(tallies ~ [%a tallies])]
       ==
 
@@ -2044,6 +2146,7 @@
     :~
       ['booth' s+booth-key]
       ['proposal' s+proposal-key]
+      ['poll' s+poll-key]
     ==
 
     =/  status-data=json
@@ -2100,6 +2203,7 @@
     :~
       ['booth' s+booth-key]
       ['proposal' s+proposal-key]
+      ['poll' s+poll-key]
     ==
 
     =/  results-data=json
