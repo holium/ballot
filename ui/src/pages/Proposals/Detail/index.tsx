@@ -66,8 +66,7 @@ export const ProposalDetail: FC = observer((props: any) => {
     const chosenVote = proposal.results!.getMyVote;
 
     const isActive = proposal.status === "Active";
-    const startTime = new Date(proposal.start * 1000);
-    const endTime = new Date(proposal.end * 1000);
+
     content = (
       <Grid2.Row reverse={["xs"]} justify="center">
         <Grid2.Column mb="16px" md={6} lg={9} xl={9}>
@@ -143,7 +142,6 @@ export const ProposalDetail: FC = observer((props: any) => {
                 borderWidth: 0,
               }}
               elevation="lifted"
-              // height="fit-content"
             >
               <Text fontWeight="600" variant="h6" mb="12px">
                 Information
