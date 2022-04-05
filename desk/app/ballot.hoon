@@ -904,6 +904,11 @@
         =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
         =/  proposal  (~(get by booth-proposals) proposal-key)
         =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
+        =/  threshold  (~(get by data) 'support')
+        ?~  threshold
+          ~&  >>>  "ballot: missing voter support value"  !!
+        =/  threshold  (ne:dejs:format (need threshold))
+        %-  (slog leaf+"ballot: {<threshold>}")
         =/  proposal  (~(gas by proposal) ~(tap by data))
         =/  proposal  (~(put by proposal) 'key' s+proposal-key)
         =/  proposal  (~(put by proposal) 'owner' s+(crip "{<our.bowl>}"))
@@ -1705,6 +1710,7 @@
     |=  [payload=(map @t json)]
 
     %-  (slog leaf+"ballot: poll-started-reaction received..." ~)
+    ~&  >>  (crip (en-json:html [%o payload]))
 
     =/  context  ((om json):dejs:format (~(got by payload) 'context'))
     =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
@@ -1721,9 +1727,13 @@
 
     =/  effects  (~(get by payload) 'effects')
     ?~  effects  ~&  >>>  "ballot: effects not found"  !!
+    %-  (slog leaf+"ballot: extracting effects data..." ~)
     =/  effects=(list json)  ~(tap in ((as json):dejs:format (need effects)))
+    %-  (slog leaf+"ballot: extracting effect data..." ~)
     =/  effect  ((om json):dejs:format (snag 0 effects))
+    %-  (slog leaf+"ballot: extracting poll data..." ~)
     =/  data  ((om json):dejs:format (~(got by effect) 'data'))
+    %-  (slog leaf+"ballot: done" ~)
 
     =/  poll-proposals  (~(get by polls.state) booth-key)
     =/  poll-proposals  ?~(poll-proposals ~ (need poll-proposals))
@@ -1732,15 +1742,20 @@
     =/  poll-proposal  (~(gas by poll-proposal) ~(tap by data))
     =/  poll-proposals  (~(put by poll-proposals) proposal-key [%o poll-proposal])
 
+    %-  (slog leaf+"ballot: committing poll changes..." ~)
+    ~&  >>  (crip (en-json:html [%o data]))
+    ~&  >>  (crip (en-json:html [%o poll-proposal]))
+
     :_  this(polls (~(put by polls.state) booth-key poll-proposals))
 
-    :~  [%give %fact [/booths]~ %json !>(effects)]
+    :~  [%give %fact [/booths]~ %json !>([%o payload])]
     ==
 
   ++  handle-poll-ended-reaction
     |=  [payload=(map @t json)]
 
-    %-  (slog leaf+"ballot: poll-started-reaction received..." ~)
+    %-  (slog leaf+"ballot: poll-ended-reaction received..." ~)
+    ~&  >>  (crip (en-json:html [%o payload]))
 
     =/  context  ((om json):dejs:format (~(got by payload) 'context'))
     =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
@@ -1762,7 +1777,7 @@
 
     :_  this(polls (~(put by polls.state) booth-key poll-proposals))
 
-    :~  [%give %fact [/booths]~ %json !>(effects)]
+    :~  [%give %fact [/booths]~ %json !>([%o payload])]
     ==
 
   ++  handle-message-ack
@@ -2031,11 +2046,12 @@
     =/  choice-count  ?~(choice-count 0 (ni:dejs:format (need choice-count)))
     =/  choice-count  (add choice-count 1) :: plug in delegate count here
 
-    =/  percentage  (div choice-count voter-count)
+    =/  percentage  (mul (div:rd (sun:rd choice-count) (sun:rd voter-count)) 100)
+    :: =/  percentage  (div choice-count `@ud`voter-count)
 
     =.  result  (~(put by result) 'label' s+label)
     =.  result  (~(put by result) 'count' (numb:enjs:format choice-count))
-    =.  result  (~(put by result) 'percentage' (numb:enjs:format percentage))
+    =.  result  (~(put by result) 'percentage' (numb:enjs:format `@ud`percentage))
 
     =.  results  (~(put by results) label [%o result])
     results
@@ -2057,8 +2073,10 @@
     =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
     =/  proposal  (~(get by booth-proposals) proposal-key)
     =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
-    =/  threshold  (~(get by proposal) 'threshold')
-    =/  threshold  ?~(threshold 1 (ni:dejs:format (need threshold)))
+    =/  threshold  (~(get by proposal) 'support')
+    ?~  threshold
+      ~&  >>>  "ballot: missing voter support value"  !!
+    =/  threshold  (ne:dejs:format (need threshold))
 
     =/  booth-participants  (~(get by participants.state) booth-key)
     =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
@@ -2075,13 +2093,16 @@
     =/  votes  `(list [@t json])`~(tap by proposal-votes)
     =/  vote-count  ?~(proposal-votes 0 (lent votes))
 
-    =/  turnout  (div vote-count participant-count)
+    =/  turnout  (div:rd (sun:rd vote-count) (sun:rd participant-count))
+    %-  (slog leaf+"ballot: {<turnout>}, {<threshold>}" ~)
     =/  tallies=(map @t json)
-          ?:  (gte turnout threshold)
+          :: ?:  (gte turnout threshold)
+          ?:  (gte:ma:rd turnout threshold)
             %-  roll
             :-  votes
             |:  [vote=`[@t json]`[%null ~] results=`(map @t json)`~]
             (count-vote participant-count vote results)
+          %-  (slog leaf+"ballot: voter turnout not sufficient. not enough voter support." ~)
           ~
 
     ~&  >>  "ballot: tally => {<tallies>}"
@@ -2118,8 +2139,8 @@
     =/  results
       %-  pairs:enjs:format
       :~
-        ['voteCount' (numb:enjs:format vote-count)]
-        ['participantCount' (numb:enjs:format participant-count)]
+        ['voteCount' (numb:enjs:format `@ud`vote-count)]
+        ['participantCount' (numb:enjs:format `@ud`participant-count)]
         ['topChoice' ?~(top-choice ~ s+top-choice)]
         ['tallies' ?~(tallies ~ [%a tallies])]
       ==
@@ -2195,6 +2216,10 @@
     (so:dejs:format (need poll-key))
 
     =/  poll-results  (tally-results booth-key proposal-key)
+    =/  poll  (~(put by poll) 'status' s+'ended')
+    =/  poll  (~(put by poll) 'results' poll-results)
+    =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
+
 
     %-  (slog leaf+"poll results are in!!! => {<poll-results>}" ~)
 
@@ -2232,7 +2257,7 @@
 
     %-  (slog leaf+"sending poll results to subcribers => {<effects>}..." ~)
 
-    :_  this
+    :_  this(polls (~(put by polls.state) booth-key booth-polls))
     :~  [%give %fact [/booths]~ %json !>(effects)]
         [%give %fact [/booths/(scot %tas booth-key)]~ %json !>([effects])]
     ==
