@@ -87,7 +87,7 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
         <Flex style={{ pointerEvents: "none" }} gap={8} flexDirection="column">
           <Flex
             flexDirection={["column", "row", "row"]}
-            justifyContent="space-between"
+            justifyContent={["flex-start", "space-between", "space-between"]}
             mb={["4px", "8px", "8px"]}
             style={{ gap: 8 }}
           >
