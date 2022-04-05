@@ -180,14 +180,14 @@ export const ProposalDetail: FC = observer((props: any) => {
                     value={displayDate(proposal.end * 1000)}
                   />
                 </Box>
-                <Box mb={2} width="100%">
+                {/* <Box mb={2} width="100%">
                   <KPI
                     inline
                     width="inherit"
                     label="Created at"
                     value={displayDate(parseInt(proposal.created!))}
                   />
-                </Box>
+                </Box> */}
                 <Box mb={2} width="100%">
                   <KPI
                     inline

@@ -84,12 +84,11 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
           containerId={proposal.key}
           parentRef={parentRef}
         />
-        <Flex style={{ pointerEvents: "none" }} gap={8} flexDirection="column">
+        <Flex style={{ pointerEvents: "none" }} gap={4} flexDirection="column">
           <Flex
             flexDirection={["column", "row", "row"]}
             justifyContent={["flex-start", "space-between", "space-between"]}
-            mb={["4px", "8px", "8px"]}
-            style={{ gap: 8 }}
+            mb={["4px", "4px", "4px"]}
           >
             <Observer>
               {() => (
