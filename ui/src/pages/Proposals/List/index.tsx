@@ -14,6 +14,9 @@ import {
   Select,
   FormControl,
   Label,
+  Box,
+  IconButton,
+  Icons,
 } from "@holium/design-system";
 
 import { ProposalType } from "../../../logic/types/proposals";
@@ -34,6 +37,8 @@ export const ProposalList: FC = observer(() => {
   const navigate = useNavigate();
   const urlParams = useParams();
   const { store } = useMst();
+  const [page, setPage] = useState(0);
+
   const currentBoothName = getNameFromUrl(urlParams);
   const currentBoothKey = getKeyFromUrl(urlParams);
   let leftPane;
@@ -52,27 +57,14 @@ export const ProposalList: FC = observer(() => {
     );
   }
 
-  const options = [
-    {
-      label: "All",
-      value: "All",
-    },
-    {
-      label: "Upcoming",
-      value: "Upcoming",
-      disabled: statusCounts["Upcoming"] ? false : true,
-    },
-    {
-      label: "Active",
-      value: "Active",
-      disabled: statusCounts["Active"] ? false : true,
-    },
-    {
-      label: "Ended",
-      value: "Ended",
-      disabled: statusCounts["Ended"] ? false : true,
-    },
-  ];
+  const pages =
+    proposalsList.length % 10 === 0
+      ? Math.floor(proposalsList.length / 10) - 1
+      : Math.floor(proposalsList.length / 10);
+  const startIndex = page * 10;
+  const endIndex = startIndex + 10;
+
+  const pagedList = proposalsList.slice(startIndex, endIndex);
   // return (
   leftPane = (
     <Flex
@@ -84,7 +76,27 @@ export const ProposalList: FC = observer(() => {
       <ListHeader
         title="Proposals"
         subtitle={{ patp: true, text: currentBoothName }}
-        options={options}
+        options={[
+          {
+            label: "All",
+            value: "All",
+          },
+          {
+            label: "Upcoming",
+            value: "Upcoming",
+            disabled: statusCounts["Upcoming"] ? false : true,
+          },
+          {
+            label: "Active",
+            value: "Active",
+            disabled: statusCounts["Active"] ? false : true,
+          },
+          {
+            label: "Ended",
+            value: "Ended",
+            disabled: statusCounts["Ended"] ? false : true,
+          },
+        ]}
         selectedOption={selectedOption}
         rightContent={
           // @ts-ignore
@@ -115,11 +127,11 @@ export const ProposalList: FC = observer(() => {
                   value: "recent",
                 },
                 {
-                  label: "Ending soon",
+                  label: "Next ending",
                   value: "ending",
                 },
                 {
-                  label: "Starting soon",
+                  label: "Next starting",
                   value: "starting",
                 },
               ]}
@@ -135,7 +147,7 @@ export const ProposalList: FC = observer(() => {
           setSelectedOption(option.label);
         }}
       />
-      {proposalsList?.length ? (
+      {pagedList.length ? (
         <VirtualizedList
           id={`list-${currentBoothKey}-${new Date().getMilliseconds()}`}
           style={{
@@ -143,7 +155,7 @@ export const ProposalList: FC = observer(() => {
             height: "calc(100% - 12px)",
           }}
           itemHeight={112}
-          numItems={proposalsList.length}
+          numItems={pagedList.length}
           renderItem={({
             key,
             index,
@@ -153,7 +165,7 @@ export const ProposalList: FC = observer(() => {
             index: number;
             style: any;
           }) => {
-            const proposal: ProposalModelType = proposalsList[index];
+            const proposal: ProposalModelType = pagedList[index];
             return (
               <ProposalCard
                 key={key}
@@ -227,6 +239,39 @@ export const ProposalList: FC = observer(() => {
         >
           No proposals
         </Text>
+      )}
+      {pages > 0 && (
+        <Flex
+          mt={2}
+          mb={2}
+          position="relative"
+          justifyContent="space-between"
+          alignItems="center"
+          justifySelf="flex-end"
+        >
+          <Box top="4px" left="8px" right="unset" bottom="unset">
+            <IconButton
+              disabled={page <= 0}
+              onClick={() => page > 0 && setPage(page - 1)}
+            >
+              <Icons.AngleLeft />
+            </IconButton>
+          </Box>
+          <Box>
+            <Text opacity={0.7} variant="hint">
+              {" "}
+              {`${page + 1} of ${pages + 1}`}
+            </Text>
+          </Box>
+          <Box top="4px" left="unset" right="8px" bottom="unset">
+            <IconButton
+              disabled={page >= pages}
+              onClick={() => page < pages && setPage(page + 1)}
+            >
+              <Icons.AngleRight />
+            </IconButton>
+          </Box>
+        </Flex>
       )}
     </Flex>
   );
