@@ -31,7 +31,6 @@ export const ProposalStore = types
     addLoader: types.optional(LoaderModel, { state: "initial" }),
     proposals: types.map(ProposalModel),
     selectedProposal: types.maybe(types.reference(ProposalModel)),
-    // TODO add sort map
   })
   .views((self) => ({
     get list() {
