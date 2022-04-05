@@ -1,17 +1,14 @@
 import React, { FC, useCallback, useEffect, useState } from "react";
 import {
-  CenteredPane,
-  Grid,
   Flex,
-  Box,
   Card,
   Text,
   KPI,
   TlonIcon,
   Ship,
   BreadcrumbNav,
-  Fill,
   Grid2,
+  Box,
 } from "@holium/design-system";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
@@ -19,12 +16,8 @@ import { useNavigate, useParams } from "react-router";
 import { toJS } from "mobx";
 import { Observer, observer } from "mobx-react-lite";
 import { VoteCard } from "../../../components/VoteCard";
-import {
-  createPath,
-  getKeyFromUrl,
-  getNameFromUrl,
-} from "../../../logic/utils/path";
-import { descriptiveTimeString } from "../../../logic/utils/time";
+import { createPath, getKeyFromUrl } from "../../../logic/utils/path";
+import { descriptiveTimeString, displayDate } from "../../../logic/utils/time";
 import { DetailHeader, DetailBody } from "./Detail.styles";
 import { Status } from "../../../components/Status";
 import { useMst } from "../../../logic/stores/root";
@@ -35,8 +28,7 @@ export const ProposalDetail: FC = observer((props: any) => {
   const navigate = useNavigate();
   const urlParams = useParams();
   const { store, app } = useMst();
-  // const currentBooth = urlParams.boothName!;
-  // const currentBoothName = getNameFromUrl(urlParams);
+
   const currentBoothKey = getKeyFromUrl(urlParams);
   store.setBooth(currentBoothKey);
 
@@ -106,29 +98,6 @@ export const ProposalDetail: FC = observer((props: any) => {
                   value={descriptiveTimeString(proposal.start, proposal.end)}
                 />
               </Flex>
-              <Flex
-                mt={3}
-                flex={1}
-                flexDirection="row"
-                justifyContent="space-between"
-              >
-                <KPI
-                  icon={<TlonIcon icon="Clock" />}
-                  value={
-                    startTime.toLocaleDateString() +
-                    " " +
-                    startTime.toLocaleTimeString()
-                  }
-                />
-                <KPI
-                  icon={<TlonIcon icon="Clock" />}
-                  value={
-                    endTime.toLocaleDateString() +
-                    " " +
-                    endTime.toLocaleTimeString()
-                  }
-                />
-              </Flex>
             </DetailHeader>
             {proposal.status === "Ended" && (
               <ProposalResult proposal={proposal} />
@@ -148,57 +117,90 @@ export const ProposalDetail: FC = observer((props: any) => {
             </DetailBody>
           </Card>
         </Grid2.Column>
-        <Grid2.Column mb="16px" md={2} lg={3}>
-          <VoteCard
-            disabled={!isActive}
-            choices={proposal.choices}
-            title={proposal.title}
-            loading={proposal.isVoteLoading}
-            currentUser={app.ship}
-            strategy={proposal.strategy}
-            onVote={onVote}
-            timeLeft={descriptiveTimeString(proposal.start, proposal.end)}
-            chosenOption={chosenVote && chosenVote.choice}
-            voteResults={proposal.results!.resultSummary}
-            voteSubmitted={proposal.results!.didVote}
-          />
-
-          {/* <Grid2.Row>
+        <Grid2.Column gap={12} mb="16px" md={2} lg={3}>
+          <Grid2.Row>
+            <VoteCard
+              style={{ width: "100%" }}
+              disabled={!isActive}
+              choices={proposal.choices}
+              title={proposal.title}
+              loading={proposal.isVoteLoading}
+              currentUser={app.ship}
+              strategy={proposal.strategy}
+              onVote={onVote}
+              timeLeft={descriptiveTimeString(proposal.start, proposal.end)}
+              chosenOption={chosenVote && chosenVote.choice}
+              voteResults={proposal.results!.resultSummary}
+              voteSubmitted={proposal.results!.didVote}
+            />
+          </Grid2.Row>
+          <Grid2.Row>
             <Card
               padding={12}
-              style={{ top: 300, borderColor: "transparent", borderWidth: 0 }}
+              style={{
+                width: "100%",
+                borderColor: "transparent",
+                borderWidth: 0,
+              }}
               elevation="lifted"
               // height="fit-content"
             >
               <Text fontWeight="600" variant="h6" mb="12px">
-                Configuration
+                Information
               </Text>
-              <Grid gridTemplateRows="auto" gridRowGap="12px">
-                <KPI mt={1} inline label="Strategy" value={proposal.strategy} />
-                <KPI inline label="Support" value={`${proposal.support}%`} />
-                <KPI
-                  inline
-                  label="Start date"
-                  value={new Date(proposal.start).toISOString().split("T")[0]}
-                />
-                <KPI
-                  inline
-                  label="End date"
-                  value={new Date(proposal.end).toISOString().split("T")[0]}
-                />
-                <KPI
-                  inline
-                  label="Created at"
-                  value={
-                    new Date(parseInt(proposal.created!))
-                      .toISOString()
-                      .split("T")[0]
-                  }
-                />
-                <KPI inline label="Host" value={proposal.owner} />
-              </Grid>
+              <Grid2.Column noGutter>
+                <Box mb={2} width="100%">
+                  <KPI
+                    mt={1}
+                    inline
+                    width="inherit"
+                    label="Strategy"
+                    value={proposal.strategy}
+                  />
+                </Box>
+                <Box mb={2} width="100%">
+                  <KPI
+                    inline
+                    width="inherit"
+                    label="Support"
+                    value={`${proposal.support}%`}
+                  />
+                </Box>
+                <Box mb={2} width="100%">
+                  <KPI
+                    inline
+                    width="inherit"
+                    label="Start date"
+                    value={displayDate(proposal.start * 1000)}
+                  />
+                </Box>
+                <Box mb={2} width="100%">
+                  <KPI
+                    inline
+                    width="inherit"
+                    label="End date"
+                    value={displayDate(proposal.end * 1000)}
+                  />
+                </Box>
+                <Box mb={2} width="100%">
+                  <KPI
+                    inline
+                    width="inherit"
+                    label="Created at"
+                    value={displayDate(parseInt(proposal.created!))}
+                  />
+                </Box>
+                <Box mb={2} width="100%">
+                  <KPI
+                    inline
+                    width="inherit"
+                    label="Host"
+                    value={proposal.owner}
+                  />
+                </Box>
+              </Grid2.Column>
             </Card>
-          </Grid2.Row> */}
+          </Grid2.Row>
         </Grid2.Column>
       </Grid2.Row>
     );

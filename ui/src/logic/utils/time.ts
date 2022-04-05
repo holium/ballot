@@ -62,3 +62,16 @@ export const dateDiff = (start: number, end: number) => {
   diffObj.minutes = minDiff - 60 * diffObj.hours;
   return diffObj;
 };
+
+export const displayDate = (timestamp: number) => {
+  const date = new Date(timestamp);
+  return (
+    date.toLocaleDateString("en-us", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "2-digit",
+    }) +
+    " " +
+    date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  );
+};

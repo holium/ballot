@@ -25,6 +25,7 @@ import {
 import { toJS } from "mobx";
 
 export type VoteCardProps = {
+  style?: any;
   disabled?: boolean;
   currentUser: {
     patp: string;
@@ -48,6 +49,7 @@ export type VoteCardProps = {
 
 export const VoteCard: any = (props: VoteCardProps) => {
   const {
+    style,
     disabled,
     loading,
     castingLoading,
@@ -160,6 +162,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
         // position: "sticky",
         borderColor: "transparent",
         padding: "12px",
+        ...style,
       }}
     >
       {blurred && (
