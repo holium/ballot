@@ -11,6 +11,9 @@ import {
   Flex,
   Grid2,
   Button,
+  Select,
+  FormControl,
+  Label,
 } from "@holium/design-system";
 
 import { ProposalType } from "../../../logic/types/proposals";
@@ -36,9 +39,10 @@ export const ProposalList: FC = observer(() => {
   let leftPane;
 
   // leftPane = useMemo(() => {
-  let proposalsList: any[] = store.booth?.listProposals!;
+  const booth = store.booth;
+  let proposalsList: any[] = booth?.listProposals!;
 
-  const hasAdmin = store.booth?.hasAdmin;
+  const hasAdmin = booth?.hasAdmin;
   const statusCounts = getProposalFilters(proposalsList);
   if (selectedOption === "All") {
     proposalsList = proposalsList;
@@ -69,7 +73,6 @@ export const ProposalList: FC = observer(() => {
       disabled: statusCounts["Ended"] ? false : true,
     },
   ];
-
   // return (
   leftPane = (
     <Flex
@@ -100,6 +103,34 @@ export const ProposalList: FC = observer(() => {
             </Button>
           )
         }
+        rightOptions={
+          <Flex style={{ width: 220 }} justifyContent="flex-end" itemsCenter>
+            <Label style={{ width: 100 }}>Sort by</Label>
+            <Select
+              small
+              selectionOption={booth!.sortBy}
+              options={[
+                {
+                  label: "Recent",
+                  value: "recent",
+                },
+                {
+                  label: "Ending soon",
+                  value: "ending",
+                },
+                {
+                  label: "Starting soon",
+                  value: "starting",
+                },
+              ]}
+              onSelected={(option: {
+                value: "recent" | "ending" | "starting";
+              }) => {
+                booth?.setSortBy(option.value);
+              }}
+            />
+          </Flex>
+        }
         onSelected={(option: OptionType) => {
           setSelectedOption(option.label);
         }}
@@ -129,14 +160,14 @@ export const ProposalList: FC = observer(() => {
                 proposal={proposal}
                 onClick={(proposal: ProposalModelType) => {
                   let newPath = createPath(
-                    store.booth!.key,
+                    booth!.key,
                     "proposals",
                     proposal.key
                   );
                   navigate(newPath);
                 }}
                 status={proposal.status}
-                entity={store.booth!.type}
+                entity={booth!.type}
                 contextMenu={[
                   // {
                   //   label: "Copy link",
@@ -154,10 +185,10 @@ export const ProposalList: FC = observer(() => {
                     // TODO add disabled text
                     onClick: (event: React.MouseEvent<HTMLElement>) => {
                       event.stopPropagation();
-                      const proposalStore = store.booth?.proposalStore!;
+                      const proposalStore = booth?.proposalStore!;
                       proposalStore.setActive(proposal!);
                       let newPath = createPath(
-                        store.booth!.key,
+                        booth!.key,
                         "proposals/editor",
                         proposal.key
                       );
@@ -174,7 +205,7 @@ export const ProposalList: FC = observer(() => {
                     section: 2,
                     onClick: (event: React.MouseEvent<HTMLElement>) => {
                       event.stopPropagation();
-                      const proposalStore = store.booth?.proposalStore!;
+                      const proposalStore = booth?.proposalStore!;
                       proposalStore.remove(proposal.key);
                     },
                   },
@@ -199,12 +230,10 @@ export const ProposalList: FC = observer(() => {
       )}
     </Flex>
   );
-  // }, [currentBooth, store.booth?.proposals, selectedOption]);
+  // }, [currentBooth, booth?.proposals, selectedOption]);
 
-  const participants = store.booth ? store.booth.listParticipants : [];
-  const participantLoading = store.booth
-    ? store.booth.participantStore.isLoading
-    : false;
+  const participants = booth ? booth.listParticipants : [];
+  const participantLoading = booth ? booth.participantStore.isLoading : false;
   return (
     <Grid2.Box offset={40} fluid scroll>
       <Grid2.Box>
@@ -283,10 +312,10 @@ export const ProposalList: FC = observer(() => {
                   // },
                 ]}
                 onAdd={(patp: string) => {
-                  store.booth!.participantStore.add(patp);
+                  booth!.participantStore.add(patp);
                 }}
                 onRemove={(patp: string) => {
-                  store.booth!.participantStore.remove(patp);
+                  booth!.participantStore.remove(patp);
                 }}
               />
             </Grid2.Column>

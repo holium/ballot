@@ -13,8 +13,33 @@ import boothApi from "../../api/booths";
 
 import { LoaderModel } from "../common/loader";
 import { ParticipantStore } from "../participants";
-import { ProposalStore } from "../proposals";
+import { ProposalModelType, ProposalStore } from "../proposals";
 import { rootStore } from "../root";
+
+const sortMap = {
+  recent: (list: ProposalModelType[]) =>
+    list.sort((a: ProposalModelType, b: ProposalModelType) => {
+      return parseInt(b.created!) - parseInt(a.created!);
+    }),
+  ending: (list: ProposalModelType[]) =>
+    list
+      .sort((a: ProposalModelType, b: ProposalModelType) => {
+        return a.end - b.end;
+      })
+      .filter((item: ProposalModelType) => item.status !== "Ended"),
+  starting: (list: ProposalModelType[]) =>
+    list
+      .sort((a: ProposalModelType, b: ProposalModelType) => {
+        return a.start - b.start;
+      })
+      .filter((item: ProposalModelType) => item.status === "Upcoming"),
+};
+
+const SortType = types.union(
+  types.literal("recent"),
+  types.literal("ending"),
+  types.literal("starting")
+);
 
 export const BoothModel = types
   .model({
@@ -39,6 +64,14 @@ export const BoothModel = types
     proposalStore: ProposalStore,
     participantStore: ParticipantStore,
     actionLog: types.map(types.string),
+    sortBy: types.optional(
+      types.union(
+        types.literal("recent"),
+        types.literal("ending"),
+        types.literal("starting")
+      ),
+      "recent"
+    ),
   })
   .views((self) => ({
     get isActive() {
@@ -49,7 +82,9 @@ export const BoothModel = types
       );
     },
     get listProposals() {
-      return Array.from(self.proposalStore.proposals.values());
+      return sortMap[self.sortBy](
+        Array.from(self.proposalStore.proposals.values())
+      );
     },
     get listParticipants() {
       return Array.from(self.participantStore.participants.values());
@@ -69,6 +104,9 @@ export const BoothModel = types
     },
   }))
   .actions((self) => ({
+    setSortBy(sortBy: "recent" | "ending" | "starting") {
+      self.sortBy = sortBy;
+    },
     acceptInvite: flow(function* (boothKey: string) {
       try {
         const [response, error] = yield boothApi.acceptInvite(boothKey);
