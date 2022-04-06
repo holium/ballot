@@ -1596,51 +1596,51 @@
             (handle-message-ack msg-id ack (need msg))
         ==
 
-    [%booths @ @ @ %start-poll ~]
-      =/  segments  `(list @ta)`wirepath
-      =/  booth-key  (snag 1 segments)
-      =/  proposal-key  (snag 2 segments)
-      ?+    -.sign  (on-agent:def wire sign)
-          %poke-ack
-            ?~  p.sign
-                  %-  (slog leaf+"start-poll thread started successfully" ~)
-                  `this
-                %-  (slog leaf+"start-poll failed to start" u.p.sign)
-                `this
+    :: [%booths @ @ @ %start-poll ~]
+    ::   =/  segments  `(list @ta)`wirepath
+    ::   =/  booth-key  (snag 1 segments)
+    ::   =/  proposal-key  (snag 2 segments)
+    ::   ?+    -.sign  (on-agent:def wire sign)
+    ::       %poke-ack
+    ::         ?~  p.sign
+    ::               %-  (slog leaf+"start-poll thread started successfully" ~)
+    ::               `this
+    ::             %-  (slog leaf+"start-poll failed to start" u.p.sign)
+    ::             `this
 
-          %fact
-            ?+  p.cage.sign  (on-agent:def wire sign)
-                  %thread-fail
-                    =/  err  !<  (pair term tang)  q.cage.sign
-                    %-  (slog leaf+"start-poll thread failed: {(trip p.err)}" q.err)
-                    `this
-                  %thread-done
-                    (on-start-poll booth-key proposal-key)
-            ==
-      ==
+    ::       %fact
+    ::         ?+  p.cage.sign  (on-agent:def wire sign)
+    ::               %thread-fail
+    ::                 =/  err  !<  (pair term tang)  q.cage.sign
+    ::                 %-  (slog leaf+"start-poll thread failed: {(trip p.err)}" q.err)
+    ::                 `this
+    ::               %thread-done
+    ::                 (on-start-poll booth-key proposal-key)
+    ::         ==
+    ::   ==
 
-    [%booths @ @ @ %end-poll ~]
-      =/  segments  `(list @ta)`wirepath
-      =/  booth-key  (snag 1 segments)
-      =/  proposal-key  (snag 2 segments)
-      ?+    -.sign  (on-agent:def wire sign)
-          %poke-ack
-            ?~  p.sign
-              %-  (slog leaf+"end-poll thread started successfully" ~)
-              `this
-            %-  (slog leaf+"end-poll failed to start" u.p.sign)
-            `this
+    :: [%booths @ @ @ %end-poll ~]
+    ::   =/  segments  `(list @ta)`wirepath
+    ::   =/  booth-key  (snag 1 segments)
+    ::   =/  proposal-key  (snag 2 segments)
+    ::   ?+    -.sign  (on-agent:def wire sign)
+    ::       %poke-ack
+    ::         ?~  p.sign
+    ::           %-  (slog leaf+"end-poll thread started successfully" ~)
+    ::           `this
+    ::         %-  (slog leaf+"end-poll failed to start" u.p.sign)
+    ::         `this
 
-          %fact
-            ?+  p.cage.sign  (on-agent:def wire sign)
-                  %thread-fail
-                    =/  err  !<  (pair term tang)  q.cage.sign
-                    %-  (slog leaf+"end-poll thread failed: {(trip p.err)}" q.err)
-                    `this
-                  %thread-done
-                    (on-end-poll booth-key proposal-key)
-            ==
-      ==
+    ::       %fact
+    ::         ?+  p.cage.sign  (on-agent:def wire sign)
+    ::               %thread-fail
+    ::                 =/  err  !<  (pair term tang)  q.cage.sign
+    ::                 %-  (slog leaf+"end-poll thread failed: {(trip p.err)}" q.err)
+    ::                 `this
+    ::               %thread-done
+    ::                 (on-end-poll booth-key proposal-key)
+    ::         ==
+    ::   ==
 
     [%booths *]
       =/  segments  `(list @ta)`wirepath
@@ -2247,243 +2247,6 @@
           [(~(put by participants.acc) participant-key member)]
     [participants]
 
-  ++  count-vote
-    |:  [voter-count=`@ud`1 vote=`[@t json]`[%null ~] results=`(map @t json)`~]
-
-    ::  no voters? move on
-    ?:  =(voter-count 0)  results
-    :: ::  move on if vote is null
-    ?:  =(-.vote %null)  results
-
-    =/  v  ((om json):dejs:format +.vote)
-    =/  choice  ((om json):dejs:format (~(got by v) 'choice'))
-    =/  label  (so:dejs:format (~(got by choice) 'label'))
-
-    ::  label, count, percentage
-    =/  result  (~(get by results) label)
-    =/  result  ?~(result ~ ((om json):dejs:format (need result)))
-
-    =/  choice-count  (~(get by result) 'count')
-    =/  choice-count  ?~(choice-count 0 (ni:dejs:format (need choice-count)))
-    =/  choice-count  (add choice-count 1) :: plug in delegate count here
-
-    =/  percentage  (mul:rs (div:rs (sun:rs choice-count) (sun:rs voter-count)) (sun:rs 100))
-    :: =/  percentage  (div choice-count `@ud`voter-count)
-
-    =.  result  (~(put by result) 'label' s+label)
-    =.  result  (~(put by result) 'count' (numb:enjs:format choice-count))
-    =.  result  (~(put by result) 'percentage' (numb:enjs:format `@ud`percentage))
-
-    =.  results  (~(put by results) label [%o result])
-    results
-
-  :: ++  get-vote-count
-  ::   |=  [a=@ b=@]
-
-  ::   =/  a-val  (ni:dejs:format q.a)
-  ::   =/  b-val  (ni:dejs:format q.b)
-
-  ::   (gth a-val b-val)
-
-  ++  tally-results
-    |=  [booth-key=@t proposal-key=@t]
-    ^-  [status=@t data=json]
-
-    %-  (slog leaf+"tally-results called. [booth-key={<booth-key>}, proposal-key={<proposal-key>}]" ~)
-
-    =/  booth-proposals  (~(get by proposals.state) booth-key)
-    =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
-    =/  proposal  (~(get by booth-proposals) proposal-key)
-    =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
-    =/  threshold  (~(get by proposal) 'support')
-    ?~  threshold
-      ~&  >>>  "ballot: missing voter support value"  !!
-    =/  threshold  (ne:dejs:format (need threshold))
-
-    =/  booth-participants  (~(get by participants.state) booth-key)
-    =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
-
-    =/  booth-proposals  (~(get by votes.state) booth-key)
-    =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
-
-    =/  proposal-votes  (~(get by booth-proposals) proposal-key)
-    =/  proposal-votes  ?~(proposal-votes ~ ((om json):dejs:format (need proposal-votes)))
-
-    =/  participants  ~(val by booth-participants)
-    =/  participant-count  ?~(participants 0 (lent participants))
-
-    =/  votes  `(list [@t json])`~(tap by proposal-votes)
-    =/  vote-count  ?~(proposal-votes 0 (lent votes))
-
-    =/  turnout  (div:rs (sun:rs vote-count) (sun:rs participant-count))
-    %-  (slog leaf+"ballot: {<turnout>}, {<threshold>}" ~)
-    =/  tallies=(map @t json)
-          :: ?:  (gte turnout threshold)
-          ?:  (gte:ma:rs turnout threshold)
-            %-  roll
-            :-  votes
-            |:  [vote=`[@t json]`[%null ~] results=`(map @t json)`~]
-            (count-vote participant-count vote results)
-          %-  (slog leaf+"ballot: voter turnout not sufficient. not enough voter support." ~)
-          ~
-
-    ~&  >>  "ballot: tally => {<tallies>}"
-
-    ::  sort list by choice/vote count
-    =/  tallies  ~(val by tallies)
-    :: =/  tallies  ?~(tallies ~ (sort tallies get-vote-count))
-    =/  tallies
-          ?.  =(tallies ~)
-            %-  sort
-            :-  tallies
-            |=  [a=json b=json]
-            =/  a  ((om json):dejs:format a)
-            =/  b  ((om json):dejs:format b)
-            =/  val-a  (~(get by a) 'count')
-            =/  val-a  ?~(val-a 0 (ni:dejs:format (need val-a)))
-            =/  val-b  (~(get by b) 'count')
-            =/  val-b  ?~(val-b 0 (ni:dejs:format (need val-b)))
-            (gth val-a val-b)
-          ~
-
-    =/  top-choice  ?:  ?&  !=(~ tallies)
-            (gth (lent tallies) 0)
-        ==
-          =/  top-choice  ((om json):dejs:format (snag 0 tallies))
-          =/  label  (~(get by top-choice) 'label')
-          =/  label  ?~(label '?' (so:dejs:format (need label)))
-          label
-        ~
-
-    ::  after list is sorted, top choice will be first item in list
-
-    ?.  =(tallies ~)
-      =/  results
-        %-  pairs:enjs:format
-        :~
-          ['voteCount' (numb:enjs:format `@ud`vote-count)]
-          ['participantCount' (numb:enjs:format `@ud`participant-count)]
-          ['topChoice' ?~(top-choice ~ s+top-choice)]
-          ['tallies' ?~(tallies ~ [%a tallies])]
-        ==
-      ['counted' results]
-    ['failed' ~]
-
-  ++  on-start-poll
-    |=  [booth-key=@t proposal-key=@t]
-    ^-  (quip card _this)
-
-    =/  booth-polls  (~(get by polls.state) booth-key)
-    =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
-    =/  poll  (~(get by booth-polls) proposal-key)
-    =/  poll  ?~(poll ~ ((om json):dejs:format (need poll)))
-
-    =/  poll-key  (~(get by poll) 'key')
-    =/  poll-key  ?~  poll-key
-      ~&  >>>  "poll not found"  !!
-    (so:dejs:format (need poll-key))
-
-    %-  (slog leaf+"on-start-poll called" ~)
-    =/  context=json
-    %-  pairs:enjs:format
-    :~
-      ['booth' s+booth-key]
-      ['proposal' s+proposal-key]
-      ['poll' s+poll-key]
-    ==
-
-    =/  status-data=json
-    %-  pairs:enjs:format
-    :~
-      ['status' s+'started']
-    ==
-
-    =/  status-effect=json
-    %-  pairs:enjs:format
-    :~
-      ['resource' s+'poll']
-      ['key' s+poll-key]
-      ['effect' s+'add']
-      ['data' status-data]
-    ==
-
-    =/  effects=json
-    %-  pairs:enjs:format
-    :~
-      ['action' s+'poll-started-reaction']
-      ['context' context]
-      ['effects' [%a [status-effect]~]]
-    ==
-
-    %-  (slog leaf+"sending poll started effect to subcribers => {<effects>}..." ~)
-
-    :_  this
-    :~  [%give %fact [/booths]~ %json !>(effects)]
-        [%give %fact [/booths/(scot %tas booth-key)]~ %json !>(effects)]
-    ==
-
-  ++  on-end-poll
-    |=  [booth-key=@t proposal-key=@t]
-    ^-  (quip card _this)
-
-    %-  (slog leaf+"on-end-poll called" ~)
-    =/  booth-polls  (~(get by polls.state) booth-key)
-    =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
-    =/  poll  (~(get by booth-polls) proposal-key)
-    =/  poll  ?~(poll ~ ((om json):dejs:format (need poll)))
-
-    =/  poll-key  (~(get by poll) 'key')
-    =/  poll-key  ?~  poll-key
-      ~&  >>>  "poll not found"  !!
-    (so:dejs:format (need poll-key))
-
-    =/  poll-results  (tally-results booth-key proposal-key)
-    =/  poll  (~(put by poll) 'status' s+status.poll-results)
-    =/  poll  (~(put by poll) 'results' data.poll-results)
-    =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
-
-
-    %-  (slog leaf+"poll results are in!!! => {<poll-results>}" ~)
-
-    =/  context=json
-    %-  pairs:enjs:format
-    :~
-      ['booth' s+booth-key]
-      ['proposal' s+proposal-key]
-      ['poll' s+poll-key]
-    ==
-
-    =/  results-data=json
-    %-  pairs:enjs:format
-    :~
-      ['status' s+status.poll-results]
-      ['results' data.poll-results]
-    ==
-
-    =/  results-effect=json
-    %-  pairs:enjs:format
-    :~
-      ['resource' s+'poll']
-      ['key' s+poll-key]
-      ['effect' s+'update']
-      ['data' results-data]
-    ==
-
-    =/  effects=json
-    %-  pairs:enjs:format
-    :~
-      ['action' s+'poll-ended-reaction']
-      ['context' context]
-      ['effects' [%a [results-effect]~]]
-    ==
-
-    %-  (slog leaf+"sending poll results to subcribers => {<effects>}..." ~)
-
-    :_  this(polls (~(put by polls.state) booth-key booth-polls))
-    :~  [%give %fact [/booths]~ %json !>(effects)]
-        [%give %fact [/booths/(scot %tas booth-key)]~ %json !>([effects])]
-    ==
-
   ++  on-proposal-changed
     |=  [booth-key=@t payload=(map @t json)]
     ^-  (quip card _this)
@@ -2545,7 +2308,6 @@
           ==
 
     =|  effects=(list card)
-    =.  effects  ~
 
     =/  poll-start-date  (~(get by poll) 'start')
     =/  poll-start-date  ?~(poll-start-date ~ (du:dejs:format (need poll-start-date)))
@@ -2559,26 +2321,31 @@
       =.  result
             ?.  =(proposal-start-date poll-start-date)
                   %-  (slog leaf+"ballot: proposal {<proposal-key>} start date changed. rescheduling..." ~)
+                  :: =/  =wire  /ping-wait/(scot %p ship)/(scot %da until)
+                  :: [%pass wire %arvo %b %wait `@da`until]~
+                  =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/start %arvo %b %rest `@da`poll-start-date])
+                  =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/start %arvo %b %wait `@da`proposal-start-date])
+                  :: =/  effects=(list card)  `(list card)`(snoc effects `card`[%pass /start %arvo %b %wait proposal-start-date]~)
                   ::  get the current thread id of the end poll timer so that we can kill it and
                   ::    schedule a new timer under a new thread
-                  =/  tid  (~(get by poll) 'tid-start')
-                  =/  tis-active  ?~(tid %.n %.y)
-                  =/  tid  ?.(tis-active 't000' (so:dejs:format (need tid)))
-                  =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
-                  =/  effects  ?.  tis-active  effects
-                        =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])])
-                        =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %leave ~])
-                        effects
-                  ::  add an effect to start a new timer with the updated date/time
-                  =/  tid  `@t`(cat 3 'thread_start_' (scot %uv (sham eny.bowl)))
-                  =/  targs  [~ `tid byk.bowl %booth-timer !>(proposal-start-date)]
-                  =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
+                  :: =/  tid  (~(get by poll) 'tid-start')
+                  :: =/  tis-active  ?~(tid %.n %.y)
+                  :: =/  tid  ?.(tis-active 't000' (so:dejs:format (need tid)))
+                  :: =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
+                  :: =/  effects  ?.  tis-active  effects
+                  ::       =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])])
+                  ::       =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %leave ~])
+                  ::       effects
+                  :: ::  add an effect to start a new timer with the updated date/time
+                  :: =/  tid  `@t`(cat 3 'thread_start_' (scot %uv (sham eny.bowl)))
+                  :: =/  targs  [~ `tid byk.bowl %booth-timer !>(proposal-start-date)]
+                  :: =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
 
-                  =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %watch /thread-result/[tid]])
-                  =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-start !>(targs)])
+                  :: =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %watch /thread-result/[tid]])
+                  :: =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-start !>(targs)])
 
                   =/  poll  (~(put by poll) 'start' (sect:enjs:format proposal-start-date))
-                  =/  poll  (~(put by poll) 'tid-start' s+tid)
+                  :: :: =/  poll  (~(put by poll) 'tid-start' s+tid)
                   [effects poll]
                 %-  (slog leaf+"ballot: proposal {<proposal-key>} start date unchanged. no need to reschedule." ~)
                 [effects poll]
@@ -2599,26 +2366,31 @@
       =.  result
           ?.  =(proposal-end-date poll-end-date)
                 %-  (slog leaf+"ballot: proposal {<proposal-key>} end date changed. rescheduling..." ~)
+                  =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/end %arvo %b %rest `@da`poll-end-date])
+                  =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/end %arvo %b %wait `@da`proposal-end-date])
+                  :: =/  effects  (snoc effects [%pass /(scot %t booth-key)/(scot %t proposal-key)/end/timer %arvo %b %rest poll-end-date])
+                  :: =/  effects  (snoc effects [%pass /(scot %t booth-key)/(scot %t proposal-key)/end/timer %arvo %b %wait proposal-end-date])
+
                 ::  get the current thread id of the end poll timer so that we can kill it and
                 ::    schedule a new timer under a new thread
-                =/  tid  (~(get by poll) 'tid-end')
-                =/  tis-active  ?~(tid %.n %.y)
-                =/  tid  ?.(tis-active 't001' (so:dejs:format (need tid)))
-                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/end-poll
-                =/  effects  ?.  tis-active  effects
-                      =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])])
-                      =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %leave ~])
-                      effects
-                ::  add an effect to start a new timer with the updated date/time
-                =/  tid  `@t`(cat 3 'thread_end_' (scot %uv (sham eny.bowl)))
-                =/  targs  [~ `tid byk.bowl %booth-timer !>(proposal-end-date)]
-                =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/end-poll
+                :: =/  tid  (~(get by poll) 'tid-end')
+                :: =/  tis-active  ?~(tid %.n %.y)
+                :: =/  tid  ?.(tis-active 't001' (so:dejs:format (need tid)))
+                :: =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/end-poll
+                :: =/  effects  ?.  tis-active  effects
+                ::       =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])])
+                ::       =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %leave ~])
+                ::       effects
+                :: ::  add an effect to start a new timer with the updated date/time
+                :: =/  tid  `@t`(cat 3 'thread_end_' (scot %uv (sham eny.bowl)))
+                :: =/  targs  [~ `tid byk.bowl %booth-timer !>(proposal-end-date)]
+                :: =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/end-poll
 
-                =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %watch /thread-result/[tid]])
-                =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-start !>(targs)])
+                :: =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %watch /thread-result/[tid]])
+                :: =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-start !>(targs)])
 
                 =/  poll  (~(put by poll) 'end' (sect:enjs:format proposal-end-date))
-                =/  poll  (~(put by poll) 'tid-end' s+tid)
+                :: :: =/  poll  (~(put by poll) 'tid-end' s+tid)
                 [effects poll]
               %-  (slog leaf+"ballot: proposal {<proposal-key>} end date unchanged. no need to reschedule." ~)
               [effects poll]
@@ -3038,14 +2810,286 @@
 ++  on-arvo
   |=  [=wire =sign-arvo]
   ^-  (quip card _this)
-  ?.  ?=([%bind-route ~] wire)
-    (on-arvo:def [wire sign-arvo])
-  ?>  ?=([%eyre %bound *] sign-arvo)
-  ?:  accepted.sign-arvo
-    ~&  >  [wire sign-arvo]
-    `this
-    ~&  >>>  "ballot: binding route failed"
-  `this
+
+  |^
+  ?+  wire  (on-arvo:def wire sign-arvo)
+
+    [%bind-route ~]
+      ?>  ?=([%eyre %bound *] sign-arvo)
+      ?:  accepted.sign-arvo
+        ~&  >  [wire sign-arvo]
+        `this
+        ~&  >>>  "ballot: binding route failed"
+      `this
+
+    [%timer @ @ %start ~]
+      =/  segments  `(list @ta)`wire
+      =/  booth-key  (snag 1 segments)
+      =/  proposal-key  (snag 2 segments)
+      (on-start-poll booth-key proposal-key)
+
+    [%timer @ @ %end ~]
+      =/  segments  `(list @ta)`wire
+      =/  booth-key  (snag 1 segments)
+      =/  proposal-key  (snag 2 segments)
+      (on-end-poll booth-key proposal-key)
+
+  ==
+
+  ++  on-start-poll
+    |=  [booth-key=@t proposal-key=@t]
+    ^-  (quip card _this)
+
+    =/  booth-polls  (~(get by polls.state) booth-key)
+    =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
+    =/  poll  (~(get by booth-polls) proposal-key)
+    =/  poll  ?~(poll ~ ((om json):dejs:format (need poll)))
+
+    =/  poll-key  (~(get by poll) 'key')
+    =/  poll-key  ?~  poll-key
+      ~&  >>>  "poll not found"  !!
+    (so:dejs:format (need poll-key))
+
+    %-  (slog leaf+"on-start-poll called" ~)
+    =/  context=json
+    %-  pairs:enjs:format
+    :~
+      ['booth' s+booth-key]
+      ['proposal' s+proposal-key]
+      ['poll' s+poll-key]
+    ==
+
+    =/  status-data=json
+    %-  pairs:enjs:format
+    :~
+      ['status' s+'started']
+    ==
+
+    =/  status-effect=json
+    %-  pairs:enjs:format
+    :~
+      ['resource' s+'poll']
+      ['key' s+poll-key]
+      ['effect' s+'add']
+      ['data' status-data]
+    ==
+
+    =/  effects=json
+    %-  pairs:enjs:format
+    :~
+      ['action' s+'poll-started-reaction']
+      ['context' context]
+      ['effects' [%a [status-effect]~]]
+    ==
+
+    %-  (slog leaf+"sending poll started effect to subcribers => {<effects>}..." ~)
+
+    :_  this
+    :~  [%give %fact [/booths]~ %json !>(effects)]
+        [%give %fact [/booths/(scot %tas booth-key)]~ %json !>(effects)]
+    ==
+
+  ++  on-end-poll
+    |=  [booth-key=@t proposal-key=@t]
+    ^-  (quip card _this)
+
+    %-  (slog leaf+"on-end-poll called" ~)
+    =/  booth-polls  (~(get by polls.state) booth-key)
+    =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
+    =/  poll  (~(get by booth-polls) proposal-key)
+    =/  poll  ?~(poll ~ ((om json):dejs:format (need poll)))
+
+    =/  poll-key  (~(get by poll) 'key')
+    =/  poll-key  ?~  poll-key
+      ~&  >>>  "poll not found"  !!
+    (so:dejs:format (need poll-key))
+
+    =/  poll-results  (tally-results booth-key proposal-key)
+    =/  poll  (~(put by poll) 'status' s+status.poll-results)
+    =/  poll  (~(put by poll) 'results' data.poll-results)
+    =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
+
+
+    %-  (slog leaf+"poll results are in!!! => {<poll-results>}" ~)
+
+    =/  context=json
+    %-  pairs:enjs:format
+    :~
+      ['booth' s+booth-key]
+      ['proposal' s+proposal-key]
+      ['poll' s+poll-key]
+    ==
+
+    =/  results-data=json
+    %-  pairs:enjs:format
+    :~
+      ['status' s+status.poll-results]
+      ['results' data.poll-results]
+    ==
+
+    =/  results-effect=json
+    %-  pairs:enjs:format
+    :~
+      ['resource' s+'poll']
+      ['key' s+poll-key]
+      ['effect' s+'update']
+      ['data' results-data]
+    ==
+
+    =/  effects=json
+    %-  pairs:enjs:format
+    :~
+      ['action' s+'poll-ended-reaction']
+      ['context' context]
+      ['effects' [%a [results-effect]~]]
+    ==
+
+    %-  (slog leaf+"sending poll results to subcribers => {<effects>}..." ~)
+
+    :_  this(polls (~(put by polls.state) booth-key booth-polls))
+    :~  [%give %fact [/booths]~ %json !>(effects)]
+        [%give %fact [/booths/(scot %tas booth-key)]~ %json !>([effects])]
+    ==
+
+  ++  tally-results
+    |=  [booth-key=@t proposal-key=@t]
+    ^-  [status=@t data=json]
+
+    %-  (slog leaf+"tally-results called. [booth-key={<booth-key>}, proposal-key={<proposal-key>}]" ~)
+
+    =/  booth-proposals  (~(get by proposals.state) booth-key)
+    =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
+    =/  proposal  (~(get by booth-proposals) proposal-key)
+    =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
+    =/  threshold  (~(get by proposal) 'support')
+    ?~  threshold
+      ~&  >>>  "ballot: missing voter support value"  !!
+    =/  threshold  (ne:dejs:format (need threshold))
+
+    =/  booth-participants  (~(get by participants.state) booth-key)
+    =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+
+    =/  booth-proposals  (~(get by votes.state) booth-key)
+    =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
+
+    =/  proposal-votes  (~(get by booth-proposals) proposal-key)
+    =/  proposal-votes  ?~(proposal-votes ~ ((om json):dejs:format (need proposal-votes)))
+
+    =/  participants  ~(val by booth-participants)
+    =/  participant-count  ?~(participants 0 (lent participants))
+
+    =/  votes  `(list [@t json])`~(tap by proposal-votes)
+    =/  vote-count  ?~(proposal-votes 0 (lent votes))
+
+    =/  turnout  (div:rs (sun:rs vote-count) (sun:rs participant-count))
+    %-  (slog leaf+"ballot: {<turnout>}, {<threshold>}" ~)
+    =/  tallies=(map @t json)
+          :: ?:  (gte turnout threshold)
+          ?:  (gte:ma:rs turnout threshold)
+            %-  roll
+            :-  votes
+            |:  [vote=`[@t json]`[%null ~] results=`(map @t json)`~]
+            (count-vote participant-count vote results)
+          %-  (slog leaf+"ballot: voter turnout not sufficient. not enough voter support." ~)
+          ~
+
+    ~&  >>  "ballot: tally => {<tallies>}"
+
+    ::  sort list by choice/vote count
+    =/  tallies  ~(val by tallies)
+    :: =/  tallies  ?~(tallies ~ (sort tallies get-vote-count))
+    =/  tallies
+          ?.  =(tallies ~)
+            %-  sort
+            :-  tallies
+            |=  [a=json b=json]
+            =/  a  ((om json):dejs:format a)
+            =/  b  ((om json):dejs:format b)
+            =/  val-a  (~(get by a) 'count')
+            =/  val-a  ?~(val-a 0 (ni:dejs:format (need val-a)))
+            =/  val-b  (~(get by b) 'count')
+            =/  val-b  ?~(val-b 0 (ni:dejs:format (need val-b)))
+            (gth val-a val-b)
+          ~
+
+    =/  top-choice  ?:  ?&  !=(~ tallies)
+            (gth (lent tallies) 0)
+        ==
+          =/  top-choice  ((om json):dejs:format (snag 0 tallies))
+          =/  label  (~(get by top-choice) 'label')
+          =/  label  ?~(label '?' (so:dejs:format (need label)))
+          label
+        ~
+
+    ::  after list is sorted, top choice will be first item in list
+
+    ?.  =(tallies ~)
+      =/  results
+        %-  pairs:enjs:format
+        :~
+          ['voteCount' (numb:enjs:format `@ud`vote-count)]
+          ['participantCount' (numb:enjs:format `@ud`participant-count)]
+          ['topChoice' ?~(top-choice ~ s+top-choice)]
+          ['tallies' ?~(tallies ~ [%a tallies])]
+        ==
+      ['counted' results]
+    ['failed' ~]
+
+  ++  count-vote
+    |:  [voter-count=`@ud`1 vote=`[@t json]`[%null ~] results=`(map @t json)`~]
+
+    ::  no voters? move on
+    ?:  =(voter-count 0)  results
+    :: ::  move on if vote is null
+    ?:  =(-.vote %null)  results
+
+    =/  v  ((om json):dejs:format +.vote)
+    =/  choice  ((om json):dejs:format (~(got by v) 'choice'))
+    =/  label  (so:dejs:format (~(got by choice) 'label'))
+
+    ::  label, count, percentage
+    =/  result  (~(get by results) label)
+    =/  result  ?~(result ~ ((om json):dejs:format (need result)))
+
+    =/  choice-count  (~(get by result) 'count')
+    =/  choice-count  ?~(choice-count 0 (ni:dejs:format (need choice-count)))
+    =/  choice-count  (add choice-count 1) :: plug in delegate count here
+
+    =/  percentage  (mul:rs (div:rs (sun:rs choice-count) (sun:rs voter-count)) (sun:rs 100))
+    :: =/  percentage  (div choice-count `@ud`voter-count)
+
+    =.  result  (~(put by result) 'label' s+label)
+    =.  result  (~(put by result) 'count' (numb:enjs:format choice-count))
+    =.  result  (~(put by result) 'percentage' (numb:enjs:format `@ud`percentage))
+
+    =.  results  (~(put by results) label [%o result])
+    results
+  --
+
+  :: ?.  ?=([%bind-route ~] wire)
+  ::   (on-arvo:def [wire sign-arvo])
+  :: ?>  ?=([%eyre %bound *] sign-arvo)
+  :: ?:  accepted.sign-arvo
+  ::   ~&  >  [wire sign-arvo]
+  ::   `this
+  ::   ~&  >>>  "ballot: binding route failed"
+  :: `this
+
+  :: ?.  ?=([@ @ %timer ~] wire)          (on-arvo:def wire sign-arvo)
+  :: ?.  ?=([%behn %wake *] sign-arvo)  (on-arvo:def wire sign-arvo)
+  :: ?^  error.sign-arvo                (on-arvo:def wire sign-arvo)
+  :: ::
+
+  :: ?~  poll=(~(get by peck) (slav %uv i.wire))  `this
+  :: ?+  wire  (on-arvo:def wire sign-arvo)
+
+  ::   [@ @ %timer ~]
+  ::     =/  segments  `(list @ta)`wirepath
+  ::     =/  booth-key  (snag 1 segments)
+  ::     =/  proposal-key  (snag 2 segments)
+  ::     (on-end-poll booth-key proposal-key)
+
+  :: ==
 
 ++  on-fail   on-fail:def
 --
