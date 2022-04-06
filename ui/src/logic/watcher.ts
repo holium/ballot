@@ -205,6 +205,7 @@ export class BaseWatcher {
     });
   };
   unsubscribe() {
+    // console.log(`Connection to channel ${this.channelUrl}`);
     this.sse?.close();
     // this.send({
     //   id: this.channelUrl,

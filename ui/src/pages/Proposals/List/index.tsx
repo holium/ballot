@@ -1,5 +1,4 @@
 import React, { FC, useState } from "react";
-import { toJS } from "mobx";
 import { useNavigate, useParams } from "react-router";
 import { observer } from "mobx-react-lite";
 
@@ -12,7 +11,6 @@ import {
   Grid2,
   Button,
   Select,
-  FormControl,
   Label,
   Box,
   IconButton,
@@ -31,6 +29,7 @@ import {
 import { useMst } from "../../../logic/stores/root";
 import { ProposalModelType } from "../../../logic/stores/proposals";
 import { getProposalFilters } from "../../../logic/stores/proposals/utils";
+import { getBoothName } from "../../../logic/utils/metadata";
 
 export const ProposalList: FC = observer(() => {
   const [selectedOption, setSelectedOption] = useState("All");
@@ -75,7 +74,7 @@ export const ProposalList: FC = observer(() => {
     >
       <ListHeader
         title="Proposals"
-        subtitle={{ patp: true, text: currentBoothName }}
+        subtitle={{ text: getBoothName(booth!) }}
         options={[
           {
             label: "All",

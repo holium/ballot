@@ -7,6 +7,10 @@ export const ParticipantModel: any = types
     key: types.identifier,
     name: types.string,
     created: types.number,
+    role: types.optional(
+      types.enumeration(["owner", "participant"]),
+      "participant"
+    ),
     metadata: types.optional(ContactMetadataModel, { color: "#000000" }),
     status: types.enumeration("State", [
       "pending",

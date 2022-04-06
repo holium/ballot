@@ -11,7 +11,6 @@ import {
   OSViewPort,
   useDialog,
   Dialog,
-  Fill,
   Text,
   Button,
   Flex,
@@ -95,6 +94,9 @@ export const App: FC = observer(() => {
               <BoothsDropdown
                 booths={store.list}
                 onNewBooth={toggle}
+                onJoin={(boothName: string) =>
+                  store.booths.get(boothName)!.acceptInvite(boothName)
+                }
                 onAccept={(boothName: string) =>
                   store.booths.get(boothName)!.acceptInvite(boothName)
                 }

@@ -24,6 +24,7 @@ import { ParticipantStore } from "../participants";
 import { ProposalStore } from "../proposals";
 import { toJS } from "mobx";
 import { GroupModelType } from "../metadata";
+import { rootStore } from "../root";
 
 export const BoothStore = types
   .model({
@@ -131,11 +132,20 @@ export const BoothStore = types
     },
     initialEffect(payload: any) {
       const { booth, participants, proposals, votes } = payload.data;
+      let metadata = { ...booth.meta, color: "#000000" };
+      if (booth.type === "group") {
+        const groupMetadata = rootStore.metadata.groupsMap.get(booth.key);
+        if (groupMetadata) metadata = clone(groupMetadata);
+      } else {
+        const contactMetadata = rootStore.metadata.contactsMap.get(booth.key);
+        if (contactMetadata) metadata = clone(contactMetadata);
+      }
+      console.log(metadata);
       self.booths.set(
         booth.key,
         BoothModel.create({
           ...booth,
-          meta: { ...booth.meta, color: "#000000" },
+          meta: metadata,
           proposalStore: ProposalStore.create({
             boothKey: booth.key,
             loader: { state: "loaded" },
@@ -153,11 +163,19 @@ export const BoothStore = types
     },
     addEffect(booth: any) {
       // console.log("addEffect ", booth);
+      let metadata = { ...booth.meta, color: "#000000" };
+      if (booth.type === "group") {
+        const groupMetadata = rootStore.metadata.groupsMap.get(booth.key);
+        if (groupMetadata) metadata = clone(groupMetadata);
+      } else {
+        const contactMetadata = rootStore.metadata.contactsMap.get(booth.key);
+        if (contactMetadata) metadata = clone(contactMetadata);
+      }
       self.booths.set(
         booth.key,
         BoothModel.create({
           ...booth,
-          meta: { ...booth.meta, color: "#000000" },
+          meta: metadata,
           proposalStore: ProposalStore.create({
             boothKey: booth.key,
           }),
@@ -170,6 +188,7 @@ export const BoothStore = types
     },
     updateEffect(key: string, data: any) {
       console.log("booth updateEffect ", key, data);
+      // Delete the meta key
       const oldBooth = self.booths.get(key);
       console.log(oldBooth);
       oldBooth?.updateEffect(data);

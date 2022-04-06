@@ -4,7 +4,6 @@ import {
   Instance,
   SnapshotIn,
   getParent,
-  destroy,
   SnapshotOut,
   IJsonPatch,
   applyPatch,
@@ -79,7 +78,6 @@ export const ParticipantStore = types
         if (error) throw error;
         const deleted = self.participants.get(participantKey)!;
         self.participants.delete(participantKey);
-        destroy(deleted);
       } catch (err: any) {
         self.loader.error(err);
       }

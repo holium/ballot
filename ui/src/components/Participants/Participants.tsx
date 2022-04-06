@@ -1,6 +1,5 @@
 import React, { FC, useState } from "react";
 import { useParams } from "react-router-dom";
-import { toJS } from "mobx";
 import { Observer } from "mobx-react";
 import {
   Card,
@@ -16,11 +15,10 @@ import {
 } from "@holium/design-system";
 import styled from "styled-components";
 import { useMst } from "../../logic/stores/root";
-import { ParticipantType } from "../../logic/types/participants";
 import { getKeyFromUrl } from "../../logic/utils/path";
 import { ParticipantModal } from "./Modal/ParticipantModal";
 import { ParticipantRow } from "./ParticipantRow";
-import { ContactModelType } from "../../logic/stores/metadata";
+import { ParticipantModelType } from "../../logic/stores/participants";
 
 export const Container = styled(Card);
 
@@ -98,32 +96,30 @@ export const Participants: FC<ParticipantsProps> = (
                 {() => {
                   const startIndex = page * 10;
                   const endIndex = startIndex + 10;
+
                   return (
                     <>
                       {participants
                         .slice(startIndex, endIndex)
-                        .sort((a: ParticipantType, b: ParticipantType) =>
-                          a.status === b.status
-                            ? 0
-                            : a.status == "owner"
-                            ? -1
-                            : 1
+                        .sort(
+                          (a: ParticipantModelType, b: ParticipantModelType) =>
+                            b.role === "owner"
+                              ? 1
+                              : a.status === "invited"
+                              ? 0
+                              : -1
                         )
-                        .map((ship: ParticipantType) => {
+                        .map((ship: ParticipantModelType) => {
                           const participantMetadata: any =
                             metadata.contactsMap.get(ship.name) || {
                               color: "#000",
                             };
+                          const isOwner = ship.role === "owner";
                           return (
                             <ParticipantRow
-                              loading={
-                                booth.checkAction(`invite-${ship.name}`) !==
-                                "success"
-                              }
-                              status={ship.status}
-                              canAdmin={
-                                hasAdmin && !isGroup && ship.status !== "owner"
-                              }
+                              loading={ship.status === "pending"}
+                              status={isOwner ? "owner" : ship.status}
+                              canAdmin={hasAdmin && !isGroup && !isOwner}
                               key={`${ship.name}-${getKeyFromUrl(urlParams)!}`}
                               patp={ship.name}
                               avatar={participantMetadata.avatar}

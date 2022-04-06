@@ -19,6 +19,7 @@ export type BoothDrowdownProps = {
   booths: any[];
   onNewBooth: (...args: any) => any;
   onAccept: (boothName: string) => void;
+  onJoin: (boothName: string) => void;
   onContextClick: (context: Partial<BoothModelType>) => any;
 };
 
@@ -42,17 +43,8 @@ const EmptyGroup = styled.div`
 export const BoothsDropdown: FC<BoothDrowdownProps> = (
   props: BoothDrowdownProps
 ) => {
-  const { booths, onContextClick, onNewBooth, onAccept } = props;
-  const shipBooths = booths
-    .filter((booth: BoothType) => booth.type === "ship")
-    .map(
-      (booth: BoothType): BoothType => ({
-        ...booth,
-        meta: {
-          color: "#000000",
-        },
-      })
-    );
+  const { booths, onContextClick, onJoin, onNewBooth, onAccept } = props;
+  const shipBooths = booths.filter((booth: BoothType) => booth.type === "ship");
   const groupBooths = booths.filter(
     (booth: BoothType) => booth.type === "group"
   );
@@ -81,7 +73,7 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
                 key={`group-${index}`}
                 group={group}
                 onContextClick={onContextClick}
-                onAccept={onAccept}
+                onJoin={onJoin}
               />
             );
           })
@@ -152,7 +144,7 @@ const ShipBooths = (props: {
 }) => {
   const { ship, onContextClick, onAccept } = props;
   const needsAccepting = ship.status === "invited" || ship.status === "pending";
-  const [isExpanded, setIsExpanded] = useState(false);
+  // const [isExpanded, setIsExpanded] = useState(false);
   const additionalMetadata = rootStore.metadata.contactsMap.get(ship.key)!;
   let meta = ship.meta;
   if (additionalMetadata) {
@@ -220,10 +212,10 @@ const ShipBooths = (props: {
 
 const GroupBooths = (props: {
   group: any;
-  onAccept: (boothName: string) => void;
+  onJoin: (boothName: string) => void;
   onContextClick: (...args: any) => any;
 }) => {
-  const { group, onContextClick, onAccept } = props;
+  const { group, onContextClick, onJoin } = props;
   const [isExpanded, setIsExpanded] = useState(false);
   const needsConnecting = group.status === "enlisted";
 
@@ -278,7 +270,7 @@ const GroupBooths = (props: {
                 onClick={(evt: any) => {
                   evt.preventDefault();
                   evt.stopPropagation();
-                  onAccept(group.key);
+                  onJoin(group.key);
                 }}
               >
                 Join

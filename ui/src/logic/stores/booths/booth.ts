@@ -69,7 +69,6 @@ export const BoothModel = types
     loader: LoaderModel,
     proposalStore: ProposalStore,
     participantStore: ParticipantStore,
-    actionLog: types.map(types.string),
     sortBy: types.optional(
       types.union(
         types.literal("recent"),
@@ -105,9 +104,6 @@ export const BoothModel = types
     get isLoaded() {
       return self.loader.isLoaded;
     },
-    checkAction(action: string) {
-      return self.actionLog.get(action);
-    },
   }))
   .actions((self) => ({
     setShipMetadata(metadata: Instance<typeof BoothMetadataModel>) {
@@ -123,10 +119,6 @@ export const BoothModel = types
       try {
         const [response, error] = yield boothApi.acceptInvite(boothKey);
         if (error) throw error;
-        self.actionLog.set(
-          `${response.action}-${response.key}`,
-          response.status
-        );
       } catch (err: any) {
         self.loader.error(err);
       }
