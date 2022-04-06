@@ -44,7 +44,7 @@ const SortType = types.union(
 export const BoothModel = types
   .model({
     key: types.identifier,
-    created: types.string,
+    created: types.number,
     image: types.maybeNull(types.string),
     meta: types.map(types.maybeNull(types.string)),
     name: types.string,

@@ -63,7 +63,7 @@ export const ParticipantStore = types
           status: "pending",
           key: participantKey,
           name: participantKey,
-          created: "",
+          created: 0,
         });
         self.participants.set(newParticipant.key, newParticipant);
       } catch (err: any) {

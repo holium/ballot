@@ -4,7 +4,7 @@ export const ParticipantModel = types
   .model({
     key: types.identifier,
     name: types.string,
-    created: types.string,
+    created: types.number,
     metadata: types.optional(types.frozen(), { color: "#000000" }),
     status: types.enumeration("State", [
       "pending",
