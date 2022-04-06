@@ -41,12 +41,6 @@ const sortMap = {
       .filter((item: ProposalModelType) => item.status === "Upcoming"),
 };
 
-const SortType = types.union(
-  types.literal("recent"),
-  types.literal("ending"),
-  types.literal("starting")
-);
-
 export const BoothMetadataModel = types.union(
   ContactMetadataModel,
   GroupMetadataModel
@@ -55,7 +49,7 @@ export const BoothMetadataModel = types.union(
 export const BoothModel = types
   .model({
     key: types.identifier,
-    created: types.string,
+    created: types.number,
     image: types.maybeNull(types.string),
     meta: BoothMetadataModel,
     name: types.string,

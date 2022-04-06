@@ -6,7 +6,7 @@ export const VoteModel = types.model({
   status: types.enumeration("VoteStatus", ["pending", "recorded", "counted"]),
   choice: ChoiceModel,
   signature: types.optional(types.string, ""),
-  created: types.maybeNull(types.string),
+  created: types.maybeNull(types.number),
 });
 
 export type VoteModelType = Instance<typeof VoteModel>;

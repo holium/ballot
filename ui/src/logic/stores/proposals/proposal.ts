@@ -32,7 +32,7 @@ export const ProposalModel = types
     owner: types.string,
     title: types.string,
     content: types.string,
-    created: types.maybe(types.string),
+    created: types.maybe(types.number),
     start: types.number,
     end: types.number,
     status: types.optional(types.string, "Draft"),
