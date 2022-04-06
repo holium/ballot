@@ -917,7 +917,7 @@
         ?~  threshold
           ~&  >>>  "ballot: missing voter support value"  !!
         =/  threshold  (ne:dejs:format (need threshold))
-        %-  (slog leaf+"ballot: {<threshold>}")
+        %-  (slog leaf+"ballot: {<threshold>}" ~)
         =/  proposal  (~(gas by proposal) ~(tap by data))
         =/  proposal  (~(put by proposal) 'key' s+proposal-key)
         =/  proposal  (~(put by proposal) 'owner' s+(crip "{<our.bowl>}"))
