@@ -983,7 +983,7 @@
 
         =/  booth-type  (so:dejs:format (~(got by booth) 'type'))
 
-        =/  payload  (~(put by payload) 'data' s+'pending')
+        =/  payload  (~(put by payload) 'data' [%o booth])
 
         ::  create the response
         =/  =response-header:http
