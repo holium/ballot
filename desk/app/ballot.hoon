@@ -2160,7 +2160,7 @@
       ['key' s+participant-key]
       ['name' s+participant-key]
       ['status' s+'enlisted']
-      :: ['role' s+?:(=(ship entity.resource.initial) 'owner' 'participant')]
+      ['role' s+?:(=(our.bowl entity.resource.initial) 'owner' 'participant')]
       ['created' (time:enjs:format now.bowl)]
     ==
 
