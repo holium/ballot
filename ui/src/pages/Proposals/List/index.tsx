@@ -116,12 +116,17 @@ export const ProposalList: FC = observer(() => {
         }
         rightOptions={
           // TODO make responsive
-          <Flex style={{ width: 220 }} justifyContent="flex-end" itemsCenter>
-            <Label style={{ opacity: 0.7, fontWeight: "normal", width: 90 }}>
-              Sort by
-            </Label>
+          <Flex style={{ width: 200 }} justifyContent="flex-end" itemsCenter>
             <Select
               small
+              leftInteractive={true}
+              leftIcon={
+                <Label
+                  style={{ opacity: 0.7, fontWeight: "normal", width: 50 }}
+                >
+                  Sort by
+                </Label>
+              }
               selectionOption={booth!.sortBy}
               options={[
                 {
