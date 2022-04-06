@@ -150,12 +150,6 @@
       =/  booth-name  (crip "{<our.bowl>}")
       =/  booth-slug  (spat /(scot %p our.bowl))
 
-      =/  meta=json
-      %-  pairs:enjs:format
-      :~
-        ['tag' ~]
-      ==
-
       ::  ~lodlev-migdev
       ::   steps:
       ::
@@ -177,7 +171,6 @@
         ['created' (time:enjs:format now.bowl)]
         ['policy' s+'invite-only']
         ['status' s+'active']
-        ['meta' meta]
       ==
 
       =.  booths  (~(put by booths) booth-key booth)
@@ -989,19 +982,8 @@
         =/  booth  (~(put by booth) 'status' s+'pending')
 
         =/  booth-type  (so:dejs:format (~(got by booth) 'type'))
-        ::  if the booth is a group booth, the participant will need to be added/created
-        ::    to the booth.
-        =/  payload
-              ?:  =(booth-type 'group')
-                =/  participant-data=json
-                %-  pairs:enjs:format
-                :~  ['created' (time:enjs:format now.bowl)]
-                    ['key' s+(crip "{<our.bowl>}")]
-                    ['name' s+(crip "{<our.bowl>}")]
-                    ['status' s+'active']
-                ==
-                (~(put by payload) 'data' participant-data)
-              payload
+
+        =/  payload  (~(put by payload) 'data' s+'pending')
 
         ::  create the response
         =/  =response-header:http
@@ -1018,6 +1000,21 @@
 
         ::  pass on original 'accept' to remote ship
         =/  wire-payload  payload
+
+        ::  if the booth is a group booth, the participant will need to be added/created
+        ::    to the booth.  add this ship's data to the payload sent to the booth host
+        ::    so this ship can be added as a participant
+        =/  wire-payload
+              ?:  =(booth-type 'group')
+                =/  participant-data=json
+                %-  pairs:enjs:format
+                :~  ['created' (time:enjs:format now.bowl)]
+                    ['key' s+(crip "{<our.bowl>}")]
+                    ['name' s+(crip "{<our.bowl>}")]
+                    ['status' s+'active']
+                ==
+                (~(put by wire-payload) 'data' participant-data)
+              wire-payload
 
         =/  effect-data=json
         %-  pairs:enjs:format
@@ -2085,12 +2082,6 @@
     =/  key  (crip (weld (weld "{<entity.resource>}" "-groups-") (trip `@t`name.resource)))
     =/  slug  (crip (weld (weld "{<entity.resource>}" "/groups/") (trip `@t`name.resource)))
 
-    =/  meta=json
-    %-  pairs:enjs:format
-    :~
-      ['tag' ~]
-    ==
-
     =/  group-name  (trip name.resource)
 
     ::  if this ship is the owner of the group, set them as the owner of the booth
@@ -2109,7 +2100,6 @@
       ['owner' s+(crip "{<entity.resource>}")]
       ['created' (time:enjs:format now.bowl)]
       ['policy' s+'invite-only']
-      ['meta' meta]
     ==
 
     [key status data]
