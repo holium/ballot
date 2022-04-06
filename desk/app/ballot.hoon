@@ -12,7 +12,7 @@
 +$  versioned-state
   $%  state-0
   ==
-+$  state-0  [%0 mq=(map @t json) polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json))]
++$  state-0  [%0 authentication=@t mq=(map @t json) polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json))]
 --
 %-  agent:dbug
 =|  state-0
@@ -39,8 +39,7 @@
   ::    ~&  >>  rs
   ::  END OF RUNTIME LIB LOADING BLOCK
   :: *************************************************************
-
-  :_  this
+  :_  this(authentication 'enable')
 
       ::  initialize agent booths (ship, groups, etc...)
   :~  [%pass /ballot %agent [our.bowl %ballot] %poke %initialize !>(~)]
@@ -82,6 +81,12 @@
 
          [cards this]
 
+      %auth
+      =^  cards  state
+        =/  val  !<(@t vase)
+        (set-authentication-mode val)
+      [cards this]
+
       %json
         =^  cards  state
 
@@ -95,6 +100,12 @@
         =^  cards  state
 
         =/  req  !<((pair @ta inbound-request:eyre) vase)
+
+        ?:  ?&  =(authentication.state 'enable')
+                !authenticated.q.req
+            ==
+            ~&  >>>  "ballot: authentication is enabled. request is not authenticated"
+            (send-api-error req 'not authenticated')
 
         =/  req-args
               (my q:(need `(unit (pair pork:eyre quay:eyre))`(rush url.request.q.req ;~(plug apat:de-purl:html yque:de-purl:html))))
@@ -116,6 +127,11 @@
         ==
         [cards this]
     ==
+
+    ++  set-authentication-mode
+      |=  [mode=@t]
+      %-  (slog leaf+"ballot: setting authentication {<mode>}..." ~)
+      `state(authentication mode)
 
     ++  to-booth-sub
       |=  [jon=json]
