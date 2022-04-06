@@ -2,7 +2,7 @@
     info+'An app that allows you to vote with other ships. Built by Holium.'
     color+0xce.bef0
     image+'https://lomder-librun.sfo3.digitaloceanspaces.com/tiles/ballot-app-tile.svg'
-    glob-http+['https://lomder-librun.sfo3.digitaloceanspaces.com/globs/glob-0v6.anqe2.sta1l.h4cff.1mico.vkgfr.glob' 0v6.anqe2.sta1l.h4cff.1mico.vkgfr]
+    glob-http+['https://lomder-librun.sfo3.digitaloceanspaces.com/globs/glob-0v1.26tf5.ogspp.ta2q3.fc5hr.9bd5e.glob' 0v1.26tf5.ogspp.ta2q3.fc5hr.9bd5e]
     base+'ballot'
     version+[0 0 1]
     website+'https://github.com'
