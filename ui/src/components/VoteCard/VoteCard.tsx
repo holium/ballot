@@ -23,15 +23,14 @@ import {
   VoteModelType,
 } from "../../logic/stores/proposals";
 import { toJS } from "mobx";
+import { ContactModelType } from "../../logic/stores/metadata";
 
 export type VoteCardProps = {
   style?: any;
   disabled?: boolean;
   currentUser: {
     patp: string;
-    metadata: {
-      color: string;
-    };
+    metadata: ContactModelType;
   };
   title: string;
   blurred?: boolean;
@@ -154,6 +153,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
       </>
     );
   }
+
   return (
     <Card
       ref={ref}
@@ -196,9 +196,13 @@ export const VoteCard: any = (props: VoteCardProps) => {
           mb={3}
         >
           <Ship
-            patp={currentUser.patp}
-            color={currentUser.metadata.color}
             textOpacity={1}
+            patp={currentUser.patp}
+            avatar={currentUser.metadata?.avatar}
+            nickname={currentUser.metadata?.nickname}
+            color={currentUser.metadata?.color || "#000000"}
+            size="small"
+            clickable={false}
           />
           <Text variant="hint" opacity={0.5}>
             {`1 ${pluralize("vote", 1)}`}

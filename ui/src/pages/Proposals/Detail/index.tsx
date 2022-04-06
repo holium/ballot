@@ -23,11 +23,12 @@ import { Status } from "../../../components/Status";
 import { useMst } from "../../../logic/stores/root";
 import { ProposalModelType } from "../../../logic/stores/proposals";
 import { ProposalResult } from "./ProposalResults";
+import { ContactModelType } from "../../../logic/stores/metadata";
 
 export const ProposalDetail: FC = observer((props: any) => {
   const navigate = useNavigate();
   const urlParams = useParams();
-  const { store, app } = useMst();
+  const { store, app, metadata } = useMst();
 
   const currentBoothKey = getKeyFromUrl(urlParams);
   store.setBooth(currentBoothKey);
@@ -67,6 +68,10 @@ export const ProposalDetail: FC = observer((props: any) => {
 
     const isActive = proposal.status === "Active";
 
+    const authorMetadata: any = metadata.contactsMap.get(proposal.owner) || {
+      color: "#000",
+    };
+
     content = (
       <Grid2.Row reverse={["xs"]} justify="center">
         <Grid2.Column mb="16px" md={6} lg={9} xl={9}>
@@ -91,7 +96,15 @@ export const ProposalDetail: FC = observer((props: any) => {
                 justifyContent="space-between"
                 alignItems="center"
               >
-                <Ship patp={proposal.owner} color="#000000" />
+                <Ship
+                  textOpacity={0.7}
+                  patp={proposal.owner}
+                  avatar={authorMetadata?.avatar}
+                  nickname={authorMetadata?.nickname}
+                  color={authorMetadata?.color || "#000000"}
+                  size="small"
+                  clickable={false}
+                />
                 <KPI
                   icon={<TlonIcon icon="Clock" />}
                   value={descriptiveTimeString(proposal.start, proposal.end)}
@@ -124,7 +137,7 @@ export const ProposalDetail: FC = observer((props: any) => {
               choices={proposal.choices}
               title={proposal.title}
               loading={proposal.isVoteLoading}
-              currentUser={app.ship}
+              currentUser={app.account}
               strategy={proposal.strategy}
               onVote={onVote}
               timeLeft={descriptiveTimeString(proposal.start, proposal.end)}

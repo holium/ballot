@@ -20,6 +20,7 @@ import { ParticipantType } from "../../logic/types/participants";
 import { getKeyFromUrl } from "../../logic/utils/path";
 import { ParticipantModal } from "./Modal/ParticipantModal";
 import { ParticipantRow } from "./ParticipantRow";
+import { ContactModelType } from "../../logic/stores/metadata";
 
 export const Container = styled(Card);
 
@@ -37,7 +38,7 @@ export const Participants: FC<ParticipantsProps> = (
   const { loading, participants, onAdd, onRemove } = props;
   const { isShowing, toggle } = useDialog();
   const urlParams = useParams();
-  const { store } = useMst();
+  const { store, metadata } = useMst();
   const [page, setPage] = useState(0);
   const pages =
     participants.length / 10 === 1 ? 0 : Math.floor(participants.length / 10);
@@ -108,22 +109,30 @@ export const Participants: FC<ParticipantsProps> = (
                             ? -1
                             : 1
                         )
-                        .map((ship: ParticipantType) => (
-                          <ParticipantRow
-                            loading={
-                              booth.checkAction(`invite-${ship.name}`) !==
-                              "success"
-                            }
-                            status={ship.status}
-                            canAdmin={
-                              hasAdmin && !isGroup && ship.status !== "owner"
-                            }
-                            key={`${ship.name}-${getKeyFromUrl(urlParams)!}`}
-                            patp={ship.name}
-                            color={ship?.metadata?.color}
-                            onRemove={onRemove}
-                          />
-                        ))}
+                        .map((ship: ParticipantType) => {
+                          const participantMetadata: any =
+                            metadata.contactsMap.get(ship.name) || {
+                              color: "#000",
+                            };
+                          return (
+                            <ParticipantRow
+                              loading={
+                                booth.checkAction(`invite-${ship.name}`) !==
+                                "success"
+                              }
+                              status={ship.status}
+                              canAdmin={
+                                hasAdmin && !isGroup && ship.status !== "owner"
+                              }
+                              key={`${ship.name}-${getKeyFromUrl(urlParams)!}`}
+                              patp={ship.name}
+                              avatar={participantMetadata.avatar}
+                              nickname={participantMetadata.nickname}
+                              color={participantMetadata.color}
+                              onRemove={onRemove}
+                            />
+                          );
+                        })}
                     </>
                   );
                 }}
