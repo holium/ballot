@@ -28,7 +28,7 @@ export const VoteBreakdownBar = (props: VoteBreakdownBarProps) => {
             />
           )}
         </Box>
-        <KPI inline value={`${percentage || 0}%`} trailingLabel="voted" />
+        <KPI inline value={`${percentage || 0}%`} />
       </SideBySide>
       <Bar results={percentage} win={win} overlay={overlay} />
     </BarSet>

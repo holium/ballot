@@ -17,7 +17,7 @@ import {
 } from "mobx-state-tree";
 import boothApi from "../../api/booths";
 import { timeout } from "../../utils/dev";
-import { BoothMetadataModel, BoothModel, BoothModelType } from "./";
+import { BoothModel, BoothModelType } from "./";
 import { EffectModelType } from "../common/effects";
 import { LoaderModel } from "../common/loader";
 import { ParticipantStore } from "../participants";
@@ -123,7 +123,7 @@ export const BoothStore = types
           this.updateEffect(payload.key, payload.data);
           break;
         case "delete":
-          this.deleteEffect(payload.key);
+          this.deleteEffect(context);
           break;
         case "initial":
           this.initialEffect(payload);
@@ -140,7 +140,6 @@ export const BoothStore = types
         const contactMetadata = rootStore.metadata.contactsMap.get(booth.key);
         if (contactMetadata) metadata = clone(contactMetadata);
       }
-      console.log(metadata);
       self.booths.set(
         booth.key,
         BoothModel.create({
@@ -185,6 +184,10 @@ export const BoothStore = types
           loader: { state: "loaded" },
         })
       );
+      // One the add (when a group is adedd from Groups), get participants and proposals
+      const addedBooth = self.booths.get(booth.key)!;
+      addedBooth.participantStore.getParticipants();
+      addedBooth.proposalStore.getProposals();
     },
     updateEffect(key: string, data: any) {
       console.log("booth updateEffect ", key, data);
@@ -193,9 +196,9 @@ export const BoothStore = types
       console.log(oldBooth);
       oldBooth?.updateEffect(data);
     },
-    deleteEffect(boothKey: string) {
-      console.log("booth deleteEffect ", boothKey);
-
-      self.booths.delete(boothKey);
+    deleteEffect(context: { booth: string }) {
+      console.log("booth deleteEffect ", context);
+      // TODO add you've been remove from the booth notification
+      self.booths.delete(context.booth);
     },
   }));

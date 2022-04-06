@@ -25,7 +25,7 @@ import { rootStore } from "../root";
 const sortMap = {
   recent: (list: ProposalModelType[]) =>
     list.sort((a: ProposalModelType, b: ProposalModelType) => {
-      return parseInt(b.created!) - parseInt(a.created!);
+      return b.created! - a.created!;
     }),
   ending: (list: ProposalModelType[]) =>
     list
