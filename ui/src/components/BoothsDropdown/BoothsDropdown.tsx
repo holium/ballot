@@ -12,6 +12,8 @@ import styled from "styled-components";
 import { BoothType } from "../../logic/types/booths";
 import { toJS } from "mobx";
 import { BoothModelType } from "../../logic/stores/booths";
+import { Observer } from "mobx-react-lite";
+import { rootStore } from "../../logic/stores/root";
 
 export type BoothDrowdownProps = {
   booths: any[];
@@ -33,7 +35,7 @@ const DropdownBody = styled.div``;
 const EmptyGroup = styled.div`
   height: 24px;
   width: 24px;
-  background: #000;
+  background: ${(p) => p.color || "#000"};
   border-radius: 4px;
 `;
 
@@ -130,14 +132,15 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
           </Text>
         )}
       </DropdownBody>
-      <Box ml={2} mt={2}>
+      {/* NOTE: this was for open group joining or manual booth joining, removing for now */}
+      {/* <Box ml={2} mt={2}>
         <TextButton
           style={{ fontSize: "14px", fontWeight: 500 }}
           onClick={onNewBooth}
         >
           Join new booth
         </TextButton>
-      </Box>
+      </Box> */}
     </Flex>
   );
 };
@@ -150,7 +153,11 @@ const ShipBooths = (props: {
   const { ship, onContextClick, onAccept } = props;
   const needsAccepting = ship.status === "invited" || ship.status === "pending";
   const [isExpanded, setIsExpanded] = useState(false);
-
+  const additionalMetadata = rootStore.metadata.contactsMap.get(ship.key)!;
+  let meta = ship.meta;
+  if (additionalMetadata) {
+    meta = additionalMetadata;
+  }
   return (
     <MenuItem
       tabIndex={needsAccepting ? -1 : 0}
@@ -169,9 +176,10 @@ const ShipBooths = (props: {
         >
           <Sigil
             patp={ship.name}
+            avatar={meta.avatar}
             clickable={false}
             size={24}
-            color={[ship.meta.color || "black", "white"]}
+            color={[meta.color || "black", "white"]}
           />
           <Text
             style={{
@@ -184,7 +192,7 @@ const ShipBooths = (props: {
             fontWeight="medium"
             variant="body"
           >
-            {ship.name}
+            {meta.nickname || ship.name}
             {/* TODO add notification */}
             {/* <Icons.ExpandMore ml="6px" /> */}
           </Text>
@@ -230,51 +238,55 @@ const GroupBooths = (props: {
         evt.preventDefault();
       }}
     >
-      <Flex justifyContent="space-between" alignItems="center">
-        <Box
-          alignItems="center"
-          style={{ flex: 1, opacity: needsConnecting ? 0.3 : 1 }}
-        >
-          {group.avatar ? (
-            <img
-              style={{ borderRadius: 4 }}
-              height="24px"
-              width="24px"
-              src={group.avatar}
-            />
-          ) : (
-            <EmptyGroup />
-          )}
-          <Text
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              justifyContent: "space-between",
-            }}
-            ml="8px"
-            fontSize={2}
-            fontWeight="medium"
-            variant="body"
-          >
-            {group.name}
-            {/* TODO add notification */}
-            {/* <Icons.ExpandMore ml="6px" /> */}
-          </Text>
-        </Box>
-        {needsConnecting && (
-          <TextButton
-            tabIndex={0}
-            data-prevent-menu-close
-            onClick={(evt: any) => {
-              evt.preventDefault();
-              evt.stopPropagation();
-              onAccept(group.key);
-            }}
-          >
-            Join
-          </TextButton>
+      <Observer>
+        {() => (
+          <Flex justifyContent="space-between" alignItems="center">
+            <Box
+              alignItems="center"
+              style={{ flex: 1, opacity: needsConnecting ? 0.3 : 1 }}
+            >
+              {group.meta.picture ? (
+                <img
+                  style={{ borderRadius: 4 }}
+                  height="24px"
+                  width="24px"
+                  src={group.meta.picture}
+                />
+              ) : (
+                <EmptyGroup color={group.meta.color} />
+              )}
+              <Text
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+                ml="8px"
+                fontSize={2}
+                fontWeight="medium"
+                variant="body"
+              >
+                {group.meta.title || group.name}
+                {/* TODO add notification */}
+                {/* <Icons.ExpandMore ml="6px" /> */}
+              </Text>
+            </Box>
+            {needsConnecting && (
+              <TextButton
+                tabIndex={0}
+                data-prevent-menu-close
+                onClick={(evt: any) => {
+                  evt.preventDefault();
+                  evt.stopPropagation();
+                  onAccept(group.key);
+                }}
+              >
+                Join
+              </TextButton>
+            )}
+          </Flex>
         )}
-      </Flex>
+      </Observer>
     </MenuItem>
     // <div>
     //   <div onClick={() => setIsExpanded(!isExpanded)}>{ship.name}</div>

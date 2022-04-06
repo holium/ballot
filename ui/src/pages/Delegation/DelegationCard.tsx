@@ -48,10 +48,18 @@ export const DelegationCard: FC<DelegationCardProps> = (
         style={{ flex: 1, width: "100%" }}
       >
         <Ship
+          textOpacity={1}
+          patp={ship.patp}
+          avatar={ship.metadata?.avatar}
+          nickname={ship.metadata?.nickname}
+          color={ship.metadata?.color || "#000000"}
+          clickable={false}
+        />
+        {/* <Ship
           patp={ship.patp}
           color={ship.metadata?.color || "#000000"}
           textOpacity={1}
-        />
+        /> */}
         <Text variant="body" opacity={0.7}>
           {votingPower} {pluralize("vote", votingPower)}
         </Text>

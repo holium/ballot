@@ -1,4 +1,9 @@
 import {
+  ContactMetadataModel,
+  ContactModelType,
+  GroupModelType,
+} from "./../metadata";
+import {
   types,
   flow,
   Instance,
@@ -12,6 +17,7 @@ import {
 import boothApi from "../../api/booths";
 
 import { LoaderModel } from "../common/loader";
+import { GroupMetadataModel } from "../metadata";
 import { ParticipantStore } from "../participants";
 import { ProposalModelType, ProposalStore } from "../proposals";
 import { rootStore } from "../root";
@@ -41,12 +47,17 @@ const SortType = types.union(
   types.literal("starting")
 );
 
+export const BoothMetadataModel = types.union(
+  ContactMetadataModel,
+  GroupMetadataModel
+);
+
 export const BoothModel = types
   .model({
     key: types.identifier,
     created: types.string,
     image: types.maybeNull(types.string),
-    meta: types.map(types.maybeNull(types.string)),
+    meta: BoothMetadataModel,
     name: types.string,
     owner: types.string,
     type: types.enumeration("Type", ["group", "ship"]),
@@ -54,11 +65,12 @@ export const BoothModel = types
       types.enumeration("Permission", ["owner", "admin", "member", "viewer"])
     ),
     status: types.enumeration("State", [
-      "pending",
-      "enlisted",
-      "invited",
-      "error",
-      "active",
+      "pending", // spinner
+      "enlisted", // group auto invite
+      "invited", // ship booth invite
+      "error", //
+      // "no-response", // agent didn't respond to poke?
+      "active", // joined
     ]),
     loader: LoaderModel,
     proposalStore: ProposalStore,
@@ -104,6 +116,12 @@ export const BoothModel = types
     },
   }))
   .actions((self) => ({
+    setShipMetadata(metadata: Instance<typeof BoothMetadataModel>) {
+      self.meta = metadata;
+    },
+    setGroupMetadata(metadata: Instance<typeof BoothMetadataModel>) {
+      self.meta = metadata;
+    },
     setSortBy(sortBy: "recent" | "ending" | "starting") {
       self.sortBy = sortBy;
     },

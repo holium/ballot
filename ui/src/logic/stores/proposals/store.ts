@@ -90,7 +90,6 @@ export const ProposalStore = types
         if (error) throw error;
 
         // response could be null
-        console.log("creating proposal ", response);
         const parentBooth: BoothModelType = getParent(self, 1);
         const newProposal = ProposalModel.create({
           ...response.data,

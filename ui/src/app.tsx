@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useEffect } from "react";
 import { observer } from "mobx-react";
 import { useLocation, useNavigate, Outlet, useParams } from "react-router-dom";
 import Helmet from "react-helmet";
@@ -31,30 +31,40 @@ export const App: FC = observer(() => {
   const urlParams = useParams();
   const { isShowing, toggle } = useDialog();
 
-  const { store, app } = useMst();
+  const { store, app, metadata } = useMst();
 
   // Runs on initial load
   useEffect(() => {
     app.setCurrentUrl(location.pathname);
-    store.getBooths().then(() => {
-      const urlBooth = store.booths.get(getKeyFromUrl(urlParams));
-      if (urlBooth) {
-        store.setBooth(urlBooth.key);
-      } else {
-        // use your current ship booth since we didnt find the url booth
-        store.setBooth(app.ship.patp);
-        let newPath = createPath(store.booth!.key, app.currentPage);
-        navigate(newPath);
-        app.setCurrentUrl(newPath, app.currentPage);
-        return;
-      }
-    });
+
+    Promise.all([
+      store.getBooths().then(() => {
+        const urlBooth = store.booths.get(getKeyFromUrl(urlParams));
+        if (urlBooth) {
+          store.setBooth(urlBooth.key);
+        } else {
+          // use your current ship booth since we didnt find the url booth
+          store.setBooth(app.ship.patp);
+          let newPath = createPath(store.booth!.key, app.currentPage);
+          navigate(newPath);
+          app.setCurrentUrl(newPath, app.currentPage);
+          return;
+        }
+      }),
+      metadata.getMetadata(),
+      metadata.getContactMetadata(),
+    ]);
   }, []);
 
   const toggleTheme = () => {
     app.setTheme(app.theme === "light" ? "dark" : "light");
   };
 
+  const contextLoading =
+    store.isLoading ||
+    metadata.groupsLoader.isLoading ||
+    metadata.contactsLoader.isLoading;
+  const ship = app.account;
   return (
     // @ts-ignore
     <ThemeProvider theme={theme[app.theme]}>
@@ -75,7 +85,7 @@ export const App: FC = observer(() => {
         </Dialog>
         <AppWindow
           isStandalone
-          loadingContext={store.isLoading}
+          loadingContext={contextLoading}
           style={{ padding: "0px 16px" }}
           app={{
             icon: <Icons.Governance />,
@@ -98,12 +108,14 @@ export const App: FC = observer(() => {
             ),
           }}
           ship={{
-            patp: app.ship!.patp,
-            color: app.ship!.metadata!.color,
+            patp: ship.patp,
+            avatar: ship.metadata.avatar!,
+            nickname: ship.metadata.nickname!,
+            color: ship.metadata.color,
             contextMenu: (
               <Flex p={3} pb={2} flexDirection="column">
                 <Text mb={3} variant="patp">
-                  {app.ship!.patp}
+                  {ship.metadata.nickname || ship.patp}
                 </Text>
 
                 <Button

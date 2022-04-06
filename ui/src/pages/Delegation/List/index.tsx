@@ -15,12 +15,11 @@ import { pluralize } from "../../../logic/utils/text";
 import { DelegationCard } from "../DelegationCard";
 import { useMst } from "../../../logic/stores/root";
 import { ParticipantModelType } from "../../../logic/stores/participants";
-import { toJS } from "mobx";
 import { observer } from "mobx-react";
 import { getKeyFromUrl, getNameFromUrl } from "../../../logic/utils/path";
 
 export const DelegationList: FC = observer(() => {
-  const { app, store } = useMst();
+  const { app, metadata, store } = useMst();
   const urlParams = useParams();
   const currentBooth = store.booths.get(getKeyFromUrl(urlParams))!;
 
@@ -46,7 +45,7 @@ export const DelegationList: FC = observer(() => {
         }
       />
       <Flex flexDirection="column">
-        <DelegationCard votingPower={1} ship={app.ship!} />
+        <DelegationCard votingPower={1} ship={app.account!} />
         <Card
           style={{ borderColor: "transparent" }}
           elevation="lifted"
@@ -56,6 +55,7 @@ export const DelegationList: FC = observer(() => {
           <Text variant="h6" mb={3} fontWeight={500}>
             Top delegates
           </Text>
+          {/* TODO make a standard participants list component */}
           {participants.length ? (
             participants
               .filter(
@@ -63,7 +63,12 @@ export const DelegationList: FC = observer(() => {
                   participant.name !== app.ship.patp
               )
               .map((participant: ParticipantModelType) => {
-                const participantVotingPower = 1;
+                const participantVotingPower = 1; // todo implement when delegaton backend is built
+                const participantMetadata: any = metadata.contactsMap.get(
+                  participant.name
+                ) || {
+                  color: "#000",
+                };
                 return (
                   <GenericRow key={participant.name}>
                     <Flex
@@ -73,7 +78,9 @@ export const DelegationList: FC = observer(() => {
                     >
                       <Ship
                         patp={participant.name}
-                        color={participant.metadata!.color || "#000000"}
+                        avatar={participantMetadata.avatar}
+                        nickname={participantMetadata.nickname}
+                        color={participantMetadata.color}
                         textOpacity={1}
                       />
                       <Text variant="body" opacity={0.7}>

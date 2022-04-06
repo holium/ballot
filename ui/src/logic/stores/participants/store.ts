@@ -10,10 +10,12 @@ import {
   applyPatch,
 } from "mobx-state-tree";
 import participantApi from "../../api/participants";
+import { BaseWatcher, ChannelResponseType } from "../../watcher";
 import { ContextModelType, EffectModelType } from "../common/effects";
 
 import { LoaderModel } from "../common/loader";
 import { ParticipantModel } from "../participants";
+import { rootStore } from "../root";
 
 export const ParticipantStore = types
   .model({

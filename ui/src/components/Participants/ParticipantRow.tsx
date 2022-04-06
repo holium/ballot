@@ -16,6 +16,8 @@ import {
 export type ParticipantRowProps = {
   loading?: boolean;
   patp: string;
+  avatar?: string;
+  nickname?: string;
   color: string;
   status: string;
   canAdmin?: boolean;
@@ -23,7 +25,8 @@ export type ParticipantRowProps = {
 };
 
 export const ParticipantRow = (props: ParticipantRowProps) => {
-  const { loading, canAdmin, patp, color, status, onRemove } = props;
+  const { avatar, nickname, loading, canAdmin, patp, color, status, onRemove } =
+    props;
 
   const moreButtonRef = React.useRef();
   let anchorPoint: any,
@@ -48,6 +51,8 @@ export const ParticipantRow = (props: ParticipantRowProps) => {
       <Flex style={{ flex: 1 }}>
         <Ship
           patp={patp}
+          avatar={avatar}
+          nickname={nickname}
           color={color || "#000000"}
           size="small"
           clickable={false}

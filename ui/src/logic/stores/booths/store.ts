@@ -1,4 +1,9 @@
 import {
+  ContactMetadataModel,
+  ContactModelType,
+  GroupMetadataModel,
+} from "./../metadata";
+import {
   types,
   flow,
   Instance,
@@ -8,14 +13,17 @@ import {
   SnapshotOut,
   IJsonPatch,
   applyPatch,
+  clone,
 } from "mobx-state-tree";
 import boothApi from "../../api/booths";
 import { timeout } from "../../utils/dev";
-import { BoothModel, BoothModelType } from "./";
+import { BoothMetadataModel, BoothModel, BoothModelType } from "./";
 import { EffectModelType } from "../common/effects";
 import { LoaderModel } from "../common/loader";
 import { ParticipantStore } from "../participants";
 import { ProposalStore } from "../proposals";
+import { toJS } from "mobx";
+import { GroupModelType } from "../metadata";
 
 export const BoothStore = types
   .model({
@@ -48,9 +56,21 @@ export const BoothStore = types
     },
   }))
   .actions((self) => ({
+    setGroupMetadata: (boothKey: string, metadata: GroupModelType) => {
+      const booth = self.booths.get(boothKey)!;
+      booth &&
+        metadata &&
+        booth.setGroupMetadata(GroupMetadataModel.create(metadata));
+    },
+    setShipMetadata: (boothKey: string, metadata: ContactModelType) => {
+      const booth = self.booths.get(boothKey)!;
+      booth &&
+        metadata &&
+        booth.setShipMetadata(ContactMetadataModel.create(metadata));
+    },
     getBooths: flow(function* () {
       self.loader.set("loading");
-      yield timeout(1000); // for dev to simulate remote request
+      // yield timeout(1000); // for dev to simulate remote request
       try {
         const [response, error]: [BoothModelType[], any] =
           yield boothApi.getAll();
@@ -59,7 +79,10 @@ export const BoothStore = types
         Object.values(response).forEach(async (booth: any) => {
           const newBooth = BoothModel.create({
             ...booth,
-            meta: { ...booth.meta, color: "#000000" },
+            meta: {
+              ...booth.meta,
+              color: "#000000",
+            },
             proposalStore: ProposalStore.create({
               boothKey: booth.key,
             }),
