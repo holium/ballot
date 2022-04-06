@@ -1,14 +1,11 @@
+import { ContactMetadataModel } from "./metadata";
 import { types, Instance } from "mobx-state-tree";
 import { matchPath } from "react-router-dom";
+import { rootStore } from "./root";
 
 const ShipModel = types.model({
   patp: types.string,
-  metadata: types.optional(
-    types.model({
-      color: types.string,
-    }),
-    { color: "#000000" }
-  ),
+  metadata: types.optional(ContactMetadataModel, { color: "#000000" }),
 });
 
 export type ShipModelType = Instance<typeof ShipModel>;
@@ -21,6 +18,17 @@ export const AppModel = types
     theme: types.enumeration("Theme", ["light", "dark"]),
     ship: ShipModel,
   })
+  .views((self) => ({
+    get account() {
+      let ship = self.ship;
+      const additionalMetadata = rootStore.metadata.contactsMap.get(
+        self.ship.patp
+      )!;
+      if (additionalMetadata) ship = { ...ship, metadata: additionalMetadata };
+
+      return ship;
+    },
+  }))
   .actions((self) => ({
     setTitle(title: typeof self.title) {
       self.title = title;

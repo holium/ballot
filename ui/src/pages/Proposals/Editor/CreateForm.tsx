@@ -10,7 +10,6 @@ export const createProposalFormFields = (defaults: any = {}) => {
       values.redacted = Boolean(values.redacted);
       values.start = Math.round(new Date(values.start).valueOf() / 1000);
       values.end = Math.round(new Date(values.end).valueOf() / 1000);
-      console.log(values);
       return values;
     },
   });

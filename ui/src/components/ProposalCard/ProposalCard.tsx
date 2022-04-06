@@ -9,6 +9,8 @@ import {
   TlonIcon,
   ContextMenu,
   MenuItemProps,
+  Ship,
+  Box,
 } from "@holium/design-system";
 import { toJS } from "mobx";
 import { Observer } from "mobx-react";
@@ -18,6 +20,7 @@ import { descriptiveTimeString } from "../../logic/utils/time";
 import { Author } from "../Author";
 import { useMst } from "../../logic/stores/root";
 import { ProposalModelType } from "../../logic/stores/proposals";
+import { ContactModelType } from "../../logic/stores/metadata";
 
 export type ProposalCardType = {
   proposal: ProposalModelType;
@@ -25,6 +28,7 @@ export type ProposalCardType = {
   contextMenu: MenuItemProps[];
   status: string;
   clickable?: boolean;
+  authorMetadata?: ContactModelType;
   entity: "group" | "ship" | string;
   statusInfoValue?: string;
 };
@@ -65,7 +69,8 @@ const Skeleton = styled.div`
 `;
 
 export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
-  const { proposal, onClick, clickable, status, entity, contextMenu } = props;
+  const { proposal, onClick, clickable, status, authorMetadata, contextMenu } =
+    props;
   const parentRef = React.useRef();
   const { store } = useMst();
 
@@ -84,12 +89,11 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
           containerId={proposal.key}
           parentRef={parentRef}
         />
-        <Flex style={{ pointerEvents: "none" }} gap={8} flexDirection="column">
+        <Flex style={{ pointerEvents: "none" }} gap={4} flexDirection="column">
           <Flex
             flexDirection={["column", "row", "row"]}
             justifyContent={["flex-start", "space-between", "space-between"]}
-            mb={["4px", "8px", "8px"]}
-            style={{ gap: 8 }}
+            mb={["4px", "4px", "4px"]}
           >
             <Observer>
               {() => (
@@ -166,14 +170,25 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
           </Flex>
         </Flex>
       </Card>
-      <Author
+      <Box mt="6px">
+        <Ship
+          textOpacity={0.7}
+          patp={proposal.owner}
+          avatar={authorMetadata?.avatar}
+          nickname={authorMetadata?.nickname}
+          color={authorMetadata?.color || "#000000"}
+          size="small"
+          clickable={false}
+        />
+      </Box>
+      {/* <Author
         patp={proposal.owner}
         // color={proposal.author.metadata?.color}
         size="small"
         clickable={clickable}
         entity={"ship"}
         noAttachments={true}
-      />
+      /> */}
     </Flex>
   );
 };

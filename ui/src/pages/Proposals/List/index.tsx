@@ -36,7 +36,7 @@ export const ProposalList: FC = observer(() => {
   const [selectedOption, setSelectedOption] = useState("All");
   const navigate = useNavigate();
   const urlParams = useParams();
-  const { store } = useMst();
+  const { store, metadata } = useMst();
   const [page, setPage] = useState(0);
 
   const currentBoothName = getNameFromUrl(urlParams);
@@ -169,6 +169,11 @@ export const ProposalList: FC = observer(() => {
             style: any;
           }) => {
             const proposal: ProposalModelType = pagedList[index];
+            const authorMetadata: any = metadata.contactsMap.get(
+              proposal.owner
+            ) || {
+              color: "#000",
+            };
             return (
               <ProposalCard
                 key={key}
@@ -181,6 +186,7 @@ export const ProposalList: FC = observer(() => {
                   );
                   navigate(newPath);
                 }}
+                authorMetadata={authorMetadata}
                 status={proposal.status}
                 entity={booth!.type}
                 contextMenu={[

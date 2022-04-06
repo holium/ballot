@@ -24,7 +24,7 @@ export type EffectType = {
 
 export type ChannelResponseType = {
   id?: number;
-  json: ActionType;
+  json: ActionType | any;
   response: "diff";
 };
 
@@ -32,35 +32,14 @@ export class BaseWatcher {
   counter: number = 0; // ~lodlev-migdev - used to generate unique id values
   sse: EventSource | null = null; // ~lodlev-migdev - sse (server-side-events) event source
   ship: string;
-  channelUrl: string;
-  // ~lodlev-migdev - map of channel path to handler methods
-  //   handlers are called when a message is sent from an agent (on a specific path)
-  stores: any = {};
-  onChannel: (data: any) => void = () => {};
+  channelUrl: string = "";
   retryTimeout: any = 0;
 
   constructor() {
-    const channelId = [
-      Date.now(),
-      "",
-      Math.floor(Math.random() * Number.MAX_SAFE_INTEGER),
-    ]
-      .toString()
-      .replaceAll(",", "");
-    this.channelUrl = `${baseUrl}/~/channel/${channelId}`;
     this.ship = shipStore.ship?.toString()!;
   }
 
-  // onBoothUpdates = (data: any) => {
-  //   console.log("onBoothUpdate", data);
-  // };
-
-  initialize = (
-    app: string,
-    channel: string,
-    onChannel: (data: any) => void
-  ) => {
-    this.onChannel = onChannel;
+  initialize = (app: string, path: string, onChannel: (data: any) => void) => {
     const channelId: string = [
       Date.now(),
       "",
@@ -75,16 +54,16 @@ export class BaseWatcher {
     //    1) poke our ship to create a channel
     //    2) subscribe to the ballot /contexts wire
     //
-    this.shconn().then((res) => {
-      this.subscribe("ballot", channel, onChannel)
-        .then(() => console.log(`subscribed to ballot '/booths'`))
+    this.shconn(app, path, onChannel).then(() => {
+      this.subscribe(app, path, onChannel)
+        .then(() => console.log(`subscribed to %${app} on ${path}`))
         .catch((e: any) => console.error(e));
     });
   };
 
   // ~lodlev-migdev - helper to ack a message received on the channel
   ack = async (id: number) => {
-    return this.send(this.channelUrl, [
+    return this.send([
       {
         id: ++this.counter,
         action: "ack",
@@ -95,9 +74,9 @@ export class BaseWatcher {
 
   // ~lodlev-migdev - connect to the ship (create a channel)
   //      and open an event stream
-  shconn = async () => {
+  shconn = async (app: string, path: string, onChannel: any) => {
     return new Promise((resolve, reject) => {
-      this.send(this.channelUrl, [
+      this.send([
         {
           id: ++this.counter,
           action: "poke",
@@ -108,7 +87,7 @@ export class BaseWatcher {
         },
       ])
         .then((res) => {
-          this.stream(this.channelUrl);
+          this.stream(this.channelUrl, app, path, onChannel);
           resolve(null);
         })
         .catch(reject);
@@ -119,8 +98,8 @@ export class BaseWatcher {
   //   be sure to include credentials so that cookies are included in
   //   th request. also make sure payload is an array actions.
   //  see: https://urbit.org/docs/arvo/eyre/guide#using-channels
-  send = (channelUrl: string, payload: any) => {
-    return fetch(channelUrl, {
+  send = (payload: any) => {
+    return fetch(this.channelUrl, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -136,7 +115,12 @@ export class BaseWatcher {
     });
   };
 
-  stream(channelUrl: string) {
+  stream(
+    channelUrl: string,
+    app: string,
+    path: string,
+    onChannel: (data: any) => void
+  ) {
     // ~lodlev-migdev - now connect to the channel and
     //   listen for notifications from the agent
     this.sse = new EventSource(channelUrl, {
@@ -150,66 +134,42 @@ export class BaseWatcher {
     this.sse.addEventListener("message", (e) => {
       let jon = JSON.parse(e.data);
 
-      // console.log("message => %o", jon);
-      this.onChannel(jon);
-
-      // ~lodlev-migdev - use closure to ensure id is in scope
-      //   when promise resolve is called
-      // (function (id) {
       this.ack(jon.id)
-        .then(() => console.log(`message ${jon.id} ack'd`))
+        // .then(() => console.log(`message ${jon.id} ack'd`))
         .catch((e: any) => console.error(e));
-      // })(jon.id);
 
-      // ~lodlev-migdev - diffs are sent when agents give facts
-      //   see: https://urbit.org/docs/arvo/eyre/external-api-ref#diff
       if (jon.response === "diff") {
-        // ~lodlev-migdev - build a key from the path. use
-        //    it to look up the handler for the message
-        //  it is a requirement of all agents to send the path
-        //   of the wire where the message originated. this is then used
-        //   to map messages to handlers
-        const key = jon.json?.path?.replace("/", "_");
-
-        if (this.stores.hasOwnProperty(key)) {
-          const handler = this.stores[key];
-          handler && handler(jon.json);
-        }
+        onChannel(jon);
       }
 
       if (jon.response === "quit") {
-        console.log("received a quit. reconnecting to /booths...");
-        this.reconnect("ballot", "/booths", this.onChannel);
+        console.log(`received a quit. reconnecting to %${app} on ${path}...`);
+        this.reconnect(app, path, onChannel);
       }
     });
 
     this.sse.addEventListener("open", (e) => {
-      console.log("The connection has been established.");
+      console.log(`The connection has been established to %${app} on ${path}`);
     });
   }
 
   reconnect = async (
     app: string,
     path: string,
-    handler: (data: any) => void
+    onChannel: (data: any) => void
   ) => {
     if (this.retryTimeout !== 0) clearTimeout(this.retryTimeout);
-    this.subscribe(app, path, this.onChannel)
-      .then(() => console.log(`re-subscribed to ballot ${app}://'${path}'`))
+    this.subscribe(app, path, onChannel)
+      .then(() => console.log(`re-subscribed to %${app} on ${path}`))
       .catch((e) => {
         console.log(
-          `could not subscribe to ${app}://${path}. retrying in 2 seconds...`
+          `could not subscribe to %${app} on ${path}. retrying in 2 seconds...`
         );
-        (function (
-          watcher: BaseWatcher,
-          app: string,
-          path: string,
-          handler: (data: any) => void
-        ) {
+        (function (watcher: BaseWatcher, app: string, path: string) {
           watcher.retryTimeout = setTimeout(() => {
-            watcher.reconnect(app, path, handler);
+            watcher.reconnect(app, path, onChannel);
           }, 2000);
-        })(this, app, path, handler);
+        })(this, app, path);
       });
   };
 
@@ -222,7 +182,7 @@ export class BaseWatcher {
   subscribe = async (
     app: string,
     path: string,
-    handler: (data: any) => void
+    onChannel: (data: any) => void
   ) => {
     return new Promise((resolve, reject) => {
       const payload = [
@@ -234,20 +194,24 @@ export class BaseWatcher {
           path: path,
         },
       ];
-      this.send(this.channelUrl, payload)
-        .then((res) => {
-          const key = path.replace("/", "_");
-          if (this.stores.hasOwnProperty(key)) {
-            console.warn(
-              `warn: store with path '${path}' exists. replacing...`
-            );
+      this.send(payload)
+        .then((res: any) => {
+          if (res.response === "diff") {
+            onChannel(res.json);
           }
-          this.stores[key] = handler;
           resolve(null);
         })
         .catch(reject);
     });
   };
+  unsubscribe() {
+    this.sse?.close();
+    // this.send({
+    //   id: this.channelUrl,
+    //   action: "unsubscribe",
+    //   subscription: this.counter,
+    // });
+  }
 }
 
-export const Watcher = new BaseWatcher();
+// export const Watcher = new BaseWatcher();

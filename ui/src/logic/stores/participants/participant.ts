@@ -1,11 +1,13 @@
+import { rootStore } from "./../root";
 import { types, Instance, IJsonPatch, applyPatch } from "mobx-state-tree";
+import { ContactMetadataModel } from "../metadata";
 
-export const ParticipantModel = types
+export const ParticipantModel: any = types
   .model({
     key: types.identifier,
     name: types.string,
-    created: types.number,
-    metadata: types.optional(types.frozen(), { color: "#000000" }),
+    created: types.string,
+    metadata: types.optional(ContactMetadataModel, { color: "#000000" }),
     status: types.enumeration("State", [
       "pending",
       "invited",
@@ -14,6 +16,14 @@ export const ParticipantModel = types
       "active",
     ]),
   })
+  .views((self) => ({
+    getParticipant(): ParticipantModelType {
+      return {
+        ...self,
+        metadata: rootStore.metadata.contactsMap.get(self.key),
+      };
+    },
+  }))
   .actions((self) => ({
     setStatus(status: typeof self.status) {
       self.status = status;
