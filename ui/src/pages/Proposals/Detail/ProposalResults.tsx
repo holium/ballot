@@ -13,10 +13,14 @@ export const ProposalResult: FC<ProposalResultType> = (
   props: ProposalResultType
 ) => {
   const { booth, proposal } = props;
-  const voteCount = proposal.results.resultSummary.voteCount || 0;
-  const participantCount = booth.participantStore.count || 1;
-  const percentage = Math.round((voteCount / participantCount) * 1000) / 10;
+  let voteCount = proposal.results.resultSummary.voteCount || 0;
+  let participantCount = booth.participantStore.count || 1;
   const tally = proposal.tally;
+  if (tally) {
+    voteCount = proposal.tally.voteCount;
+    participantCount = proposal.tally.participantCount;
+  }
+  const percentage = Math.round((voteCount / participantCount) * 1000) / 10;
 
   return (
     tally && (
