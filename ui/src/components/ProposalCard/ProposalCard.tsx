@@ -202,14 +202,6 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
           clickable={false}
         />
       </Box>
-      {/* <Author
-        patp={proposal.owner}
-        // color={proposal.author.metadata?.color}
-        size="small"
-        clickable={clickable}
-        entity={"ship"}
-        noAttachments={true}
-      /> */}
     </Flex>
   );
 };

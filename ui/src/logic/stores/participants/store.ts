@@ -43,7 +43,7 @@ export const ParticipantStore = types
         );
         if (error) throw error;
         self.loader.set("loaded");
-        Object.values(response).forEach((participant: any) => {
+        Object.values(response || {}).forEach((participant: any) => {
           const newParticipant = ParticipantModel.create(participant);
           self.participants.set(newParticipant.key, newParticipant);
         });
