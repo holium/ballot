@@ -66,7 +66,13 @@ export const createProposalFormFields = (defaults: any = {}) => {
     id: "end",
     form,
     initialValue: defaults.end ? new Date(defaults.end * 1000) : newEndTime,
-    validationSchema: yup.date().required("Must have an end time."),
+    validationSchema: yup
+      .date()
+      .required("Must have an end time.")
+      .when(
+        "startTime",
+        (startTime: any, schema: any) => startTime && schema.min(startTime)
+      ),
   });
 
   const support = createField({

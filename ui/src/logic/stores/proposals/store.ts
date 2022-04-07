@@ -167,7 +167,7 @@ export const ProposalStore = types
       self.proposals.set(proposalKey, updated);
     },
     initialEffect(proposalMap: any, voteMap: any) {
-      console.log("proposal initialEffect proposalMap ", proposalMap);
+      // console.log("proposal initialEffect proposalMap ", proposalMap);
       Object.keys(proposalMap).forEach((proposalKey: any) => {
         const proposal = proposalMap[proposalKey];
         const newProposal = ProposalModel.create({
@@ -175,24 +175,25 @@ export const ProposalStore = types
           status: determineStatus(proposal),
           boothKey: self.boothKey,
         });
-        Object.keys(voteMap).forEach((voterKey: string) => {
-          const voteResult = voteMap[voterKey];
-          if (voteResult)
-            newProposal.results!.votes.set(
-              voteResult.voter,
-              VoteModel.create({
-                ...voteResult,
-                choice: ChoiceModel.create(voteResult.choice),
-              })
-            );
-        });
+        voteMap[proposalKey] &&
+          Object.keys(voteMap[proposalKey]).forEach((voterKey: string) => {
+            const voteResult = voteMap[proposalKey][voterKey];
+            console.log("voteresult", voteMap, voteResult);
+            if (voteResult)
+              newProposal.results!.setNewVote(
+                VoteModel.create({
+                  ...voteResult,
+                  choice: ChoiceModel.create(voteResult.choice),
+                })
+              );
+          });
         self.proposals.set(proposal.key, newProposal);
         newProposal.results.generateResultSummary();
       });
     },
 
     addEffect(proposal: any) {
-      console.log("proposal addEffect ", proposal);
+      // console.log("proposal addEffect ", proposal);
       const parentBooth: BoothModelType = getParent(self, 1);
       self.proposals.set(
         proposal.key,
@@ -214,13 +215,13 @@ export const ProposalStore = types
       );
     },
     updateEffect(proposalKey: string, data: any, action: string) {
-      console.log("proposal updateEffect ", action, proposalKey, data);
+      // console.log("proposal updateEffect ", action, proposalKey, data);
       const oldProposal = self.proposals.get(proposalKey)!;
       const updated: any = oldProposal.updateEffect(data)!;
       self.proposals.set(proposalKey, updated);
     },
     deleteEffect(proposalKey: string) {
-      console.log("proposal deleteEffect ", proposalKey);
+      // console.log("proposal deleteEffect ", proposalKey);
       self.proposals.delete(proposalKey);
     },
   }));

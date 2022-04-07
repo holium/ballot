@@ -7,6 +7,9 @@ import {
   MenuItem,
   Sigil,
   Spinner,
+  Search,
+  Input,
+  Icons,
 } from "@holium/design-system";
 import styled from "styled-components";
 import { BoothType } from "../../logic/types/booths";
@@ -44,18 +47,47 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
   props: BoothDrowdownProps
 ) => {
   const { booths, onContextClick, onJoin, onNewBooth, onAccept } = props;
-  const shipBooths = booths.filter((booth: BoothType) => booth.type === "ship");
-  const groupBooths = booths.filter(
-    (booth: BoothType) => booth.type === "group"
-  );
+  const [searchTerm, setSearchTerm] = useState("");
+  const filterShipSearch = (booth: any) =>
+    booth.type === "ship" &&
+    (booth.name.includes(searchTerm) ||
+      booth.meta.nickname.includes(searchTerm));
+  const filterGroupSearch = (booth: any) =>
+    booth.type === "group" &&
+    (booth.name.includes(searchTerm) || booth.meta.title.includes(searchTerm));
+
+  const shipBooths = booths
+    .filter((booth: BoothType) => booth.type === "ship")
+    .filter(filterShipSearch);
+  const groupBooths = booths
+    .filter((booth: BoothType) => booth.type === "group")
+    .filter(filterGroupSearch);
   return (
     <Flex
+      width="300px"
+      maxHeight="700px"
+      style={{ position: "relative", overflowY: "scroll" }}
       flexDirection="column"
       onClick={(evt: any) => {
         evt.preventDefault();
         evt.stopPropagation();
       }}
     >
+      <Box
+        style={{ position: "sticky", zIndex: 200 }}
+        mt={1}
+        ml={2}
+        mr={2}
+        mb={2}
+      >
+        <Input
+          style={{ height: 34, borderRadius: 6 }}
+          placeholder="Filter booths"
+          value={searchTerm}
+          leftIcon={<Icons.Search opacity={0.7} />}
+          onChange={(evt: any) => setSearchTerm(evt.target.value)}
+        />
+      </Box>
       <DropdownHeader>
         <Text
           fontSize="14px"
@@ -218,7 +250,7 @@ const GroupBooths = (props: {
   const { group, onContextClick, onJoin } = props;
   const [isExpanded, setIsExpanded] = useState(false);
   const needsConnecting =
-    group.status === "enlisted" || group.status === "pending";
+    group.status !== "active" && group.status !== "pending";
 
   return (
     <MenuItem
@@ -264,22 +296,24 @@ const GroupBooths = (props: {
                 {/* <Icons.ExpandMore ml="6px" /> */}
               </Text>
             </Box>
-            {needsConnecting &&
-              (group.status === "pending" ? (
-                <Spinner ml={2} mr={2} size={0} />
-              ) : (
-                <TextButton
-                  tabIndex={0}
-                  data-prevent-menu-close
-                  onClick={(evt: any) => {
-                    evt.preventDefault();
-                    evt.stopPropagation();
-                    onJoin(group.key);
-                  }}
-                >
-                  Join
-                </TextButton>
-              ))}
+            {group.status === "pending" && (
+              <Text opacity={0.5} variant="hint">
+                pending
+              </Text>
+            )}
+            {group.status !== "active" && group.status !== "pending" && (
+              <TextButton
+                tabIndex={0}
+                data-prevent-menu-close
+                onClick={(evt: any) => {
+                  evt.preventDefault();
+                  evt.stopPropagation();
+                  onJoin(group.key);
+                }}
+              >
+                Join
+              </TextButton>
+            )}
           </Flex>
         )}
       </Observer>

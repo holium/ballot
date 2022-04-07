@@ -98,7 +98,7 @@ export const ParticipantStore = types
           this.updateEffect(payload.key, payload.data);
           break;
         case "delete":
-          this.deleteEffect(payload.key);
+          this.deleteEffect(context);
           break;
         case "initial":
           // this.initialEffect(payload);
@@ -128,8 +128,8 @@ export const ParticipantStore = types
       const oldBooth = self.participants.get(participantKey);
       oldBooth?.updateEffect(data);
     },
-    deleteEffect(participantKey: string) {
-      console.log("participant deleteEffect ", participantKey);
-      self.participants.delete(participantKey);
+    deleteEffect(context: ContextModelType) {
+      console.log("participant deleteEffect ", context.participant);
+      self.participants.delete(context.participant!);
     },
   }));
