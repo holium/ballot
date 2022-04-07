@@ -14,7 +14,13 @@ import {
   SnapshotOrInstance,
 } from "mobx-state-tree";
 import { type } from "os";
-import { ChoiceModel, determineStatus, ResultModel, VoteModel } from ".";
+import {
+  ChoiceModel,
+  determineStatus,
+  ResultModel,
+  ResultSummaryModel,
+  VoteModel,
+} from ".";
 
 import proposalsApi from "../../api/proposals";
 import votesApi from "../../api/votes";
@@ -25,6 +31,9 @@ import { ContextModelType, EffectModelType } from "../common/effects";
 import { LoaderModel } from "../common/loader";
 import { rootStore } from "../root";
 import { VoteModelType } from "./vote";
+
+// poll-closed
+// poll-opened
 
 export const ProposalModel = types
   .model({
@@ -49,11 +58,13 @@ export const ProposalModel = types
     ]),
     loader: types.optional(LoaderModel, { state: "initial" }),
     voteLoader: types.optional(LoaderModel, { state: "initial" }),
+    tally: types.maybeNull(ResultSummaryModel),
     results: types.optional(ResultModel, {
       didVote: false,
       votes: {},
       resultSummary: {
         voteCount: 0,
+        status: "preliminary",
         participantCount: 0,
         topChoice: undefined,
         tallies: [],
@@ -212,11 +223,11 @@ export const ProposalModel = types
         //     });
         //   })
         //   .sort((a: TallyType, b: TallyType) => b!.count - a!.count);
-        self.results.resultSummary.voteCount = update.results.voteCount;
-        self.results.resultSummary.participantCount =
+        self.results.resultSummary!.voteCount = update.results.voteCount;
+        self.results.resultSummary!.participantCount =
           update.results.participantCount;
-        self.results.resultSummary.topChoice = update.results.topChoice;
-        self.results.resultSummary.tallies = update.results.tallies.map(
+        self.results.resultSummary!.topChoice = update.results.topChoice;
+        self.results.resultSummary!.tallies = update.results.tallies.map(
           (tally: TallyType) => TallyModel.create(tally)
         );
 

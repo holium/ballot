@@ -13,6 +13,10 @@ import { rootStore } from "../root";
 export const ResultSummaryModel = types.model({
   voteCount: types.optional(types.number, 0),
   participantCount: types.optional(types.number, 1),
+  status: types.optional(
+    types.enumeration("ResultStatus", ["counted", "failed", "preliminary"]),
+    "preliminary"
+  ),
   topChoice: types.maybe(types.string),
   tallies: types.array(TallyModel),
 });
@@ -22,7 +26,7 @@ export type ResultSummaryType = Instance<typeof ResultSummaryModel>;
 export const ResultModel = types
   .model({
     didVote: types.optional(types.boolean, false),
-    resultSummary: ResultSummaryModel,
+    resultSummary: types.maybeNull(ResultSummaryModel),
     votes: types.map(VoteModel),
   })
   .views((self) => ({

@@ -1,6 +1,5 @@
 import React, { FC, useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
-import { formatDistance } from "date-fns";
 import {
   Flex,
   Card,
@@ -140,9 +139,9 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
                   proposal.key
                 )!;
                 const voteCount =
-                  proposalModel.results.resultSummary.voteCount || 0;
+                  proposalModel.results.resultSummary!.voteCount || 0;
                 const participantCount =
-                  proposalModel.results.resultSummary.participantCount || 1;
+                  proposalModel.results.resultSummary!.participantCount || 1;
                 const percentage = useMemo(
                   () => Math.round((voteCount / participantCount) * 1000) / 10,
                   [voteCount, participantCount]
@@ -175,7 +174,7 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
                           fontWeight="500"
                           color="brand.primary"
                         >
-                          {proposalModel.results.resultSummary.topChoice}
+                          {proposalModel.results.resultSummary!.topChoice}
                         </Text>
                       </Flex>
                     )}

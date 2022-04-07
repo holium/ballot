@@ -88,18 +88,18 @@ export function onChannel(data: ChannelResponseModelType) {
           responseJson.context.booth!
         )!;
         if (proposalBooth)
-          proposalBooth.proposalStore.onEffect(effect, context);
+          proposalBooth.proposalStore.onEffect(effect, context, action);
         break;
-      case "poll":
-        const proposalPollBooth = rootStore.store.booths.get(
-          responseJson.context.booth!
-        )!;
-        if (proposalPollBooth)
-          proposalPollBooth.proposalStore.onPollEffect(
-            effect,
-            context.proposal!
-          );
-        break;
+      // case "poll":
+      //   const proposalPollBooth = rootStore.store.booths.get(
+      //     responseJson.context.booth!
+      //   )!;
+      //   if (proposalPollBooth)
+      //     proposalPollBooth.proposalStore.onPollEffect(
+      //       effect,
+      //       context.proposal!
+      //     );
+      //   break;
       case "vote":
         const voteBooth = rootStore.store.booths.get(context.booth!)!;
         const voteProposal = voteBooth.proposalStore.proposals?.get(

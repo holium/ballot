@@ -18,14 +18,11 @@ export const getProposalFilters = (proposals: ProposalModelType[]) => {
 
 export function determineStatus(proposal: ProposalModelType) {
   let status: string = "Draft";
-  if (proposal.status === "started") {
+  if (proposal.status === "poll-opened") {
     status = "Active";
   }
-  if (proposal.status === "counted") {
+  if (proposal.status === "poll-closed") {
     status = "Ended";
-  }
-  if (proposal.status === "failed") {
-    status = "Failed";
   }
   // if it doesnt have a status on the proposal, use the start and end time
   const now = new Date().getTime();

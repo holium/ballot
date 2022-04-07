@@ -140,13 +140,17 @@ export const ProposalStore = types
     //
     //
     //
-    onEffect(payload: EffectModelType, context: ContextModelType) {
+    onEffect(
+      payload: EffectModelType,
+      context: ContextModelType,
+      action: string
+    ) {
       switch (payload.effect) {
         case "add":
           this.addEffect(payload.data);
           break;
         case "update":
-          this.updateEffect(payload.key!, payload.data);
+          this.updateEffect(payload.key!, payload.data, action);
           break;
         case "delete":
           this.deleteEffect(payload.key!);
@@ -209,11 +213,20 @@ export const ProposalStore = types
         })
       );
     },
-    updateEffect(proposalKey: string, data: any) {
-      console.log("proposal updateEffect ", proposalKey, data);
-      const oldProposal = self.proposals.get(proposalKey)!;
-      const updated: any = oldProposal.updateEffect(data)!;
-      self.proposals.set(proposalKey, updated);
+    updateEffect(proposalKey: string, data: any, action: string) {
+      console.log("proposal updateEffect ", action, proposalKey, data);
+      if (
+        action === "poll-ended-reaction" ||
+        action === "poll-opened-reaction"
+      ) {
+        const oldProposal = self.proposals.get(proposalKey)!;
+        const updated: any = oldProposal.onPollEffect(data)!;
+        self.proposals.set(proposalKey, updated);
+      } else {
+        const oldProposal = self.proposals.get(proposalKey)!;
+        const updated: any = oldProposal.updateEffect(data)!;
+        self.proposals.set(proposalKey, updated);
+      }
     },
     deleteEffect(proposalKey: string) {
       console.log("proposal deleteEffect ", proposalKey);
