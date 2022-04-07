@@ -1826,7 +1826,14 @@
     =/  poll-proposal  (~(gas by poll-proposal) ~(tap by data))
     =/  poll-proposals  (~(put by poll-proposals) proposal-key [%o poll-proposal])
 
-    :_  this(polls (~(put by polls.state) booth-key poll-proposals))
+    =/  booth-proposals  (~(get by proposals.state) booth-key)
+    =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
+    =/  booth-proposal  (~(get by booth-proposals) proposal-key)
+    =/  booth-proposal  ?~(booth-proposal ~ ((om json):dejs:format (need booth-proposal)))
+    =/  booth-proposal  (~(gas by booth-proposal) ~(tap by data))
+    =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o booth-proposal])
+
+    :_  this(polls (~(put by polls.state) booth-key poll-proposals), proposals (~(put by proposals.state) booth-key booth-proposals))
 
     :~  [%give %fact [/booths]~ %json !>([%o payload])]
     ==
@@ -2058,6 +2065,8 @@
     =/  booth-key  (crip (weld (weld "{<entity.resource.action>}" "-groups-") (trip `@t`name.resource.action)))
     =/  booth  (~(get by booths.state) booth-key)
     =/  booth  ?~(booth ~ (need booth))
+    :: =/  booth-ship  (~(got by booth) 'owner')
+    :: =/  hostship=@p  `@p`(slav %p booth-ship)
 
     %-  (slog leaf+"on-group-member-removed {<booth-key>}" ~)
     =/  booth-participants  (~(get by participants.state) booth-key)
@@ -2081,13 +2090,17 @@
         ['participant' s+participant-key]
       ==
 
-      =/  booth-effect=json
-      %-  pairs:enjs:format
-      :~
-        ['resource' s+'booth']
-        ['effect' s+'delete']
-        ['data' booth]
-      ==
+      =/  effect-list=(list json)
+        ?:  =(p our.bowl)
+          =/  booth-effect=json
+          %-  pairs:enjs:format
+          :~
+            ['resource' s+'booth']
+            ['effect' s+'delete']
+            ['data' booth]
+          ==
+          [booth-effect ~]
+        [~]
 
       =/  participant-effect=json
       %-  pairs:enjs:format
@@ -2097,7 +2110,7 @@
         ['data' participant]
       ==
 
-      =/  effect-list=(list json)  [booth-effect participant-effect ~]
+      =/  effect-list  (snoc effect-list participant-effect)
       =/  effects=json
       %-  pairs:enjs:format
       :~
