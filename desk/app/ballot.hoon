@@ -2309,7 +2309,7 @@
           %-  pairs:enjs:format
           :~
             ['key' s+error-key]
-            ['message' s+(crip "cannot change proposal. poll status is {<poll-status>}.")]
+            ['error' s+(crip "cannot change proposal. poll status is {<poll-status>}.")]
           ==
 
           =/  error-effect=json
@@ -2847,6 +2847,13 @@
     |=  [booth-key=@t proposal-key=@t]
     ^-  (quip card _this)
 
+    =/  booth-proposals  (~(get by proposals.state) booth-key)
+    =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
+    =/  proposal  (~(get by booth-proposals) proposal-key)
+    =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
+    =/  proposal  (~(put by proposal) 'status' s+'poll-opened')
+    =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal])
+
     =/  booth-polls  (~(get by polls.state) booth-key)
     =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
     =/  poll  (~(get by booth-polls) proposal-key)
@@ -2857,7 +2864,11 @@
       ~&  >>>  "poll not found"  !!
     (so:dejs:format (need poll-key))
 
+    =/  poll  (~(put by poll) 'status' s+'opened')
+    =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
+
     %-  (slog leaf+"on-start-poll called" ~)
+
     =/  context=json
     %-  pairs:enjs:format
     :~
@@ -2869,18 +2880,19 @@
     =/  status-data=json
     %-  pairs:enjs:format
     :~
-      ['status' s+'started']
+      ['status' s+'poll-opened']
     ==
 
     =/  status-effect=json
     %-  pairs:enjs:format
     :~
-      ['resource' s+'poll']
-      ['key' s+poll-key]
-      ['effect' s+'add']
+      ['resource' s+'proposal']
+      ['key' s+proposal-key]
+      ['effect' s+'update']
       ['data' status-data]
     ==
 
+    :: =/  effect-list=(list json)  [booth-effect participant-effect ~]
     =/  effects=json
     %-  pairs:enjs:format
     :~
@@ -2891,7 +2903,7 @@
 
     %-  (slog leaf+"sending poll started effect to subcribers => {<effects>}..." ~)
 
-    :_  this
+    :_  this(proposals (~(put by proposals.state) booth-key booth-proposals), polls (~(put by polls.state) booth-key booth-polls))
     :~  [%give %fact [/booths]~ %json !>(effects)]
         [%give %fact [/booths/(scot %tas booth-key)]~ %json !>(effects)]
     ==
@@ -2912,10 +2924,17 @@
     (so:dejs:format (need poll-key))
 
     =/  poll-results  (tally-results booth-key proposal-key)
-    =/  poll  (~(put by poll) 'status' s+status.poll-results)
+    =/  poll  (~(put by poll) 'status' s+'closed')
     =/  poll  (~(put by poll) 'results' data.poll-results)
     =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
 
+    =/  booth-proposals  (~(get by proposals.state) booth-key)
+    =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
+    =/  proposal  (~(get by booth-proposals) proposal-key)
+    =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
+    =/  proposal  (~(put by proposal) 'status' s+'poll-closed')
+    =/  proposal  (~(put by proposal) 'results' data.poll-results)
+    =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal])
 
     %-  (slog leaf+"poll results are in!!! => {<poll-results>}" ~)
 
@@ -2930,15 +2949,15 @@
     =/  results-data=json
     %-  pairs:enjs:format
     :~
-      ['status' s+status.poll-results]
-      ['results' data.poll-results]
+      ['status' s+'poll-closed']
+      ['results' poll-results]
     ==
 
     =/  results-effect=json
     %-  pairs:enjs:format
     :~
-      ['resource' s+'poll']
-      ['key' s+poll-key]
+      ['resource' s+'proposal']
+      ['key' s+proposal-key]
       ['effect' s+'update']
       ['data' results-data]
     ==
@@ -2953,14 +2972,14 @@
 
     %-  (slog leaf+"sending poll results to subcribers => {<effects>}..." ~)
 
-    :_  this(polls (~(put by polls.state) booth-key booth-polls))
+    :_  this(polls (~(put by polls.state) booth-key booth-polls), proposals (~(put by proposals.state) booth-key booth-proposals))
     :~  [%give %fact [/booths]~ %json !>(effects)]
         [%give %fact [/booths/(scot %tas booth-key)]~ %json !>([effects])]
     ==
 
   ++  tally-results
     |=  [booth-key=@t proposal-key=@t]
-    ^-  [status=@t data=json]
+    ^-  [data=json]
 
     %-  (slog leaf+"tally-results called. [booth-key={<booth-key>}, proposal-key={<proposal-key>}]" ~)
 
@@ -3032,17 +3051,20 @@
 
     ::  after list is sorted, top choice will be first item in list
 
-    ?.  =(tallies ~)
-      =/  results
+    =/  results  ?.  =(tallies ~)
         %-  pairs:enjs:format
         :~
+          ['status' s+'counted']
           ['voteCount' (numb:enjs:format `@ud`vote-count)]
           ['participantCount' (numb:enjs:format `@ud`participant-count)]
           ['topChoice' ?~(top-choice ~ s+top-choice)]
           ['tallies' ?~(tallies ~ [%a tallies])]
         ==
-      ['counted' results]
-    ['failed' ~]
+      %-  pairs:enjs:format
+      :~
+        ['status' s+'failed']
+      ==
+    results
 
   ++  count-vote
     |:  [voter-count=`@ud`1 vote=`[@t json]`[%null ~] results=`(map @t json)`~]
