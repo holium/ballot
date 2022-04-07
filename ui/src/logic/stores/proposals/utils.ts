@@ -1,5 +1,4 @@
-import { SnapshotOrInstance } from "mobx-state-tree";
-import { ProposalModel, ProposalModelType } from "./proposal";
+import { ProposalModelType } from "./proposal";
 
 export const getProposalFilters = (proposals: ProposalModelType[]) => {
   if (!proposals) return {};
@@ -17,14 +16,21 @@ export const getProposalFilters = (proposals: ProposalModelType[]) => {
   return countedStatuses;
 };
 
-export function determineStatus(
-  proposal: SnapshotOrInstance<typeof ProposalModel>
-) {
+export function determineStatus(proposal: ProposalModelType) {
+  let status: string = "Draft";
+  if (proposal.status === "started") {
+    status = "Active";
+  }
+  if (proposal.status === "counted") {
+    status = "Ended";
+  }
+  if (proposal.status === "failed") {
+    status = "Failed";
+  }
+  // if it doesnt have a status on the proposal, use the start and end time
   const now = new Date().getTime();
   const startTime = new Date(proposal.start * 1000).getTime();
   const endTime = new Date(proposal.end * 1000).getTime();
-
-  let status: string = "Draft";
   if (startTime > now) {
     status = "Upcoming";
   }
