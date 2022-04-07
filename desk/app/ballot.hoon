@@ -2950,7 +2950,7 @@
     %-  pairs:enjs:format
     :~
       ['status' s+'poll-closed']
-      ['results' poll-results]
+      ['tally' poll-results]
     ==
 
     =/  results-effect=json
