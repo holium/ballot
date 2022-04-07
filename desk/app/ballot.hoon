@@ -330,6 +330,8 @@
       ++  delete-participant-wire
         |=  [payload=(map @t json)]
 
+        %-  (slog leaf+"ballot: delete-participant-wire received from {<src.bowl>}..." ~)
+
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
 
         =/  context  ((om json):dejs:format (~(got by payload) 'context'))
@@ -341,7 +343,9 @@
         =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
 
         :: this should never happen. we shouldn't get poke if participant-key is not our ship
-        ?.  =(participant-key (crip "{<our.bowl>}"))  !!
+        ?.  =(participant-key (crip "{<our.bowl>}"))
+          ~&  >>>  "ballot: delete-participant-wire received unexpectedly. {<participant-key>}..."
+          !!
 
         =/  booth-participants  (~(get by participants.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
@@ -359,6 +363,15 @@
             (~(del by booths.state) booth-key)
           booths.state
 
+        =/  booth-effect=json
+        %-  pairs:enjs:format
+        :~
+          ['resource' s+'booth']
+          ['effect' s+'delete']
+          ['key' s+booth-key]
+          ['data' [%o booth]]
+        ==
+
         =/  participant-effect=json
         %-  pairs:enjs:format
         :~
@@ -368,31 +381,18 @@
           ['data' participant]
         ==
 
+        =/  effect-list  [booth-effect participant-effect ~]
         =/  effects=json
         %-  pairs:enjs:format
         :~
           ['action' s+'delete-participant-reaction']
           ['context' [%o context]]
-          ['effects' [%a [participant-effect]~]]
+          ['effects' [%a effect-list]]
         ==
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
         ~&  >>  "sending delete-participant effect to subscribers..."
         ~&  >>  "sending %leave to {<remote-agent-wire>}..."
-
-        =/  =response-header:http
-          :-  200
-          :~  ['Content-Type' 'application/json']
-          ==
-
-        =/  payload  (~(put by payload) 'data' participant)
-
-        ::  encode the proposal as a json string
-        =/  body  (crip (en-json:html [%o payload]))
-
-        ::  convert the string to a form that arvo will understand
-        =/  data=octs
-              (as-octs:mimes:html body)
 
         ::  no changes to state. state will change when poke ack'd
         :_  state(booths new-booths, proposals booth-proposals, participants booth-participants, votes booth-votes, polls booth-polls, invitations booth-invitations)
@@ -785,7 +785,6 @@
         =/  data=octs
               (as-octs:mimes:html body)
 
-        ::  no changes to state. state will change when poke ack'd
         :_  state(participants (~(put by participants.state) booth-key booth-participants), votes (~(put by votes.state) booth-key booth-votes))
 
         :~
@@ -1596,6 +1595,16 @@
             (handle-message-ack msg-id ack (need msg))
         ==
 
+    :: [%timer @ @ %start ~]
+    ::   ?+    -.sign  (on-agent:def wire sign)
+    ::       %poke-ack
+    ::         ?~  p.sign
+    ::               %-  (slog leaf+"start-poll timer started successfully" ~)
+    ::               `this
+    ::             %-  (slog leaf+"start-poll timer failed to start" u.p.sign)
+    ::             `this
+    ::   ==
+
     :: [%booths @ @ @ %start-poll ~]
     ::   =/  segments  `(list @ta)`wirepath
     ::   =/  booth-key  (snag 1 segments)
@@ -2046,6 +2055,9 @@
     ?>  ?=(%remove-members -.action)
 
     =/  booth-key  (crip (weld (weld "{<entity.resource.action>}" "-groups-") (trip `@t`name.resource.action)))
+    =/  booth  (~(get by booths.state) booth-key)
+    =/  booth  ?~(booth ~ (need booth))
+
     %-  (slog leaf+"on-group-member-removed {<booth-key>}" ~)
     =/  booth-participants  (~(get by participants.state) booth-key)
     ?~  booth-participants
@@ -2057,32 +2069,45 @@
       %-  ~(rep in ships.action)
       |=  [p=@p acc=[effects=(list card) data=(map @t json)]]
       =/  participant-key  (crip "{<p>}")
+      =/  participant  (~(get by booth-participants) participant-key)
+      =/  participant  ?~(participant ~ (need participant))
       =/  booth-participants  (~(del by booth-participants) participant-key)
 
       =/  context=json
       %-  pairs:enjs:format
       :~
         ['booth' s+booth-key]
+        ['participant' s+participant-key]
       ==
 
-      =/  effect=json
+      =/  booth-effect=json
+      %-  pairs:enjs:format
+      :~
+        ['resource' s+'booth']
+        ['effect' s+'delete']
+        ['data' booth]
+      ==
+
+      =/  participant-effect=json
       %-  pairs:enjs:format
       :~
         ['resource' s+'participant']
         ['effect' s+'delete']
-        ['data' ~]
+        ['data' participant]
       ==
 
+      =/  effect-list=(list json)  [booth-effect participant-effect ~]
       =/  effects=json
       %-  pairs:enjs:format
       :~
         ['action' s+'group-remove-members-reaction']
         ['context' context]
-        ['effects' [%a [effect]~]]
+        ['effects' [%a effect-list]]
       ==
 
       =/  effects=(list card)
       :~  [%give %fact [/booths]~ %json !>(effects)]
+          [%give %kick ~[/booths/(scot %tas booth-key)] (some p)]
       ==
       [(weld effects.acc effects) booth-participants]
 
@@ -2321,31 +2346,9 @@
       =.  result
             ?.  =(proposal-start-date poll-start-date)
                   %-  (slog leaf+"ballot: proposal {<proposal-key>} start date changed. rescheduling..." ~)
-                  :: =/  =wire  /ping-wait/(scot %p ship)/(scot %da until)
-                  :: [%pass wire %arvo %b %wait `@da`until]~
                   =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/start %arvo %b %rest `@da`poll-start-date])
                   =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/start %arvo %b %wait `@da`proposal-start-date])
-                  :: =/  effects=(list card)  `(list card)`(snoc effects `card`[%pass /start %arvo %b %wait proposal-start-date]~)
-                  ::  get the current thread id of the end poll timer so that we can kill it and
-                  ::    schedule a new timer under a new thread
-                  :: =/  tid  (~(get by poll) 'tid-start')
-                  :: =/  tis-active  ?~(tid %.n %.y)
-                  :: =/  tid  ?.(tis-active 't000' (so:dejs:format (need tid)))
-                  :: =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
-                  :: =/  effects  ?.  tis-active  effects
-                  ::       =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])])
-                  ::       =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %leave ~])
-                  ::       effects
-                  :: ::  add an effect to start a new timer with the updated date/time
-                  :: =/  tid  `@t`(cat 3 'thread_start_' (scot %uv (sham eny.bowl)))
-                  :: =/  targs  [~ `tid byk.bowl %booth-timer !>(proposal-start-date)]
-                  :: =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/start-poll
-
-                  :: =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %watch /thread-result/[tid]])
-                  :: =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-start !>(targs)])
-
                   =/  poll  (~(put by poll) 'start' (sect:enjs:format proposal-start-date))
-                  :: :: =/  poll  (~(put by poll) 'tid-start' s+tid)
                   [effects poll]
                 %-  (slog leaf+"ballot: proposal {<proposal-key>} start date unchanged. no need to reschedule." ~)
                 [effects poll]
@@ -2368,29 +2371,7 @@
                 %-  (slog leaf+"ballot: proposal {<proposal-key>} end date changed. rescheduling..." ~)
                   =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/end %arvo %b %rest `@da`poll-end-date])
                   =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/end %arvo %b %wait `@da`proposal-end-date])
-                  :: =/  effects  (snoc effects [%pass /(scot %t booth-key)/(scot %t proposal-key)/end/timer %arvo %b %rest poll-end-date])
-                  :: =/  effects  (snoc effects [%pass /(scot %t booth-key)/(scot %t proposal-key)/end/timer %arvo %b %wait proposal-end-date])
-
-                ::  get the current thread id of the end poll timer so that we can kill it and
-                ::    schedule a new timer under a new thread
-                :: =/  tid  (~(get by poll) 'tid-end')
-                :: =/  tis-active  ?~(tid %.n %.y)
-                :: =/  tid  ?.(tis-active 't001' (so:dejs:format (need tid)))
-                :: =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/end-poll
-                :: =/  effects  ?.  tis-active  effects
-                ::       =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-stop !>([tid %.y])])
-                ::       =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %leave ~])
-                ::       effects
-                :: ::  add an effect to start a new timer with the updated date/time
-                :: =/  tid  `@t`(cat 3 'thread_end_' (scot %uv (sham eny.bowl)))
-                :: =/  targs  [~ `tid byk.bowl %booth-timer !>(proposal-end-date)]
-                :: =/  wire  /booths/(scot %tas booth-key)/(scot %tas proposal-key)/(scot %tas tid)/end-poll
-
-                :: =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %watch /thread-result/[tid]])
-                :: =/  effects  (snoc effects [%pass wire %agent [our.bowl %spider] %poke %spider-start !>(targs)])
-
                 =/  poll  (~(put by poll) 'end' (sect:enjs:format proposal-end-date))
-                :: :: =/  poll  (~(put by poll) 'tid-end' s+tid)
                 [effects poll]
               %-  (slog leaf+"ballot: proposal {<proposal-key>} end date unchanged. no need to reschedule." ~)
               [effects poll]
@@ -2747,6 +2728,11 @@
     =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
     =/  booth-participants  (~(del by booth-participants) participant-key)
 
+    ::  otherwise it was some other participant and we can remove them from our store
+    =/  booth-votes  (~(get by votes.state) booth-key)
+    =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
+    =/  booth-votes  (~(del by booth-votes) participant-key)
+
     =/  participant-effect=json
     %-  pairs:enjs:format
     :~
@@ -2763,8 +2749,7 @@
       ['effects' [%a [participant-effect]~]]
     ==
 
-    ::  no changes to state. state will change when poke ack'd
-    :_  this(participants (~(put by participants.state) booth-key booth-participants))
+    :_  this(participants (~(put by participants.state) booth-key booth-participants), votes (~(put by votes.state) booth-key booth-votes))
 
     :~
       ::  for clients (e.g. UI) and "our" agent, send to generic /booths path
