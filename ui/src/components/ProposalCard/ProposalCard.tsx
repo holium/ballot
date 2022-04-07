@@ -1,4 +1,4 @@
-import React, { FC, useMemo } from "react";
+import React, { FC, useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { formatDistance } from "date-fns";
 import {
@@ -17,7 +17,6 @@ import { Observer } from "mobx-react";
 
 import { Status } from "../Status";
 import { descriptiveTimeString } from "../../logic/utils/time";
-import { Author } from "../Author";
 import { useMst } from "../../logic/stores/root";
 import { ProposalModelType } from "../../logic/stores/proposals";
 import { ContactModelType } from "../../logic/stores/metadata";
@@ -73,6 +72,31 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
     props;
   const parentRef = React.useRef();
   const { store } = useMst();
+  //
+  // Set the timer and get timeString
+  //
+  const { timeString } = descriptiveTimeString(proposal.start, proposal.end);
+  const [time, setTime] = useState(timeString);
+  let timerId: any = null;
+  function timerUpdate() {
+    const { timeString, timerInterval } = descriptiveTimeString(
+      proposal.start,
+      proposal.end
+    );
+    setTime(timeString);
+
+    if (timerInterval !== null) {
+      timerId = setTimeout(() => timerUpdate(), timerInterval);
+    }
+  }
+  useEffect(() => {
+    // initial timer
+    timerUpdate();
+    return function cleanup() {
+      // Cleanup the timer on unmount
+      clearTimeout(timerId);
+    };
+  }, []);
 
   return (
     <Flex flexDirection="column" mb="12px">
@@ -126,16 +150,13 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
                 if (proposalModel.isVoteLoading) {
                   return <Skeleton style={{ height: 16, width: 60 }} />;
                 }
+
+                // setTime();
+
                 return (
                   <>
                     {status !== "Ended" ? (
-                      <KPI
-                        icon={<TlonIcon icon="Clock" />}
-                        value={descriptiveTimeString(
-                          proposal.start,
-                          proposal.end
-                        )}
-                      />
+                      <KPI icon={<TlonIcon icon="Clock" />} value={time} />
                     ) : (
                       <Flex flexDirection="row" alignItems="center">
                         <Text

@@ -1,3 +1,4 @@
+import { TallyType, TallyModel } from "./tally";
 import {
   types,
   flow,
@@ -193,17 +194,41 @@ export const ProposalModel = types
       }
     },
     onPollEffect(update: any) {
-      const validKeys = Object.keys(update).filter((key: string) =>
-        self.hasOwnProperty(key)
-      );
-      const patches: IJsonPatch[] = validKeys.map((key: string) => {
-        return {
-          op: "replace",
-          path: `/${key}`,
-          value: update[key],
-        };
-      });
-      applyPatch(self, patches);
+      const statusPatch: IJsonPatch = {
+        op: "replace",
+        path: `/status`,
+        value: determineStatus(update),
+      };
+
+      //
+      if (update.status === "counted") {
+        // we have a result
+        // const tallies: TallyType[] = Object.entries<number>(tallyMap)
+        //   .map(([label, count]: [string, number]): TallyType => {
+        //     return TallyModel.create({
+        //       label,
+        //       count,
+        //       percentage: Math.round((count / participantCount) * 1000) / 10,
+        //     });
+        //   })
+        //   .sort((a: TallyType, b: TallyType) => b!.count - a!.count);
+        self.results.resultSummary.voteCount = update.results.voteCount;
+        self.results.resultSummary.participantCount =
+          update.results.participantCount;
+        self.results.resultSummary.topChoice = update.results.topChoice;
+        self.results.resultSummary.tallies = update.results.tallies.map(
+          (tally: TallyType) => TallyModel.create(tally)
+        );
+
+        // ResultSummaryModel.create({
+        //   voteCount: self.voteCount,
+        //   participantCount,
+        //   topChoice: self.voteCount > 0 ? tallies[0].label : "None",
+        //   tallies,
+        // });
+      }
+
+      applyPatch(self, [statusPatch]);
       return self;
     },
     updateEffect(update: any) {

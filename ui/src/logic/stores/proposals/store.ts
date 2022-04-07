@@ -159,13 +159,7 @@ export const ProposalStore = types
     onPollEffect(effect: EffectModelType, proposalKey: string) {
       const data: any = effect.data;
       const oldProposal = self.proposals.get(proposalKey)!;
-      let update: any = {};
-      if (data.status === "started") {
-        update.status = "Active";
-      } else {
-        update.status = "Ended";
-      }
-      const updated: any = oldProposal.onPollEffect(update)!;
+      const updated: any = oldProposal.onPollEffect(data)!;
       self.proposals.set(proposalKey, updated);
     },
     initialEffect(proposalMap: any, voteMap: any) {

@@ -2,7 +2,7 @@ import React from "react";
 import { Tag, Icons } from "@holium/design-system";
 
 export type StatusProps = {
-  status: "Active" | "Ended" | "Starting soon" | "Queued" | string;
+  status: "Active" | "Ended" | "Failed" | "Upcoming" | string;
 };
 export const Status = (props: StatusProps) => {
   const { status } = props;
@@ -10,6 +10,9 @@ export const Status = (props: StatusProps) => {
     <>
       {status === "Ended" && (
         <Tag label="Ended" minimal custom="#4e9efd" rounded />
+      )}
+      {status === "Failed" && (
+        <Tag label="Failed" minimal custom="#FF6240" rounded />
       )}
       {status === "Upcoming" && (
         <Tag label="Upcoming" minimal intent="info" rounded />

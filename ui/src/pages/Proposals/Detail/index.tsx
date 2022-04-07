@@ -23,7 +23,6 @@ import { Status } from "../../../components/Status";
 import { useMst } from "../../../logic/stores/root";
 import { ProposalModelType } from "../../../logic/stores/proposals";
 import { ProposalResult } from "./ProposalResults";
-import { ContactModelType } from "../../../logic/stores/metadata";
 
 export const ProposalDetail: FC = observer((props: any) => {
   const navigate = useNavigate();
@@ -72,6 +71,32 @@ export const ProposalDetail: FC = observer((props: any) => {
       color: "#000",
     };
 
+    //
+    // Set the timer and get timeString
+    //
+    const { timeString } = descriptiveTimeString(proposal.start, proposal.end);
+    const [time, setTime] = useState(timeString);
+    let timerId: any = null;
+    function timerUpdate() {
+      const { timeString, timerInterval } = descriptiveTimeString(
+        proposal.start,
+        proposal.end
+      );
+      setTime(timeString);
+
+      if (timerInterval !== null) {
+        timerId = setTimeout(() => timerUpdate(), timerInterval);
+      }
+    }
+    useEffect(() => {
+      // initial timer
+      timerUpdate();
+      return function cleanup() {
+        // Cleanup the timer on unmount
+        clearTimeout(timerId);
+      };
+    }, []);
+
     content = (
       <Grid2.Row reverse={["xs"]} justify="center">
         <Grid2.Column mb="16px" md={6} lg={9} xl={9}>
@@ -105,10 +130,7 @@ export const ProposalDetail: FC = observer((props: any) => {
                   size="small"
                   clickable={false}
                 />
-                <KPI
-                  icon={<TlonIcon icon="Clock" />}
-                  value={descriptiveTimeString(proposal.start, proposal.end)}
-                />
+                <KPI icon={<TlonIcon icon="Clock" />} value={time} />
               </Flex>
             </DetailHeader>
             {proposal.status === "Ended" && (
@@ -140,7 +162,7 @@ export const ProposalDetail: FC = observer((props: any) => {
               currentUser={app.account}
               strategy={proposal.strategy}
               onVote={onVote}
-              timeLeft={descriptiveTimeString(proposal.start, proposal.end)}
+              timeLeft={time}
               chosenOption={chosenVote && chosenVote.choice}
               voteResults={proposal.results!.resultSummary}
               voteSubmitted={proposal.results!.didVote}
