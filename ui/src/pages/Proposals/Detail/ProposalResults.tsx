@@ -17,8 +17,8 @@ export const ProposalResult: FC<ProposalResultType> = (
   let participantCount = booth.participantStore.count || 1;
   const tally = proposal.tally;
   if (tally) {
-    voteCount = proposal.tally.voteCount;
-    participantCount = proposal.tally.participantCount;
+    voteCount = tally.voteCount;
+    participantCount = tally.participantCount;
   }
   const percentage = Math.round((voteCount / participantCount) * 1000) / 10;
 
