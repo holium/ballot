@@ -2925,7 +2925,7 @@
 
     =/  poll-results  (tally-results booth-key proposal-key)
     =/  poll  (~(put by poll) 'status' s+'closed')
-    =/  poll  (~(put by poll) 'results' data.poll-results)
+    =/  poll  (~(put by poll) 'results' poll-results)
     =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
 
     =/  booth-proposals  (~(get by proposals.state) booth-key)
@@ -2933,7 +2933,7 @@
     =/  proposal  (~(get by booth-proposals) proposal-key)
     =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
     =/  proposal  (~(put by proposal) 'status' s+'poll-closed')
-    =/  proposal  (~(put by proposal) 'results' data.poll-results)
+    =/  proposal  (~(put by proposal) 'results' poll-results)
     =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal])
 
     %-  (slog leaf+"poll results are in!!! => {<poll-results>}" ~)
@@ -2979,7 +2979,7 @@
 
   ++  tally-results
     |=  [booth-key=@t proposal-key=@t]
-    ^-  [data=json]
+    ^-  json
 
     %-  (slog leaf+"tally-results called. [booth-key={<booth-key>}, proposal-key={<proposal-key>}]" ~)
 
