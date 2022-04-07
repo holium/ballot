@@ -1904,6 +1904,7 @@
     :_  this(booths (~(put by booths.state) key.booth data.booth), participants (~(put by participants.state) key.booth booth-participants))
 
     :~  [%give %fact [/booths]~ %json !>(effects)]
+        [%pass /booths/(scot %tas key.booth) %agent [our.bowl %ballot] %watch /booths/(scot %tas key.booth)]
     ==
 
   ++  on-group-removed
@@ -2346,7 +2347,12 @@
       =.  result
             ?.  =(proposal-start-date poll-start-date)
                   %-  (slog leaf+"ballot: proposal {<proposal-key>} start date changed. rescheduling..." ~)
-                  =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/start %arvo %b %rest `@da`poll-start-date])
+                  =/  effects
+                    ?.  =(~ poll-start-date)
+                      ~&  >>  "ballot: poll-start-date {<poll-start-date>}. %rest."
+                      (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/start %arvo %b %rest `@da`poll-start-date])
+                    effects
+                  %-  (slog leaf+"ballot: proposal-start-date {<proposal-start-date>}. %wait." ~)
                   =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/start %arvo %b %wait `@da`proposal-start-date])
                   =/  poll  (~(put by poll) 'start' (sect:enjs:format proposal-start-date))
                   [effects poll]
@@ -2369,7 +2375,12 @@
       =.  result
           ?.  =(proposal-end-date poll-end-date)
                 %-  (slog leaf+"ballot: proposal {<proposal-key>} end date changed. rescheduling..." ~)
-                  =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/end %arvo %b %rest `@da`poll-end-date])
+                  =/  effects
+                    ?.  =(~ poll-end-date)
+                      ~&  >>  "ballot: poll-end-date {<poll-end-date>}. %rest."
+                      (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/end %arvo %b %rest `@da`poll-end-date])
+                    effects
+                  %-  (slog leaf+"ballot: proposal-end-date {<proposal-end-date>}. %wait." ~)
                   =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/end %arvo %b %wait `@da`proposal-end-date])
                 =/  poll  (~(put by poll) 'end' (sect:enjs:format proposal-end-date))
                 [effects poll]
@@ -2796,7 +2807,10 @@
   |=  [=wire =sign-arvo]
   ^-  (quip card _this)
 
+  ~&  >>  "ballot: on-arvo called {<wire>}, {<sign-arvo>}..."
+
   |^
+
   ?+  wire  (on-arvo:def wire sign-arvo)
 
     [%bind-route ~]
@@ -2808,15 +2822,23 @@
       `this
 
     [%timer @ @ %start ~]
+      %-  (slog leaf+"ballot: poll started..." ~)
+      ?.  ?=([%behn %wake *] sign-arvo)  (on-arvo:def wire sign-arvo)
+      ?^  error.sign-arvo                (on-arvo:def wire sign-arvo)
       =/  segments  `(list @ta)`wire
       =/  booth-key  (snag 1 segments)
       =/  proposal-key  (snag 2 segments)
+      %-  (slog leaf+"ballot: on-start-poll {<booth-key>}, {<proposal-key>}..." ~)
       (on-start-poll booth-key proposal-key)
 
     [%timer @ @ %end ~]
+      %-  (slog leaf+"ballot: poll ended." ~)
+      ?.  ?=([%behn %wake *] sign-arvo)  (on-arvo:def wire sign-arvo)
+      ?^  error.sign-arvo                (on-arvo:def wire sign-arvo)
       =/  segments  `(list @ta)`wire
       =/  booth-key  (snag 1 segments)
       =/  proposal-key  (snag 2 segments)
+      %-  (slog leaf+"ballot: on-end-poll {<booth-key>}, {<proposal-key>}..." ~)
       (on-end-poll booth-key proposal-key)
 
   ==
@@ -2949,7 +2971,9 @@
     =/  threshold  (~(get by proposal) 'support')
     ?~  threshold
       ~&  >>>  "ballot: missing voter support value"  !!
-    =/  threshold  (ne:dejs:format (need threshold))
+    ::  value comes in from UI as a "whole" percentage (e.g. 50%); conver
+    ::    to decimal representation (e.g. 0.5)
+    =/  threshold  (div:rd (ne:dejs:format (need threshold)) (sun:rd 100))
 
     =/  booth-participants  (~(get by participants.state) booth-key)
     =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
@@ -2966,11 +2990,11 @@
     =/  votes  `(list [@t json])`~(tap by proposal-votes)
     =/  vote-count  ?~(proposal-votes 0 (lent votes))
 
-    =/  turnout  (div:rs (sun:rs vote-count) (sun:rs participant-count))
+    =/  turnout  (div:rd (sun:rd vote-count) (sun:rd participant-count))
     %-  (slog leaf+"ballot: {<turnout>}, {<threshold>}" ~)
     =/  tallies=(map @t json)
           :: ?:  (gte turnout threshold)
-          ?:  (gte:ma:rs turnout threshold)
+          ?:  (gte:ma:rd turnout threshold)
             %-  roll
             :-  votes
             |:  [vote=`[@t json]`[%null ~] results=`(map @t json)`~]
@@ -3040,12 +3064,12 @@
     =/  choice-count  ?~(choice-count 0 (ni:dejs:format (need choice-count)))
     =/  choice-count  (add choice-count 1) :: plug in delegate count here
 
-    =/  percentage  (mul:rs (div:rs (sun:rs choice-count) (sun:rs voter-count)) (sun:rs 100))
+    =/  percentage  (mul:rd (div:rd (sun:rd choice-count) (sun:rd voter-count)) (sun:rd 100))
     :: =/  percentage  (div choice-count `@ud`voter-count)
 
     =.  result  (~(put by result) 'label' s+label)
     =.  result  (~(put by result) 'count' (numb:enjs:format choice-count))
-    =.  result  (~(put by result) 'percentage' (numb:enjs:format `@ud`percentage))
+    =.  result  (~(put by result) 'percentage' n+(crip "{(r-co:co (drg:rd percentage))}"))
 
     =.  results  (~(put by results) label [%o result])
     results
