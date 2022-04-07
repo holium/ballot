@@ -26,7 +26,7 @@ export type ResultSummaryType = Instance<typeof ResultSummaryModel>;
 export const ResultModel = types
   .model({
     didVote: types.optional(types.boolean, false),
-    resultSummary: types.maybeNull(ResultSummaryModel),
+    resultSummary: ResultSummaryModel,
     votes: types.map(VoteModel),
   })
   .views((self) => ({

@@ -97,6 +97,8 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
     };
   }, []);
 
+  // console.log(proposal.tally && proposal.tally.status);
+
   return (
     <Flex flexDirection="column" mb="12px">
       <Card
@@ -157,26 +159,7 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
                     {status !== "Ended" ? (
                       <KPI icon={<TlonIcon icon="Clock" />} value={time} />
                     ) : (
-                      <Flex flexDirection="row" alignItems="center">
-                        <Text
-                          fontSize={2}
-                          opacity={0.7}
-                          variant="body"
-                          display="flex"
-                          flexDirection="row"
-                          alignItems="center"
-                        >
-                          Winning option:
-                        </Text>
-                        <Text
-                          ml={1}
-                          fontSize={2}
-                          fontWeight="500"
-                          color="brand.primary"
-                        >
-                          {proposalModel.results.resultSummary!.topChoice}
-                        </Text>
-                      </Flex>
+                      <TallyStatus proposal={proposalModel} />
                     )}
 
                     <KPI
@@ -201,6 +184,59 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
           clickable={false}
         />
       </Box>
+    </Flex>
+  );
+};
+
+type TallyProps = {
+  proposal: ProposalModelType;
+};
+
+const TallyStatus: FC<TallyProps> = (props: TallyProps) => {
+  const { proposal } = props;
+  proposal.tally?.status === "failed";
+  const tally = proposal.tally!;
+
+  return tally.status === "failed" ? (
+    <Flex flexDirection="row" alignItems="center">
+      <Text
+        fontSize={2}
+        opacity={0.7}
+        variant="body"
+        display="flex"
+        flexDirection="row"
+        alignItems="center"
+      >
+        Failed to pass:
+      </Text>
+      <Text ml={1} fontSize={2} fontWeight="500" color="ui.intent.alert">
+        {/* TODO backend errors */}
+        Not enough support
+      </Text>
+      {/* <Text ml={1} fontSize={2} fontWeight="500" color="ui.intent.alert">
+        Not enough support (
+        {`${
+          Math.round((tally.voteCount / tally.participantCount) * 1000) / 10
+        }% `}
+        of
+        {` ${proposal.support}%`})
+      </Text> */}
+    </Flex>
+  ) : (
+    <Flex flexDirection="row" alignItems="center">
+      <Text
+        fontSize={2}
+        opacity={0.7}
+        variant="body"
+        display="flex"
+        flexDirection="row"
+        alignItems="center"
+      >
+        Winning option:
+      </Text>
+      <Text ml={1} fontSize={2} fontWeight="500" color="brand.primary">
+        {tally.topChoice}
+      </Text>
     </Flex>
   );
 };

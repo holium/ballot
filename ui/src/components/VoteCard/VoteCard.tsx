@@ -204,9 +204,9 @@ export const VoteCard: any = (props: VoteCardProps) => {
             size="small"
             clickable={false}
           />
-          <Text variant="hint" opacity={0.5}>
+          {/* <Text variant="hint" opacity={0.5}>
             {`1 ${pluralize("vote", 1)}`}
-          </Text>
+          </Text> */}
         </Flex>
         <Text mt={3} mb={3} variant="body">
           {title}

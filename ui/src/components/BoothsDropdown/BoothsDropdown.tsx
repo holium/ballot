@@ -217,7 +217,8 @@ const GroupBooths = (props: {
 }) => {
   const { group, onContextClick, onJoin } = props;
   const [isExpanded, setIsExpanded] = useState(false);
-  const needsConnecting = group.status === "enlisted";
+  const needsConnecting =
+    group.status === "enlisted" || group.status === "pending";
 
   return (
     <MenuItem
@@ -263,19 +264,22 @@ const GroupBooths = (props: {
                 {/* <Icons.ExpandMore ml="6px" /> */}
               </Text>
             </Box>
-            {needsConnecting && (
-              <TextButton
-                tabIndex={0}
-                data-prevent-menu-close
-                onClick={(evt: any) => {
-                  evt.preventDefault();
-                  evt.stopPropagation();
-                  onJoin(group.key);
-                }}
-              >
-                Join
-              </TextButton>
-            )}
+            {needsConnecting &&
+              (group.status === "pending" ? (
+                <Spinner ml={2} mr={2} size={0} />
+              ) : (
+                <TextButton
+                  tabIndex={0}
+                  data-prevent-menu-close
+                  onClick={(evt: any) => {
+                    evt.preventDefault();
+                    evt.stopPropagation();
+                    onJoin(group.key);
+                  }}
+                >
+                  Join
+                </TextButton>
+              ))}
           </Flex>
         )}
       </Observer>

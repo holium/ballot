@@ -7,7 +7,7 @@ import { ChoiceType } from "./Choices";
 export const createProposalFormFields = (defaults: any = {}) => {
   const form = createForm({
     onSubmit({ values }) {
-      values.redacted = Boolean(values.redacted);
+      values.redacted = false;
       values.start = Math.round(new Date(values.start).valueOf() / 1000);
       values.end = Math.round(new Date(values.end).valueOf() / 1000);
       return values;
