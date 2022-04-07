@@ -2933,7 +2933,7 @@
     =/  proposal  (~(get by booth-proposals) proposal-key)
     =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
     =/  proposal  (~(put by proposal) 'status' s+'poll-closed')
-    =/  proposal  (~(put by proposal) 'results' poll-results)
+    =/  proposal  (~(put by proposal) 'tally' poll-results)
     =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal])
 
     %-  (slog leaf+"poll results are in!!! => {<poll-results>}" ~)
