@@ -50,11 +50,19 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
   const [searchTerm, setSearchTerm] = useState("");
   const filterShipSearch = (booth: any) =>
     booth.type === "ship" &&
-    (booth.name.includes(searchTerm) ||
-      booth.meta.nickname.includes(searchTerm));
+    ((booth.name &&
+      booth.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (booth.meta &&
+        booth.meta.nickname &&
+        booth.meta.nickname.toLowerCase().includes(searchTerm.toLowerCase())));
+
   const filterGroupSearch = (booth: any) =>
     booth.type === "group" &&
-    (booth.name.includes(searchTerm) || booth.meta.title.includes(searchTerm));
+    ((booth.name &&
+      booth.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (booth.meta &&
+        booth.meta.title &&
+        booth.meta.title.toLowerCase().includes(searchTerm.toLowerCase())));
 
   const shipBooths = booths
     .filter((booth: BoothType) => booth.type === "ship")
