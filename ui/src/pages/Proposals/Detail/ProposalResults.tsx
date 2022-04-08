@@ -2,19 +2,25 @@ import React, { FC } from "react";
 import { Text, KPI, TlonIcon, Skeleton, Flex } from "@holium/design-system";
 import { ProposalResultSection } from "./Detail.styles";
 import { ProposalModelType } from "../../../logic/stores/proposals";
+import { BoothModelType } from "../../../logic/stores/booths";
 
 type ProposalResultType = {
+  booth: BoothModelType;
   proposal: ProposalModelType;
 };
 
 export const ProposalResult: FC<ProposalResultType> = (
   props: ProposalResultType
 ) => {
-  const { proposal } = props;
-  const voteCount = proposal.results.resultSummary.voteCount || 0;
-  const participantCount = proposal.results.resultSummary.participantCount || 1;
-  const percentage = Math.round((voteCount / participantCount) * 1000) / 10;
+  const { booth, proposal } = props;
+  let voteCount = proposal.results.resultSummary.voteCount || 0;
+  let participantCount = booth.participantStore.count || 1;
   const tally = proposal.tally;
+  if (tally) {
+    voteCount = tally.voteCount;
+    participantCount = tally.participantCount;
+  }
+  const percentage = Math.round((voteCount / participantCount) * 1000) / 10;
 
   return (
     tally && (

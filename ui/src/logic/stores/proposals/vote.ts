@@ -5,7 +5,13 @@ export const VoteModel = types.model({
   voter: types.string,
   status: types.enumeration("VoteStatus", ["pending", "recorded", "counted"]),
   choice: ChoiceModel,
-  signature: types.optional(types.string, ""),
+  sig: types.maybeNull(
+    types.model({
+      voter: types.string,
+      life: types.number,
+      hash: types.string,
+    })
+  ),
   created: types.maybeNull(types.number),
 });
 

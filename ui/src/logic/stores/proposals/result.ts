@@ -42,6 +42,9 @@ export const ResultModel = types
     },
   }))
   .actions((self) => ({
+    setNewVote(vote: VoteModelType) {
+      self.votes.set(vote.voter, vote);
+    },
     generateResultSummary() {
       const parent: ProposalModelType = getParent(self, 1);
       const initialTally = parent.choices!.reduce(

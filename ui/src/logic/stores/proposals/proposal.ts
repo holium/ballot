@@ -141,6 +141,7 @@ export const ProposalModel = types
         self.results!.votes.set(voter, {
           ...response.data,
           status: "pending",
+          sig: null,
           voter,
         });
         self.results!.didVote = true;

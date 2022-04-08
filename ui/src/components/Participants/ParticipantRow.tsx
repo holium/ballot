@@ -60,7 +60,11 @@ export const ParticipantRow = (props: ParticipantRowProps) => {
       </Flex>
       <Box alignItems="center">
         {status === "pending" ? (
-          loading && <Spinner size={0} />
+          loading && (
+            <Text opacity={0.5} variant="hint">
+              pending
+            </Text>
+          )
         ) : (
           <Text mr={1} opacity={0.5} variant="hint">
             {status}

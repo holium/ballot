@@ -140,18 +140,22 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
                 const proposalModel = booth?.proposalStore.proposals.get(
                   proposal.key
                 )!;
-                const voteCount =
+
+                let voteCount =
                   proposalModel.results.resultSummary!.voteCount || 0;
-                const participantCount =
-                  proposalModel.results.resultSummary!.participantCount || 1;
+                let participantCount = booth.participantStore.count || 1;
+
+                if (proposalModel.isVoteLoading) {
+                  return <Skeleton style={{ height: 16, width: 60 }} />;
+                }
+                if (proposal.tally) {
+                  voteCount = proposal.tally.voteCount;
+                  participantCount = proposal.tally.participantCount;
+                }
                 const percentage = useMemo(
                   () => Math.round((voteCount / participantCount) * 1000) / 10,
                   [voteCount, participantCount]
                 );
-                if (proposalModel.isVoteLoading) {
-                  return <Skeleton style={{ height: 16, width: 60 }} />;
-                }
-
                 // setTime();
 
                 return (

@@ -76,7 +76,7 @@ export const ProposalEditor: FC = observer(() => {
     } else {
       responseProposal = await proposalStore.add(form.actions.submit());
     }
-
+    saveButton.current && saveButton.current.blur();
     if (isNew) {
       saveButton.current && saveButton.current!.blur();
       let newPath = createPath(getKeyFromUrl(urlParams), "proposals");
@@ -239,7 +239,7 @@ export const ProposalEditor: FC = observer(() => {
                         <DateTimeInput
                           timePicker
                           inputId="startTime"
-                          tabIndex={4}
+                          tabIndex={3}
                           minBookingDate={new Date()}
                           maxBookingDate={
                             endTime.state.value
@@ -271,7 +271,7 @@ export const ProposalEditor: FC = observer(() => {
                         <DateTimeInput
                           timePicker
                           inputId="endTime"
-                          tabIndex={5}
+                          tabIndex={4}
                           minBookingDate={
                             startTime.state.value
                               ? new Date(startTime.state.value)
@@ -280,7 +280,19 @@ export const ProposalEditor: FC = observer(() => {
                           onFocusChange={() => endTime.actions.onFocus()}
                           date={endTime.state.value}
                           onDateChange={(data: any) => {
-                            endTime.actions.onChange(data.date);
+                            // TODO we need a refactor of the date component
+                            // if we try to put a time before the start date, set to start date
+                            const startDate = new Date(startTime.state.value);
+                            if (
+                              data.date &&
+                              data.date.valueOf() <=
+                                new Date(startTime.state.value).valueOf()
+                            ) {
+                              startDate.setMinutes(startDate.getMinutes() + 1); // set to one minute after start time
+                              endTime.actions.onChange(startDate);
+                            } else {
+                              endTime.actions.onChange(data.date);
+                            }
                           }}
                         />
                       </Box>
@@ -297,7 +309,7 @@ export const ProposalEditor: FC = observer(() => {
                       <Box justifyContent="flex-end">
                         <Select
                           id="strategy"
-                          tabIndex={3}
+                          tabIndex={5}
                           style={{ width: 162 }}
                           placeholder="Select..."
                           selectionOption={strategy.state.value}

@@ -134,7 +134,7 @@ export const ProposalDetail: FC = observer((props: any) => {
               </Flex>
             </DetailHeader>
             {proposal.status === "Ended" && (
-              <ProposalResult proposal={proposal} />
+              <ProposalResult booth={booth} proposal={proposal} />
             )}
             <DetailBody>
               <MDEditor.Markdown
