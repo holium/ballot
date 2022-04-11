@@ -37,12 +37,14 @@ const DropdownHeader = styled.div`
 const DropdownBody = styled.div``;
 
 const EmptyGroup = styled.div`
-  height: 24px;
-  width: 24px;
+  height: 32px;
+  width: 32px;
   background: ${(p) => p.color || "#000"};
   border-radius: 4px;
 `;
 
+const sortOrderStatus = ["active", "invited", "enlisted", "pending"];
+const sortOrderType = ["group", "ship"];
 export const BoothsDropdown: FC<BoothDrowdownProps> = (
   props: BoothDrowdownProps
 ) => {
@@ -70,6 +72,16 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
   const groupBooths = booths
     .filter((booth: BoothType) => booth.type === "group")
     .filter(filterGroupSearch);
+
+  const boothsFiltered = [...shipBooths, ...groupBooths]
+    .sort(
+      (a: BoothModelType, b: BoothModelType) =>
+        sortOrderStatus.indexOf(a.status) - sortOrderStatus.indexOf(b.status)
+    )
+    .sort(
+      (a: BoothModelType, b: BoothModelType) =>
+        sortOrderType.indexOf(a.type) - sortOrderStatus.indexOf(b.type)
+    );
   return (
     <Flex
       width="300px"
@@ -96,7 +108,26 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
           onChange={(evt: any) => setSearchTerm(evt.target.value)}
         />
       </Box>
-      <DropdownHeader>
+      <DropdownBody>
+        {boothsFiltered.map((booth: BoothModelType, index: number) =>
+          booth.type === "group" ? (
+            <GroupBooths
+              key={`group-${index}`}
+              group={booth}
+              onContextClick={onContextClick}
+              onJoin={onJoin}
+            />
+          ) : (
+            <ShipBooths
+              key={`ship-${index}`}
+              ship={booth}
+              onContextClick={onContextClick}
+              onAccept={onAccept}
+            />
+          )
+        )}
+      </DropdownBody>
+      {/* <DropdownHeader>
         <Text
           fontSize="14px"
           color="text.primary"
@@ -163,7 +194,7 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
             No groups
           </Text>
         )}
-      </DropdownBody>
+      </DropdownBody> */}
       {/* NOTE: this was for open group joining or manual booth joining, removing for now */}
       {/* <Box ml={2} mt={2}>
         <TextButton
@@ -178,7 +209,7 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
 };
 
 const ShipBooths = (props: {
-  ship: BoothType;
+  ship: any;
   onAccept: (boothName: string) => void;
   onContextClick: (context: any) => any;
 }) => {
@@ -265,7 +296,7 @@ const GroupBooths = (props: {
       tabIndex={needsConnecting ? -1 : 0}
       style={{ padding: "8px 8px" }}
       type="neutral"
-      disabled={needsConnecting}
+      disabled={group.status !== "active"}
       onClick={(evt: any) => {
         onContextClick(group);
         evt.preventDefault();
@@ -276,33 +307,38 @@ const GroupBooths = (props: {
           <Flex justifyContent="space-between" alignItems="center">
             <Box
               alignItems="center"
-              style={{ flex: 1, opacity: needsConnecting ? 0.3 : 1 }}
+              style={{ flex: 1, opacity: group.status !== "active" ? 0.3 : 1 }}
             >
               {group.meta.picture ? (
                 <img
                   style={{ borderRadius: 4 }}
-                  height="24px"
-                  width="24px"
+                  height="32px"
+                  width="32px"
                   src={group.meta.picture}
                 />
               ) : (
                 <EmptyGroup color={group.meta.color} />
               )}
-              <Text
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                }}
-                ml="8px"
-                fontSize={2}
-                fontWeight="medium"
-                variant="body"
-              >
-                {group.meta.title || group.name}
-                {/* TODO add notification */}
-                {/* <Icons.ExpandMore ml="6px" /> */}
-              </Text>
+              <Box ml={2} flexDirection="column">
+                <Text
+                  style={{
+                    display: "flex",
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                  }}
+                  fontSize={2}
+                  fontWeight={600}
+                  variant="body"
+                >
+                  {group.meta.title || group.name}
+
+                  {/* TODO add notification */}
+                  {/* <Icons.ExpandMore ml="6px" /> */}
+                </Text>
+                <Text fontWeight={500} mt="1px" opacity={0.6} variant="hint">
+                  Group
+                </Text>
+              </Box>
             </Box>
             {group.status === "pending" && (
               <Text opacity={0.5} variant="hint">
@@ -312,6 +348,7 @@ const GroupBooths = (props: {
             {group.status !== "active" && group.status !== "pending" && (
               <TextButton
                 tabIndex={0}
+                style={{ height: 24 }}
                 data-prevent-menu-close
                 onClick={(evt: any) => {
                   evt.preventDefault();

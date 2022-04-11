@@ -107,7 +107,7 @@ export const ParticipantStore = types
     },
     // data: Map<string, ParticipantModelType>
     initialEffect(participantMap: any) {
-      console.log("participant initialEffect participantMap ", participantMap);
+      // console.log("participant initialEffect participantMap ", participantMap);
       Object.keys(participantMap).forEach((participantKey: string) => {
         self.participants.set(
           participantKey,
@@ -117,14 +117,14 @@ export const ParticipantStore = types
     },
 
     addEffect(participant: any) {
-      console.log("participant addEffect ", participant);
+      // console.log("participant addEffect ", participant);
       self.participants.set(
         participant.key,
         ParticipantModel.create(participant)
       );
     },
     updateEffect(participantKey: string, data: any) {
-      console.log("participant updateEffect ", participantKey, data);
+      // console.log("participant updateEffect ", participantKey, data);
       const oldBooth = self.participants.get(participantKey);
       oldBooth?.updateEffect(data);
     },

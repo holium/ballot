@@ -178,7 +178,6 @@ export const ProposalStore = types
         voteMap[proposalKey] &&
           Object.keys(voteMap[proposalKey]).forEach((voterKey: string) => {
             const voteResult = voteMap[proposalKey][voterKey];
-            console.log("voteresult", voteMap, voteResult);
             if (voteResult)
               newProposal.results!.setNewVote(
                 VoteModel.create({

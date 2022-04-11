@@ -33,7 +33,7 @@ export const ParticipantModel: any = types
       self.status = status;
     },
     updateEffect(update: any) {
-      console.log("updateEffect in participant model ", update);
+      // console.log("updateEffect in participant model ", update);
 
       const validKeys = Object.keys(update).filter((key: string) =>
         self.hasOwnProperty(key)

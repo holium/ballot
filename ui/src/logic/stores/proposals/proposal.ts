@@ -192,7 +192,7 @@ export const ProposalModel = types
       self.voteLoader.set("loaded");
     },
     onVoteEffect(payload: EffectModelType | any, context: ContextModelType) {
-      console.log("in vote effect, ", payload, context);
+      // console.log("in vote effect, ", payload, context);
       const newVote = VoteModel.create(payload.data!);
       switch (payload.effect) {
         case "add":
