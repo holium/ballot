@@ -124,18 +124,16 @@ export const BoothModel = types
       }
     }),
     updateEffect(update: any) {
-      console.log("updateEffect in booth ", update);
+      // console.log("updateEffect in booth ", update);
 
       const validKeys = Object.keys(update).filter((key: string) =>
         self.hasOwnProperty(key)
       );
-      console.log(validKeys);
       const patches: IJsonPatch[] = validKeys.map((key: string) => ({
         op: "replace",
         path: `/${key}`,
         value: update[key],
       }));
-      console.log(patches);
       applyPatch(self, patches);
     },
     remove(item: SnapshotIn<typeof self>) {

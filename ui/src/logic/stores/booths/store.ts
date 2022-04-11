@@ -190,14 +190,14 @@ export const BoothStore = types
       addedBooth.proposalStore.getProposals();
     },
     updateEffect(key: string, data: any) {
-      console.log("booth updateEffect ", key, data);
+      // console.log("booth updateEffect ", key, data);
       // Delete the meta key
       const oldBooth = self.booths.get(key);
-      console.log(oldBooth);
+      // console.log(oldBooth);
       oldBooth?.updateEffect(data);
     },
     deleteEffect(context: { booth: string }) {
-      console.log("booth deleteEffect ", context);
+      // console.log("booth deleteEffect ", context);
       // TODO add you've been remove from the booth notification
       self.booths.delete(context.booth);
     },

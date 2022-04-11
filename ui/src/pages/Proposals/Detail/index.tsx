@@ -144,6 +144,7 @@ export const ProposalDetail: FC = observer((props: any) => {
                   borderBottomRightRadius: 6,
                   background: "transparent",
                   fontFamily: "Inter, sans-serif",
+                  color: "inherit",
                 }}
                 source={proposal.content}
                 rehypePlugins={[[rehypeSanitize]]}
