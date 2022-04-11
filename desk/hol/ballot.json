@@ -1,0 +1,13 @@
+{
+  "log-level": 0,
+  "resources": {
+    "booth": {
+      "stores": {
+        "booth": null
+      },
+      "actions": {
+        "add": {}
+      }
+    }
+  }
+}

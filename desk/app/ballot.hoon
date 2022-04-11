@@ -35,30 +35,52 @@
 ++  on-init
   ^-  (quip card _this)
 
-  ::  add resources this agent will support
-  =|  resources=(map @t json)  ~
+  ?.  .^(? %cu /===/hol/ballot.cfg)
+    %-  (log:core %error "ballot: ballot config file not found. create a /hol/ballot.cfg file and try again" ~)
+    `this
 
-  =.  resources  (~(put by resources) 'booth' ~)
-  =.  resources  (~(put by resources) 'proposal' ~)
-  =.  resources  (~(put by resources) 'participant' ~)
-  =.  resources  (~(put by resources) 'poll' ~)
-  =.  resources  (~(put by resources) 'vote' ~)
-  =.  resources  (~(put by resources) 'mq' ~)
+  =/  config  .^(json %cx /===/hol/ballot.cfg)
+  =/  cfg  ((om json):dejs:format config)
 
-(~(rep by a) |=([p=[@tas @] q=@] ~&([p q] (add +.p q))))
+  =/  resources  (~(get by cfg) 'resources')
+  ?~  resources
+    %-  (log:core "ballot: resources element not found. please fix the /hol/ballot.cfg file and try again" ~)
+    `this
+
+  =/  resources  ((om json):dejs:format (need resources)))
+
+  =/  log-level  (~(get by cfg) 'log-level')
+  =/  log-level  ?~  log-level
+    %-  (log:core %warn "ballot: log-level not found in config. defaulting to 0." ~)
+    0
+  (ni:dejs:format (need log-level))
+
+
+  ::  add resources this agent will support. load from config file?
+  :: =|  resources=(map @t json)  ~
+
+  :: =.  resources  (~(put by resources) 'booth' ~)
+  :: =.  resources  (~(put by resources) 'proposal' ~)
+  :: =.  resources  (~(put by resources) 'participant' ~)
+  :: =.  resources  (~(put by resources) 'poll' ~)
+  :: =.  resources  (~(put by resources) 'vote' ~)
+  :: =.  resources  (~(put by resources) 'mq' ~)
+
   =/  effects=(list card)
-        %-  ~(rep by resources)
-        |=  [p=[@tas @] q=@]
-
-  :_  this(authentication 'enable', store store)
-
-      ::  initialize agent booths (ship, groups, etc...)
   :~  [%pass /ballot %agent [our.bowl %ballot] %poke %initialize !>(~)]
       ::   setup route for direct http request/response handling
       [%pass /bind-route %arvo %e %connect `/'ballot'/'api'/'booths' %ballot]
-      [%pass /bind-resource %agent [our.bowl %ballot] %poke %bind !>(~)]
-  :: ==
   ==
+
+  ::  send out cards to bind all resource agents
+  =/  resource-effects=(list card)
+        %-  ~(rep by resources)
+          |=  [p=@t q=json] acc=(list card)]
+            (snoc acc [%pass `/(crip "bind-{<p>}-resource") %agent [our.bowl %ballot] %poke %bind !>(q)])
+
+  :_  this(authentication 'enable', store store)
+
+  (weld effects resource-effects)
 
 ::
 ++  on-save
