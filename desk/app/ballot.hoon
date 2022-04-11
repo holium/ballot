@@ -36,14 +36,19 @@
   ^-  (quip card _this)
 
   ::  add resources this agent will support
-  =|  store=(map @t json)  ~
+  =|  resources=(map @t json)  ~
 
-  =.  store  (~(put by store) 'booth' ~)
-  =.  store  (~(put by store) 'proposal' ~)
-  =.  store  (~(put by store) 'participant' ~)
-  =.  store  (~(put by store) 'poll' ~)
-  =.  store  (~(put by store) 'vote' ~)
-  =.  store  (~(put by store) 'mq' ~)
+  =.  resources  (~(put by resources) 'booth' ~)
+  =.  resources  (~(put by resources) 'proposal' ~)
+  =.  resources  (~(put by resources) 'participant' ~)
+  =.  resources  (~(put by resources) 'poll' ~)
+  =.  resources  (~(put by resources) 'vote' ~)
+  =.  resources  (~(put by resources) 'mq' ~)
+
+(~(rep by a) |=([p=[@tas @] q=@] ~&([p q] (add +.p q))))
+  =/  effects=(list card)
+        %-  ~(rep by resources)
+        |=  [p=[@tas @] q=@]
 
   :_  this(authentication 'enable', store store)
 
@@ -51,6 +56,7 @@
   :~  [%pass /ballot %agent [our.bowl %ballot] %poke %initialize !>(~)]
       ::   setup route for direct http request/response handling
       [%pass /bind-route %arvo %e %connect `/'ballot'/'api'/'booths' %ballot]
+      [%pass /bind-resource %agent [our.bowl %ballot] %poke %bind !>(~)]
   :: ==
   ==
 
