@@ -158,7 +158,7 @@ export const ProposalList: FC = observer(() => {
         <VirtualizedList
           id={`list-${currentBoothKey}-${new Date().getMilliseconds()}`}
           style={{
-            marginTop: 12,
+            marginTop: 8,
             height: "calc(100% - 12px)",
           }}
           itemHeight={112}

@@ -122,7 +122,7 @@ export const ProposalDetail: FC = observer((props: any) => {
                 alignItems="center"
               >
                 <Ship
-                  textOpacity={0.7}
+                  textOpacity={0.9}
                   patp={proposal.owner}
                   avatar={authorMetadata?.avatar}
                   nickname={authorMetadata?.nickname}
@@ -144,6 +144,7 @@ export const ProposalDetail: FC = observer((props: any) => {
                   borderBottomRightRadius: 6,
                   background: "transparent",
                   fontFamily: "Inter, sans-serif",
+                  color: "inherit",
                 }}
                 source={proposal.content}
                 rehypePlugins={[[rehypeSanitize]]}
