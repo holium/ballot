@@ -2313,43 +2313,43 @@
 
     ::  anything outside of a scheduled poll cannot be changed (active, in-progress, ended, etc...)
     ::    all of these states mean the poll can no longer be changed.
-    :: ?.  =(poll-status 'scheduled')
-    ::       =/  context=json
-    ::       %-  pairs:enjs:format
-    ::       :~
-    ::         ['booth' s+booth-key]
-    ::         ['proposal' s+proposal-key]
-    ::       ==
+    ?.  =(poll-status 'scheduled')
+          =/  context=json
+          %-  pairs:enjs:format
+          :~
+            ['booth' s+booth-key]
+            ['proposal' s+proposal-key]
+          ==
 
-    ::       =/  error-key  (crip (weld "poll-started-error-" (trip timestamp)))
+          =/  error-key  (crip (weld "poll-started-error-" (trip timestamp)))
 
-    ::       =/  error-data=json
-    ::       %-  pairs:enjs:format
-    ::       :~
-    ::         ['key' s+error-key]
-    ::         ['error' s+(crip "cannot change proposal. poll status is {<poll-status>}.")]
-    ::       ==
+          =/  error-data=json
+          %-  pairs:enjs:format
+          :~
+            ['key' s+error-key]
+            ['error' s+(crip "cannot change proposal. poll status is {<poll-status>}.")]
+          ==
 
-    ::       =/  error-effect=json
-    ::       %-  pairs:enjs:format
-    ::       :~
-    ::         ['resource' s+'poll']
-    ::         ['effect' s+'error']
-    ::         ['data' error-data]
-    ::       ==
+          =/  error-effect=json
+          %-  pairs:enjs:format
+          :~
+            ['resource' s+'poll']
+            ['effect' s+'error']
+            ['data' error-data]
+          ==
 
-    ::       =/  effects=json
-    ::       %-  pairs:enjs:format
-    ::       :~
-    ::         ['action' s+'save-proposal-reaction']
-    ::         ['context' context]
-    ::         ['effects' [%a [error-effect]~]]
-    ::       ==
+          =/  effects=json
+          %-  pairs:enjs:format
+          :~
+            ['action' s+'save-proposal-reaction']
+            ['context' context]
+            ['effects' [%a [error-effect]~]]
+          ==
 
-    ::       :: give an error-effect to any subcribers
-    ::       :_  this
-    ::       :~  [%give %fact [/booths]~ %json !>(effects)]
-    ::       ==
+          :: give an error-effect to any subcribers
+          :_  this
+          :~  [%give %fact [/booths]~ %json !>(effects)]
+          ==
 
     =|  effects=(list card)
 
