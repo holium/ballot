@@ -11,7 +11,7 @@
 ::   - security (e.g. pub/priv key signing, ring sig, etc...)
 ::
 /-  *group, group-store, ballot-store
-/+  store=group-store, default-agent, dbug, resource, pill
+/+  store=group-store, default-agent, dbug, resource, pill, core=ballot-core
 
 |%
 +$  card  card:agent:gall
@@ -35,23 +35,23 @@
 ++  on-init
   ^-  (quip card _this)
 
-  ?.  .^(? %cu /===/hol/ballot.cfg)
-    %-  (log:core %error "ballot: ballot config file not found. create a /hol/ballot.cfg file and try again" ~)
+  ?.  .^(? %cu /hol/ballot/cfg)
+    %-  (log:core %error "ballot: ballot config file not found. create a /hol/ballot.cfg file and try again")
     `this
 
-  =/  config  .^(json %cx /===/hol/ballot.cfg)
+  =/  config  .^(json %cx /hol/ballot/cfg)
   =/  cfg  ((om json):dejs:format config)
 
   =/  resources  (~(get by cfg) 'resources')
   ?~  resources
-    %-  (log:core "ballot: resources element not found. please fix the /hol/ballot.cfg file and try again" ~)
+    %-  (log:core %error "ballot: resources element not found. please fix the /hol/ballot.cfg file and try again")
     `this
 
-  =/  resources  ((om json):dejs:format (need resources)))
+  =/  resources  ((om json):dejs:format (need resources))
 
   =/  log-level  (~(get by cfg) 'log-level')
   =/  log-level  ?~  log-level
-    %-  (log:core %warn "ballot: log-level not found in config. defaulting to 0." ~)
+    %-  (log:core %warn "ballot: log-level not found in config. defaulting to 0.")
     0
   (ni:dejs:format (need log-level))
 
@@ -75,8 +75,8 @@
   ::  send out cards to bind all resource agents
   =/  resource-effects=(list card)
         %-  ~(rep by resources)
-          |=  [p=@t q=json] acc=(list card)]
-            (snoc acc [%pass `/(crip "bind-{<p>}-resource") %agent [our.bowl %ballot] %poke %bind !>(q)])
+          |=  [[p=@t q=json] acc=(list card)]
+            (snoc acc [%pass /bind-resource %agent [our.bowl %ballot] %poke %bind !>(q)])
 
   :_  this(authentication 'enable', store store)
 
@@ -150,68 +150,70 @@
       %-  (slog leaf+"ballot: initializing..." ~)
 
       ::  initialization affects the booth and participant stores
-      =/  booth-store  ((om json):dejs:format (~(got by store.state) 'booth'))
-      =/  participant-store  ((om json):dejs:format (~(got by store.state) 'participant'))
+      :: =/  booth-store  ((om json):dejs:format (~(got by store.state) 'booth'))
+      :: =/  participant-store  ((om json):dejs:format (~(got by store.state) 'participant'))
 
-      ::  add the default booth for our ship
-      =/  owner  `@t`(scot %p our.bowl)
-      ::  friendly epoch timestamp as cord
-      =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
+      :: ::  add the default booth for our ship
+      :: =/  owner  `@t`(scot %p our.bowl)
+      :: ::  friendly epoch timestamp as cord
+      :: =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
 
-      =/  booth-key   (crip "{<our.bowl>}")
-      =/  booth-name  (crip "{<our.bowl>}")
+      :: =/  booth-key   (crip "{<our.bowl>}")
+      :: =/  booth-name  (crip "{<our.bowl>}")
 
-      ::  optional metadata to be associated with the booth
-      =/  meta=json
-      %-  pairs:enjs:format
-      :~
-        ['tag' ~]
-      ==
+      :: ::  optional metadata to be associated with the booth
+      :: =/  meta=json
+      :: %-  pairs:enjs:format
+      :: :~
+      ::   ['tag' ~]
+      :: ==
 
-      =/  booth=json
-      %-  pairs:enjs:format
-      :~
-        ['type' s+'ship']
-        ['key' s+booth-key]
-        ['name' s+booth-name]
-        ['image' ~]
-        ['owner' s+owner]
-        ['created' s+timestamp]
-        ['policy' s+'invite-only']
-        ['status' s+'active']
-        ['meta' meta]
-      ==
+      :: =/  booth=json
+      :: %-  pairs:enjs:format
+      :: :~
+      ::   ['type' s+'ship']
+      ::   ['key' s+booth-key]
+      ::   ['name' s+booth-name]
+      ::   ['image' ~]
+      ::   ['owner' s+owner]
+      ::   ['created' s+timestamp]
+      ::   ['policy' s+'invite-only']
+      ::   ['status' s+'active']
+      ::   ['meta' meta]
+      :: ==
 
-      =.  booth-store  (~(put by booth-store) booth-key booth)
+      :: =.  booth-store  (~(put by booth-store) booth-key booth)
 
-      ::  add this ship as the default booth's owner and as a participant
-      =/  participant-key  (crip "{<our.bowl>}")
+      :: ::  add this ship as the default booth's owner and as a participant
+      :: =/  participant-key  (crip "{<our.bowl>}")
 
-      =/  participant=json
-      %-  pairs:enjs:format
-      :~
-        ['key' s+participant-key]
-        ['name' s+participant-key]
-        ['status' s+'active']
-        ['role' s+'owner']
-        ['created' s+timestamp]
-      ==
+      :: =/  participant=json
+      :: %-  pairs:enjs:format
+      :: :~
+      ::   ['key' s+participant-key]
+      ::   ['name' s+participant-key]
+      ::   ['status' s+'active']
+      ::   ['role' s+'owner']
+      ::   ['created' s+timestamp]
+      :: ==
 
-      =|  participants=(map @t json)
-      =.  participants  (~(put by participants) participant-key participant)
+      :: =|  participants=(map @t json)
+      :: =.  participants  (~(put by participants) participant-key participant)
 
-      =.  participant-store  (~(put by participant-store) booth-key participants)
+      :: =.  participant-store  (~(put by participant-store) booth-key participants)
 
-      =/  new-store  (~(put by store.state) 'booth' booth-store)
-      =/  new-store  (~(put by store.state) 'participant' participant-store)
+      :: =/  new-store  (~(put by store.state) 'booth' booth-store)
+      :: =/  new-store  (~(put by store.state) 'participant' participant-store)
 
-      ~&  >  'ballot: context initialized!'
+      :: ~&  >  'ballot: context initialized!'
 
-      :_  state(store new-store)
+      :: :_  state(store new-store)
 
-      :~  [%pass /ballot %agent [our.bowl %ballot] %watch /booths/(scot %tas booth-key)]
-          [%pass /group %agent [our.bowl %group-store] %watch /groups]
-      ==
+      :: :~  [%pass /ballot %agent [our.bowl %ballot] %watch /booths/(scot %tas booth-key)]
+      ::     [%pass /group %agent [our.bowl %group-store] %watch /groups]
+      :: ==
+
+      `state
 
     ::
     ::  ARM:  ++  on-http-request
@@ -276,33 +278,36 @@
       ++  handle-resource-action
         |=  [data=json]
 
-        =/  context  ((om json):dejs:format (~(got by payload) 'context'))
-        =/  action  (so:dejs:format (~(got by payload) 'action'))
-        =/  resource  (so:dejs:format (~(got by payload) 'resource'))
+        :: =/  payload  ((om json):dejs:format data)
+        :: =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+        :: =/  action  (so:dejs:format (~(got by payload) 'action'))
+        :: =/  resource  (so:dejs:format (~(got by payload) 'resource'))
 
-        =/  handler  (~(get by handlers) (spat /(scot %tas resource)/(scot %tas action)))
-        ?~  handler  (send-api-error req 'ballot: handler not found')
-        =/  handler  ((om json):dejs:format (need handler))
+        :: =/  handler  (~(get by handlers) (spat /(scot %tas resource)/(scot %tas action)))
+        :: ?~  handler  (send-api-error req 'ballot: handler not found')
+        :: =/  handler  ((om json):dejs:format (need handler))
 
-        =/  stores  (~(get by store.handler) 'stores')
-        ?~  stores  (send-api-error req 'ballot: handler stores not found')
+        :: =/  stores  (~(get by store.handler) 'stores')
+        :: ?~  stores  (send-api-error req 'ballot: handler stores not found')
 
-        ::  intersect the handler stores map with ALL this agent's stores
-        ::    what will be returned is only those entries that exist in both
-        ::    maps with stores.state entries taking priority
-        =/  stores  (~(int by stores) stores.state)
+        :: ::  intersect the handler stores map with ALL this agent's stores
+        :: ::    what will be returned is only those entries that exist in both
+        :: ::    maps with stores.state entries taking priority
+        :: =/  stores  (~(int by stores) stores.state)
 
-        =/  core  (~(get by core))
+        :: =/  core  (~(get by core))
 
-        =/  result=[effects=(list card) state=(map @t json)]
-              (~(on-action core [bowl stores]) payload)
+        :: =/  result=[effects=(list card) state=(map @t json)]
+        ::       (~(on-action core [bowl stores]) payload)
 
-        ::  update the store map with results from the action handler
-        =/  stores  (~(int by stores.state) state.result)
+        :: ::  update the store map with results from the action handler
+        :: =/  stores  (~(int by stores.state) state.result)
 
-        :_  state(stores stores)
+        :: :_  state(stores stores)
 
-        [effects.result]
+        :: [effects.result]
+
+        `state
 
       ::  send an error as poke back to calling agent
       ++  send-error
@@ -344,29 +349,31 @@
   |=  =path
   ^-  (quip card _this)
 
-  =/  watch  (~(get by watches.state) (spat path))
-  ?~  watch  (send-api-error req 'ballot: watch not found')
-  =/  watch  ((om json):dejs:format (need handler))
+  :: =/  watch  (~(get by watches.state) (spat path))
+  :: ?~  watch  (send-api-error req 'ballot: watch not found')
+  :: =/  watch  ((om json):dejs:format (need handler))
 
-  =/  stores  (~(get by watch) 'stores')
-  ?~  stores  (send-api-error req 'ballot: watch {<path>} stores not found')
+  :: =/  stores  (~(get by watch) 'stores')
+  :: ?~  stores  (send-api-error req 'ballot: watch {<path>} stores not found')
 
-  ::  intersect the handler stores map with ALL this agent's stores
-  ::    what will be returned is only those entries that exist in both
-  ::    maps with stores.state entries taking priority
-  =/  stores  (~(int by stores) stores.state)
+  :: ::  intersect the handler stores map with ALL this agent's stores
+  :: ::    what will be returned is only those entries that exist in both
+  :: ::    maps with stores.state entries taking priority
+  :: =/  stores  (~(int by stores) stores.state)
 
-  =/  core  (~(get by core))
+  :: =/  core  (~(get by core))
 
-  =/  result=[effects=(list card) state=(map @t json)]
-        (~(on-watch core [bowl stores]) payload)
+  :: =/  result=[effects=(list card) state=(map @t json)]
+  ::       (~(on-watch core [bowl stores]) payload)
 
-  ::  update the store map with results from the action handler
-  =/  stores  (~(int by stores.state) state.result)
+  :: ::  update the store map with results from the action handler
+  :: =/  stores  (~(int by stores.state) state.result)
 
-  :_  this(stores stores)
+  :: :_  this(stores stores)
 
-  [effects.result]
+  :: [effects.result]
+
+  `this
 
 ::
 ++  on-leave  on-leave:def
@@ -388,29 +395,31 @@
 
   %-  (slog leaf+"ballot: scry called with {<path>}..." ~)
 
-  =/  scry  (~(get by scries.state) (spat path))
-  ?~  scry  (send-api-error req 'ballot: scry not found')
-  =/  scry  ((om json):dejs:format (need scry))
+  :: =/  scry  (~(get by scries.state) (spat path))
+  :: ?~  scry  (send-api-error req 'ballot: scry not found')
+  :: =/  scry  ((om json):dejs:format (need scry))
 
-  =/  stores  (~(get by scry) 'stores')
-  ?~  stores  (send-api-error req 'ballot: scry {<path>} stores not found')
+  :: =/  stores  (~(get by scry) 'stores')
+  :: ?~  stores  (send-api-error req 'ballot: scry {<path>} stores not found')
 
-  ::  intersect the handler stores map with ALL this agent's stores
-  ::    what will be returned is only those entries that exist in both
-  ::    maps with stores.state entries taking priority
-  =/  stores  (~(int by stores) stores.state)
+  :: ::  intersect the handler stores map with ALL this agent's stores
+  :: ::    what will be returned is only those entries that exist in both
+  :: ::    maps with stores.state entries taking priority
+  :: =/  stores  (~(int by stores) stores.state)
 
-  =/  core  (~(get by core))
+  :: =/  core  (~(get by core))
 
-  =/  result=[effects=(list card) state=(map @t json)]
-        (~(on-scry core [bowl stores]) payload)
+  :: =/  result=[effects=(list card) state=(map @t json)]
+  ::       (~(on-scry core [bowl stores]) payload)
 
-  ::  update the store map with results from the action handler
-  =/  stores  (~(int by stores.state) state.result)
+  :: ::  update the store map with results from the action handler
+  :: =/  stores  (~(int by stores.state) state.result)
 
-  :_  this(stores stores)
+  :: :_  this(stores stores)
 
-  [effects.result]
+  :: [effects.result]
+
+  ``json+!>(s+'not implemented')
 
 ::
 ++  on-agent
@@ -420,29 +429,31 @@
   =/  wirepath  `path`wire
   %-  (slog leaf+"ballot: on-agent {<wirepath>} data received..." ~)
 
-  =/  wry  (~(get by wires.state) (spat path))
-  ?~  wry  (send-api-error req 'ballot: scry not found')
-  =/  wry  ((om json):dejs:format (need wry))
+  :: =/  wry  (~(get by wires.state) (spat path))
+  :: ?~  wry  (send-api-error req 'ballot: scry not found')
+  :: =/  wry  ((om json):dejs:format (need wry))
 
-  =/  stores  (~(get by wry) 'stores')
-  ?~  stores  (send-api-error req 'ballot: scry {<path>} stores not found')
+  :: =/  stores  (~(get by wry) 'stores')
+  :: ?~  stores  (send-api-error req 'ballot: scry {<path>} stores not found')
 
-  ::  intersect the handler stores map with ALL this agent's stores
-  ::    what will be returned is only those entries that exist in both
-  ::    maps with stores.state entries taking priority
-  =/  stores  (~(int by stores) stores.state)
+  :: ::  intersect the handler stores map with ALL this agent's stores
+  :: ::    what will be returned is only those entries that exist in both
+  :: ::    maps with stores.state entries taking priority
+  :: =/  stores  (~(int by stores) stores.state)
 
-  =/  core  (~(get by core))
+  :: =/  core  (~(get by core))
 
-  =/  result=[effects=(list card) state=(map @t json)]
-        (~(on-wire core [bowl stores]) payload)
+  :: =/  result=[effects=(list card) state=(map @t json)]
+  ::       (~(on-wire core [bowl stores]) payload)
 
-  ::  update the store map with results from the action handler
-  =/  stores  (~(int by stores.state) state.result)
+  :: ::  update the store map with results from the action handler
+  :: =/  stores  (~(int by stores.state) state.result)
 
-  :_  this(stores stores)
+  :: :_  this(stores stores)
 
-  [effects.result]
+  :: [effects.result]
+
+  `this
 
 ++  on-arvo
   |=  [=wire =sign-arvo]

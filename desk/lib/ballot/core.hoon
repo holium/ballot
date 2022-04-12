@@ -119,4 +119,29 @@
 
   ==
 
+  ++  log
+    |=  [t=@tas m=tape]
+    ^+  same
+
+    ?:  =(1 1)  same
+
+    ?+  t  same
+      %info
+        %-  (slog leaf+m ~)
+        same
+
+      %good
+        ~&  >  m
+        same
+
+      %warn
+        ~&  >>  m
+        same
+
+      %error
+        ~&  >>>  m
+        same
+
+    ==
+
 --
