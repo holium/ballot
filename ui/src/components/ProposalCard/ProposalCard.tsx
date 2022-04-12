@@ -37,7 +37,7 @@ const ProposalTitle = styled(Text)`
   display: flex;
   flex-direction: row;
   align-items: center;
-  font-weight: 500;
+  /* font-weight: 500; */
   overflow: hidden; /* "overflow" value must be different from  visible"*/
   -o-text-overflow: ellipsis; /* Opera < 11*/
   text-overflow: ellipsis; /* IE, Safari (WebKit), Opera >= 11, FF > 6 */
@@ -104,8 +104,10 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
       <Card
         id={proposal.key}
         ref={parentRef}
+        borderThickness={1}
         padding="8px"
         selectable
+        elevation="none"
         onClick={() => onClick(proposal)}
       >
         <ContextMenu
@@ -123,8 +125,9 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
             <Observer>
               {() => (
                 <>
-                  <ProposalTitle variant="h6">{proposal.title}</ProposalTitle>
-
+                  <ProposalTitle fontWeight="semiBold" variant="h6">
+                    {proposal.title}
+                  </ProposalTitle>
                   <Status status={status} />
                 </>
               )}

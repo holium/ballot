@@ -17,7 +17,7 @@ export default ({ mode }) => {
     mode: process.env.NODE_ENV,
     build: {
       target: "esnext",
-      minify: false,
+      minify: true,
       sourcemap: false,
       manifest: false,
     },

@@ -26,13 +26,13 @@ export type BoothDrowdownProps = {
   onContextClick: (context: Partial<BoothModelType>) => any;
 };
 
-const DropdownHeader = styled.div`
-  padding: 8px 8px 4px 8px;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-`;
+// const DropdownHeader = styled.div`
+//   padding: 8px 8px 4px 8px;
+//   display: flex;
+//   flex-direction: row;
+//   justify-content: space-between;
+//   align-items: center;
+// `;
 
 const DropdownBody = styled.div``;
 
@@ -69,19 +69,40 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
   const shipBooths = booths
     .filter((booth: BoothType) => booth.type === "ship")
     .filter(filterShipSearch);
+
   const groupBooths = booths
     .filter((booth: BoothType) => booth.type === "group")
-    .filter(filterGroupSearch);
+    .filter(filterGroupSearch)
+    .sort((a: BoothModelType, b: BoothModelType) => {
+      if (
+        // @ts-expect-error
+        ((a.meta && a.meta.nickname) ||
+          // @ts-expect-error
+          a.name) < ((b.meta && b.meta.nickname) || b.name)
+      ) {
+        return -1;
+      }
+      if (
+        // @ts-expect-error
+        ((a.meta && a.meta.nickname) ||
+          // @ts-expect-error
+          a.name) < ((b.meta && b.meta.nickname) || b.name)
+      ) {
+        return 1;
+      }
+      return 0;
+    });
 
   const boothsFiltered = [...shipBooths, ...groupBooths]
     .sort(
       (a: BoothModelType, b: BoothModelType) =>
-        sortOrderStatus.indexOf(a.status) - sortOrderStatus.indexOf(b.status)
+        sortOrderType.indexOf(a.type) - sortOrderStatus.indexOf(b.type)
     )
     .sort(
       (a: BoothModelType, b: BoothModelType) =>
-        sortOrderType.indexOf(a.type) - sortOrderStatus.indexOf(b.type)
+        sortOrderStatus.indexOf(a.status) - sortOrderStatus.indexOf(b.status)
     );
+
   return (
     <Flex
       width="300px"
@@ -252,7 +273,7 @@ const ShipBooths = (props: {
             }}
             ml="8px"
             fontSize={2}
-            fontWeight="medium"
+            fontWeight="semiBold"
             variant="body"
           >
             {meta.nickname || ship.name}

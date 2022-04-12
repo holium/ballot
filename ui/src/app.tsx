@@ -87,7 +87,7 @@ export const App: FC = observer(() => {
           loadingContext={contextLoading}
           style={{ padding: "0px 16px" }}
           app={{
-            icon: <Icons.Governance />,
+            icon: <Icons.AppBallotSM size={2} />,
             name: "Ballot",
             color: "#6535CC",
             contextMenu: (
