@@ -1350,7 +1350,7 @@
       ::       and non-null if it crashed, with a stack trace in the tang."
       ::  see:  https://urbit.org/docs/userspace/gall-guide/8-subscriptions
       [%booths *]
-        :: %-  (log:core %good "ballot: client subscribed to {<(spud path)>}.")
+        :: %-  (log:core %good "ballot: client subscribed to {(spud path)}.")
         =/  booth-key  (spud (oust [0 1] `(list @ta)`path))
         =/  booth-key  (crip `tape`(oust [0 1] `(list @)`booth-key))
         %-  (log:core %info "ballot: extracted booth key => {<booth-key>}...")
