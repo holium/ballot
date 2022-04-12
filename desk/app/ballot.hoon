@@ -1332,13 +1332,13 @@
       ::  ~lodlev-migdev - allow external agents (including UI clients) to subscribe
       ::    to the /contexts channel.
       [%updates *]
-        %-  (log:core %good "ballot: client subscribed to {(spud path)}.")
+        :: %-  (log:core %good "ballot: client subscribed to {(spud path)}.")
         `this
 
       [%booths ~]
         ?:  =(our.bowl src.bowl)
+          %-  (log:core %warn "remote ships not allowed to watch /booths")
           `this
-        ::%-  (log:core %warn "remote ships not allowed to watch /booths")
         !!
 
       :: crash on booth any of the following:
@@ -1350,7 +1350,7 @@
       ::       and non-null if it crashed, with a stack trace in the tang."
       ::  see:  https://urbit.org/docs/userspace/gall-guide/8-subscriptions
       [%booths *]
-        %-  (log:core %good "ballot: client subscribed to {(spud path)}.")
+        :: %-  (log:core %good "ballot: client subscribed to {(spud path)}.")
         =/  booth-key  (spud (oust [0 1] `(list @ta)`path))
         =/  booth-key  (crip `tape`(oust [0 1] `(list @)`booth-key))
         %-  (log:core %info "ballot: extracted booth key => {<booth-key>}...")
@@ -2313,43 +2313,43 @@
 
     ::  anything outside of a scheduled poll cannot be changed (active, in-progress, ended, etc...)
     ::    all of these states mean the poll can no longer be changed.
-    ?.  =(poll-status 'scheduled')
-          =/  context=json
-          %-  pairs:enjs:format
-          :~
-            ['booth' s+booth-key]
-            ['proposal' s+proposal-key]
-          ==
+    :: ?.  =(poll-status 'scheduled')
+    ::       =/  context=json
+    ::       %-  pairs:enjs:format
+    ::       :~
+    ::         ['booth' s+booth-key]
+    ::         ['proposal' s+proposal-key]
+    ::       ==
 
-          =/  error-key  (crip (weld "poll-started-error-" (trip timestamp)))
+    ::       =/  error-key  (crip (weld "poll-started-error-" (trip timestamp)))
 
-          =/  error-data=json
-          %-  pairs:enjs:format
-          :~
-            ['key' s+error-key]
-            ['error' s+(crip "cannot change proposal. poll status is {<poll-status>}.")]
-          ==
+    ::       =/  error-data=json
+    ::       %-  pairs:enjs:format
+    ::       :~
+    ::         ['key' s+error-key]
+    ::         ['error' s+(crip "cannot change proposal. poll status is {<poll-status>}.")]
+    ::       ==
 
-          =/  error-effect=json
-          %-  pairs:enjs:format
-          :~
-            ['resource' s+'poll']
-            ['effect' s+'error']
-            ['data' error-data]
-          ==
+    ::       =/  error-effect=json
+    ::       %-  pairs:enjs:format
+    ::       :~
+    ::         ['resource' s+'poll']
+    ::         ['effect' s+'error']
+    ::         ['data' error-data]
+    ::       ==
 
-          =/  effects=json
-          %-  pairs:enjs:format
-          :~
-            ['action' s+'save-proposal-reaction']
-            ['context' context]
-            ['effects' [%a [error-effect]~]]
-          ==
+    ::       =/  effects=json
+    ::       %-  pairs:enjs:format
+    ::       :~
+    ::         ['action' s+'save-proposal-reaction']
+    ::         ['context' context]
+    ::         ['effects' [%a [error-effect]~]]
+    ::       ==
 
-          :: give an error-effect to any subcribers
-          :_  this
-          :~  [%give %fact [/booths]~ %json !>(effects)]
-          ==
+    ::       :: give an error-effect to any subcribers
+    ::       :_  this
+    ::       :~  [%give %fact [/booths]~ %json !>(effects)]
+    ::       ==
 
     =|  effects=(list card)
 
@@ -3094,6 +3094,8 @@
       %-  pairs:enjs:format
       :~
         ['status' s+'failed']
+        ['voteCount' (numb:enjs:format `@ud`vote-count)]
+        ['participantCount' (numb:enjs:format `@ud`participant-count)]
       ==
     results
 
