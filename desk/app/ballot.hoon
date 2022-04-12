@@ -1337,7 +1337,7 @@
 
       [%booths ~]
         ?:  =(our.bowl src.bowl)
-          %-  (log:core %warn "remote ships not allowed to watch /booths")
+          :: %-  (log:core %warn "remote ships not allowed to watch /booths")
           `this
         !!
 
