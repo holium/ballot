@@ -398,15 +398,22 @@
   |=  =path
   ^-  (unit (unit cage))
 
-  :: =+  (log:core %info "ballot: scry called with path => {<path>}...")
+  %-  (log:core %info "ballot: scry called with path => {<path>}...")
 
   :: ~/scry/ballot/booths/~zod/delegates
 
-  ?+  path  on-peek:def
+  ?+  path  (on-peek:def path)
 
-    [%x %ballot %booths @ @]
-      :: =/  booth-key  i.t.t.t.path
-      ``json+!>(s+'not implemented')
+    [%x @ @ ~]
+      =/  res  `@t`i.t.path
+      =/  res-key  `@t`i.t.t.path
+      =/  store  (~(get by store.state) res)
+      ?~  store  ``json+!>(s+'resource not found')
+      =/  data  ((om json):dejs:format (need store))
+      =/  entry  (~(get by data) res-key)
+      ?~  entry  ``json+!>(s+'resource entries not found')
+      =/  entry  ((om json):dejs:format (need entry))
+      ``json+!>([%a ~(val by entry)])
 
   ==
 
