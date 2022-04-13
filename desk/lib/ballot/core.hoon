@@ -123,8 +123,6 @@
     |=  [t=@tas m=tape]
     ^+  same
 
-    ?:  =(1 1)  same
-
     ?+  t  same
       %info
         %-  (slog leaf+m ~)

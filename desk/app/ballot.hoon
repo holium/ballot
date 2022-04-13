@@ -19,7 +19,7 @@
   $%  state-0
   ==
 ::  'main' agent store is a tree (map) of stores
-+$  state-0  [%0 authentication=@t store=(map @t json)]
++$  state-0  [%0 store=(map @t json)]
 --
 
 %-  agent:dbug
@@ -35,11 +35,13 @@
 ++  on-init
   ^-  (quip card _this)
 
-  ?.  .^(? %cu /hol/ballot/cfg)
+  %-  (log:core %info "ballot: ballot starting...")
+
+  ?.  .^(? %cu /~zod/ballot/(scot %da now.bowl)/hol/ballot/json)
     %-  (log:core %error "ballot: ballot config file not found. create a /hol/ballot.cfg file and try again")
     `this
 
-  =/  config  .^(json %cx /hol/ballot/cfg)
+  =/  config  .^(json %cx /~zod/ballot/(scot %da now.bowl)/hol/ballot/json)
   =/  cfg  ((om json):dejs:format config)
 
   =/  resources  (~(get by cfg) 'resources')
@@ -54,6 +56,8 @@
     %-  (log:core %warn "ballot: log-level not found in config. defaulting to 0.")
     0
   (ni:dejs:format (need log-level))
+
+  :: %-  (set-log-level:core log-level)
 
 
   ::  add resources this agent will support. load from config file?
@@ -78,7 +82,7 @@
           |=  [[p=@t q=json] acc=(list card)]
             (snoc acc [%pass /bind-resource %agent [our.bowl %ballot] %poke %bind !>(q)])
 
-  :_  this(authentication 'enable', store store)
+  :_  this(store store)
 
   (weld effects resource-effects)
 
@@ -133,8 +137,9 @@
 
     ++  set-authentication-mode
       |=  [mode=@t]
-      %-  (slog leaf+"ballot: setting authentication {<mode>}..." ~)
-      `state(authentication mode)
+      %-  (log:core %info "ballot: setting authentication {<mode>}...")
+      :: `state(authentication mode)
+      `state
 
     ::
     ::  ARM:  ++  initialize-booths
@@ -147,7 +152,7 @@
     ++  initialize-booths
       |=  [jon=json]
 
-      %-  (slog leaf+"ballot: initializing..." ~)
+      %-  (log:core %info "ballot: initializing...")
 
       ::  initialization affects the booth and participant stores
       :: =/  booth-store  ((om json):dejs:format (~(got by store.state) 'booth'))
@@ -224,17 +229,17 @@
     ++  on-http-request
       |=  [req=(pair @ta inbound-request:eyre)]
 
-      ?:  ?&  =(authentication.state 'enable')
-              !authenticated.q.req
-          ==
-          ~&  >>>  "ballot: authentication is enabled. request is not authenticated"
-          (send-api-error req 'not authenticated')
+      :: ?:  ?&  =(authentication.state 'enable')
+      ::         !authenticated.q.req
+      ::     ==
+      ::     ~&  >>>  "ballot: authentication is enabled. request is not authenticated"
+      ::     (send-api-error req 'not authenticated')
 
       :: parse query string portion of url into map of arguments (key/value pair)
       =/  req-args
             (my q:(need `(unit (pair pork:eyre quay:eyre))`(rush url.request.q.req ;~(plug apat:de-purl:html yque:de-purl:html))))
 
-      %-  (slog leaf+"ballot: [on-poke] => processing request at endpoint {<(stab url.request.q.req)>}" ~)
+      %-  (log:core %info "ballot: [on-poke] => processing request at endpoint {<(stab url.request.q.req)>}")
 
       =/  path  (stab url.request.q.req)
 
@@ -393,7 +398,17 @@
   |=  =path
   ^-  (unit (unit cage))
 
-  %-  (slog leaf+"ballot: scry called with {<path>}..." ~)
+  :: =+  (log:core %info "ballot: scry called with path => {<path>}...")
+
+  :: ~/scry/ballot/booths/~zod/delegates
+
+  ?+  path  on-peek:def
+
+    [%x %ballot %booths @ @]
+      :: =/  booth-key  i.t.t.t.path
+      ``json+!>(s+'not implemented')
+
+  ==
 
   :: =/  scry  (~(get by scries.state) (spat path))
   :: ?~  scry  (send-api-error req 'ballot: scry not found')
@@ -419,7 +434,7 @@
 
   :: [effects.result]
 
-  ``json+!>(s+'not implemented')
+  :: ``json+!>(s+'not implemented')
 
 ::
 ++  on-agent
@@ -427,7 +442,7 @@
   ^-  (quip card _this)
 
   =/  wirepath  `path`wire
-  %-  (slog leaf+"ballot: on-agent {<wirepath>} data received..." ~)
+  %-  (log:core %info "ballot: on-agent {<wirepath>} data received...")
 
   :: =/  wry  (~(get by wires.state) (spat path))
   :: ?~  wry  (send-api-error req 'ballot: scry not found')
