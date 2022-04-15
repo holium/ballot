@@ -35,27 +35,7 @@
 ++  on-init
   ^-  (quip card _this)
 
-  %-  (log:core %info "ballot: ballot starting...")
-
-  ?.  .^(? %cu /~zod/ballot/(scot %da now.bowl)/hol/ballot/json)
-    %-  (log:core %error "ballot: ballot config file not found. create a /hol/ballot.cfg file and try again")
-    `this
-
-  =/  config  .^(json %cx /~zod/ballot/(scot %da now.bowl)/hol/ballot/json)
-  =/  cfg  ((om json):dejs:format config)
-
-  =/  resources  (~(get by cfg) 'resources')
-  ?~  resources
-    %-  (log:core %error "ballot: resources element not found. please fix the /hol/ballot.cfg file and try again")
-    `this
-
-  =/  resources  ((om json):dejs:format (need resources))
-
-  =/  log-level  (~(get by cfg) 'log-level')
-  =/  log-level  ?~  log-level
-    %-  (log:core %warn "ballot: log-level not found in config. defaulting to 0.")
-    0
-  (ni:dejs:format (need log-level))
+  %-  (log:core "ballot: ballot starting...")
 
   :: %-  (set-log-level:core log-level)
 
@@ -70,21 +50,15 @@
   :: =.  resources  (~(put by resources) 'vote' ~)
   :: =.  resources  (~(put by resources) 'mq' ~)
 
-  =/  effects=(list card)
+  ::  send out cards to bind all resource agents
+
+  :_  this(store store)
+
   :~  [%pass /ballot %agent [our.bowl %ballot] %poke %initialize !>(~)]
       ::   setup route for direct http request/response handling
       [%pass /bind-route %arvo %e %connect `/'ballot'/'api'/'booths' %ballot]
   ==
-
-  ::  send out cards to bind all resource agents
-  =/  resource-effects=(list card)
-        %-  ~(rep by resources)
-          |=  [[p=@t q=json] acc=(list card)]
-            (snoc acc [%pass /bind-resource %agent [our.bowl %ballot] %poke %bind !>(q)])
-
-  :_  this(store store)
-
-  (weld effects resource-effects)
+  :: (weld effects resource-effects)
 
 ::
 ++  on-save
@@ -137,7 +111,7 @@
 
     ++  set-authentication-mode
       |=  [mode=@t]
-      %-  (log:core %info "ballot: setting authentication {<mode>}...")
+      %-  (slog leaf+"ballot: setting authentication {<mode>}..." ~)
       :: `state(authentication mode)
       `state
 
@@ -152,7 +126,38 @@
     ++  initialize-booths
       |=  [jon=json]
 
-      %-  (log:core %info "ballot: initializing...")
+      =/  config-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/cfg/ballot/json
+
+      %-  (log:core "ballot: ballot initializing...")
+
+      ?.  .^(? %cu config-file)
+        ~&  >>>  "ballot: ballot config file not found. create a /cfg/ballot.json file and try again"
+        `state
+
+      =/  config  .^(json %cx config-file)
+      =/  cfg  ((om json):dejs:format config)
+
+      =/  resources  (~(get by cfg) 'resources')
+      ?~  resources
+        ~&  >>>  "ballot: resources element not found. please fix the /cfg/ballot.json file and try again"
+        `state
+
+      =/  resources  ((om json):dejs:format (need resources))
+
+      =/  log-level  (~(get by cfg) 'log-level')
+      =/  log-level  ?~  log-level
+        ~&  >>  "ballot: log-level not found in config. defaulting to 0."
+        0
+      (ni:dejs:format (need log-level))
+
+      ~&  >  "ballot: initialized"
+
+      :: =/  resource-effects=(list card)
+      :: %-  ~(rep by resources)
+      ::   |=  [[p=@t q=json] acc=(list card)]
+      ::     (snoc acc [%pass /bind-resource %agent [our.bowl %ballot] %poke %bind !>(q)])
+
+      `state
 
       ::  initialization affects the booth and participant stores
       :: =/  booth-store  ((om json):dejs:format (~(got by store.state) 'booth'))
@@ -218,7 +223,6 @@
       ::     [%pass /group %agent [our.bowl %group-store] %watch /groups]
       :: ==
 
-      `state
 
     ::
     ::  ARM:  ++  on-http-request
@@ -239,7 +243,7 @@
       =/  req-args
             (my q:(need `(unit (pair pork:eyre quay:eyre))`(rush url.request.q.req ;~(plug apat:de-purl:html yque:de-purl:html))))
 
-      %-  (log:core %info "ballot: [on-poke] => processing request at endpoint {<(stab url.request.q.req)>}")
+      %-  (slog leaf+"ballot: [on-poke] => processing request at endpoint {<(stab url.request.q.req)>}" ~)
 
       =/  path  (stab url.request.q.req)
 
@@ -282,6 +286,18 @@
 
       ++  handle-resource-action
         |=  [data=json]
+
+        =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/ballot/resources/delegate/lib/hoon
+
+
+
+      %-  (log:core "ballot: ballot initializing...")
+
+      ?.  .^(? %cu config-file)
+        ~&  >>>  "ballot: ballot config file not found. create a /cfg/ballot.json file and try again"
+        `state
+
+      =/  config  .^(json %cx config-file)
 
         :: =/  payload  ((om json):dejs:format data)
         :: =/  context  ((om json):dejs:format (~(got by payload) 'context'))
@@ -383,65 +399,55 @@
 ::
 ++  on-leave  on-leave:def
 
-::
-::  ARM:  on-peek
-::
-::   Scries
-::    examples:
-::
-::       -  ~/scry/ballot/booths
-::       -  ~/scry/ballot/booths/<key>/proposals
-::
-::  reference: https://urbit-org-j1prh9inz-urbit.vercel.app/docs/userspace/gall-guide/10-scry
-::
+::  scries
 ++  on-peek
   |=  =path
   ^-  (unit (unit cage))
 
-  %-  (log:core %info "ballot: scry called with path => {<path>}...")
+  |^
 
-  :: ~/scry/ballot/booths/~zod/delegates
+  %-  (slog leaf+"ballot: scry called with path => {<path>}..." ~)
 
-  ?+  path  (on-peek:def path)
+  =/  root  (~(get by store.state) 'booth')
+  ?~  root
+    ~&  >>>  "ballot: invalid agent state"
+    !!
+  =/  root  (need root)
 
-    [%x @ @ ~]
-      =/  res  `@t`i.t.path
-      =/  res-key  `@t`i.t.t.path
-      =/  store  (~(get by store.state) res)
-      ?~  store  ``json+!>(s+'resource not found')
-      =/  data  ((om json):dejs:format (need store))
-      =/  entry  (~(get by data) res-key)
-      ?~  entry  ``json+!>(s+'resource entries not found')
-      =/  entry  ((om json):dejs:format (need entry))
-      ``json+!>([%a ~(val by entry)])
+  =/  item=json  (find-node `(list @tas)`path root)
+
+  ?~  item  ``json+!>(s+'not found')
+  =/  item  ((om json):dejs:format item)
+  =/  tag  (~(get by item) 'tag')
+  ?~  tag  ``json+!>(s+'invalid resource. missing tag.')
+  =/  tag  (so:dejs:format (need tag))
+
+  ?+  tag  ``json+!>(s+'unrecognized tag')
+
+    %f  :: file
+      =/  data  (~(get by item) 'data')
+      ?~  data  ``json+!>(s+'invalid state')
+      =/  data  (need data)
+      ``json+!>(data)
+
+    %d  :: directory
+      ``json+!>([%a ~(val by item)])
 
   ==
 
-  :: =/  scry  (~(get by scries.state) (spat path))
-  :: ?~  scry  (send-api-error req 'ballot: scry not found')
-  :: =/  scry  ((om json):dejs:format (need scry))
-
-  :: =/  stores  (~(get by scry) 'stores')
-  :: ?~  stores  (send-api-error req 'ballot: scry {<path>} stores not found')
-
-  :: ::  intersect the handler stores map with ALL this agent's stores
-  :: ::    what will be returned is only those entries that exist in both
-  :: ::    maps with stores.state entries taking priority
-  :: =/  stores  (~(int by stores) stores.state)
-
-  :: =/  core  (~(get by core))
-
-  :: =/  result=[effects=(list card) state=(map @t json)]
-  ::       (~(on-scry core [bowl stores]) payload)
-
-  :: ::  update the store map with results from the action handler
-  :: =/  stores  (~(int by stores.state) state.result)
-
-  :: :_  this(stores stores)
-
-  :: [effects.result]
-
-  :: ``json+!>(s+'not implemented')
+  ++  find-node
+    |=  [items=(list @tas) node=json]
+      ^-  json
+      |-
+        ?:  ?|  =(0 (lent items))
+                =(~ node)
+            ==
+            node
+          =/  next-key  (snag 0 items)
+          =/  next-node  ((om json):dejs:format node)
+          =/  next-node  (~(get by next-node) next-key)
+          $(items (oust [0 1] items), node (need next-node))
+  --
 
 ::
 ++  on-agent
@@ -449,7 +455,7 @@
   ^-  (quip card _this)
 
   =/  wirepath  `path`wire
-  %-  (log:core %info "ballot: on-agent {<wirepath>} data received...")
+  %-  (slog leaf+"ballot: on-agent {<wirepath>} data received..." ~)
 
   :: =/  wry  (~(get by wires.state) (spat path))
   :: ?~  wry  (send-api-error req 'ballot: scry not found')

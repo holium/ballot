@@ -120,26 +120,9 @@
   ==
 
   ++  log
-    |=  [t=@tas m=tape]
+    |=  m=tape
     ^+  same
-
-    ?+  t  same
-      %info
-        %-  (slog leaf+m ~)
-        same
-
-      %good
-        ~&  >  m
-        same
-
-      %warn
-        ~&  >>  m
-        same
-
-      %error
-        ~&  >>>  m
-        same
-
-    ==
+    ~>  %slog.[0 leaf+m]
+    same
 
 --
