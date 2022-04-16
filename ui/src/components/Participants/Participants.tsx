@@ -31,7 +31,8 @@ export type ParticipantsProps = {
   onClick?: () => any;
 };
 
-const sortOrderType = ["owner", "active", "enlisted", "invited", "pending"];
+const sortOrderType = ["active", "enlisted", "invited", "pending"];
+const sortRole = ["owner", "participant"];
 
 export const Participants: FC<ParticipantsProps> = (
   props: ParticipantsProps
@@ -41,12 +42,15 @@ export const Participants: FC<ParticipantsProps> = (
   const urlParams = useParams();
   const { store, metadata } = useMst();
   const [page, setPage] = useState(0);
-  let sortedParticipants = participants.sort(
-    (a: ParticipantModelType, b: ParticipantModelType) => {
-      console.log(toJS(a));
-      return sortOrderType.indexOf(a.type) - sortOrderType.indexOf(b.type);
-    }
-  );
+  let sortedParticipants = participants
+    .sort((a: ParticipantModelType, b: ParticipantModelType) => {
+      return sortOrderType.indexOf(b.type) - sortOrderType.indexOf(a.type);
+    })
+    .sort(
+      (a: ParticipantModelType, b: ParticipantModelType) =>
+        sortRole.indexOf(a.role) - sortRole.indexOf(b.role)
+    );
+
   const pages =
     sortedParticipants.length / 10 === 1
       ? 0
