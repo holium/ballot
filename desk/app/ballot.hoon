@@ -1337,7 +1337,7 @@
 
       [%booths ~]
         ?:  =(our.bowl src.bowl)
-          %-  (log:core %warn "remote ships not allowed to watch /booths")
+          :: %-  (log:core %warn "remote ships not allowed to watch /booths")
           `this
         !!
 
@@ -2313,43 +2313,43 @@
 
     ::  anything outside of a scheduled poll cannot be changed (active, in-progress, ended, etc...)
     ::    all of these states mean the poll can no longer be changed.
-    :: ?.  =(poll-status 'scheduled')
-    ::       =/  context=json
-    ::       %-  pairs:enjs:format
-    ::       :~
-    ::         ['booth' s+booth-key]
-    ::         ['proposal' s+proposal-key]
-    ::       ==
+    ?.  =(poll-status 'scheduled')
+          =/  context=json
+          %-  pairs:enjs:format
+          :~
+            ['booth' s+booth-key]
+            ['proposal' s+proposal-key]
+          ==
 
-    ::       =/  error-key  (crip (weld "poll-started-error-" (trip timestamp)))
+          =/  error-key  (crip (weld "poll-started-error-" (trip timestamp)))
 
-    ::       =/  error-data=json
-    ::       %-  pairs:enjs:format
-    ::       :~
-    ::         ['key' s+error-key]
-    ::         ['error' s+(crip "cannot change proposal. poll status is {<poll-status>}.")]
-    ::       ==
+          =/  error-data=json
+          %-  pairs:enjs:format
+          :~
+            ['key' s+error-key]
+            ['error' s+(crip "cannot change proposal. poll status is {<poll-status>}.")]
+          ==
 
-    ::       =/  error-effect=json
-    ::       %-  pairs:enjs:format
-    ::       :~
-    ::         ['resource' s+'poll']
-    ::         ['effect' s+'error']
-    ::         ['data' error-data]
-    ::       ==
+          =/  error-effect=json
+          %-  pairs:enjs:format
+          :~
+            ['resource' s+'poll']
+            ['effect' s+'error']
+            ['data' error-data]
+          ==
 
-    ::       =/  effects=json
-    ::       %-  pairs:enjs:format
-    ::       :~
-    ::         ['action' s+'save-proposal-reaction']
-    ::         ['context' context]
-    ::         ['effects' [%a [error-effect]~]]
-    ::       ==
+          =/  effects=json
+          %-  pairs:enjs:format
+          :~
+            ['action' s+'save-proposal-reaction']
+            ['context' context]
+            ['effects' [%a [error-effect]~]]
+          ==
 
-    ::       :: give an error-effect to any subcribers
-    ::       :_  this
-    ::       :~  [%give %fact [/booths]~ %json !>(effects)]
-    ::       ==
+          :: give an error-effect to any subcribers
+          :_  this
+          :~  [%give %fact [/booths]~ %json !>(effects)]
+          ==
 
     =|  effects=(list card)
 
@@ -3071,29 +3071,43 @@
             (gth val-a val-b)
           ~
 
-    =/  top-choice  ?:  ?&  !=(~ tallies)
-            (gth (lent tallies) 0)
-        ==
-          =/  top-choice  ((om json):dejs:format (snag 0 tallies))
-          =/  label  (~(get by top-choice) 'label')
-          =/  label  ?~(label '?' (so:dejs:format (need label)))
-          label
-        ~
+    =/  result=[choice=(unit @t) reason=(unit @t)]
+        ?:  ?&  !=(~ tallies)
+                (gth (lent tallies) 0)
+            ==
+              =/  choice-1  ((om json):dejs:format (snag 0 tallies))
+              =/  top-choice
+                    ?:  (gth (lent tallies) 1)
+                      =/  choice-2  ((om json):dejs:format (snag 1 tallies))
+                      =/  val-1  (~(get by choice-1) 'count')
+                      =/  val-1  ?~(val-1 0 (ni:dejs:format (need val-1)))
+                      =/  val-2  (~(get by choice-2) 'count')
+                      =/  val-2  ?~(val-2 0 (ni:dejs:format (need val-2)))
+                      ?:  (gth val-1 val-2)
+                        choice-1
+                      ~
+                    choice-1
+              ?~  top-choice  [~ (some 'tied')]
+              =/  label  (~(get by choice-1) 'label')
+              =/  label  ?~(label '?' (so:dejs:format (need label)))
+              [(some label) ~]
+            [~ (some 'support')]
 
     ::  after list is sorted, top choice will be first item in list
 
-    =/  results  ?.  =(tallies ~)
+    =/  results  ?.  =(choice.result ~)
         %-  pairs:enjs:format
         :~
           ['status' s+'counted']
           ['voteCount' (numb:enjs:format `@ud`vote-count)]
           ['participantCount' (numb:enjs:format `@ud`participant-count)]
-          ['topChoice' ?~(top-choice ~ s+top-choice)]
+          ['topChoice' s+(need choice.result)]
           ['tallies' ?~(tallies ~ [%a tallies])]
         ==
       %-  pairs:enjs:format
       :~
         ['status' s+'failed']
+        ['reason' s+(need reason.result)]
         ['voteCount' (numb:enjs:format `@ud`vote-count)]
         ['participantCount' (numb:enjs:format `@ud`participant-count)]
       ==
