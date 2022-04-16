@@ -196,7 +196,7 @@ export const ProposalDetail: FC = observer((props: any) => {
                   <KPI
                     inline
                     width="inherit"
-                    label="Support"
+                    label="Quorum"
                     value={`${proposal.support}%`}
                   />
                 </Box>

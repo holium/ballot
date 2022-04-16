@@ -1,10 +1,10 @@
 /**
- * TODO clean this logic up. All of it.
+ * TODO write tests for this
  *
  * @param param0: DateDiff
  * @returns
  */
-export const descriptiveTime = ({
+export const descriptiveTimeold = ({
   hours,
   minutes,
   days,
@@ -15,15 +15,15 @@ export const descriptiveTime = ({
 }) => {
   let descriptiveString = "";
   if (days === 1) {
-    descriptiveString = `${days} day`;
+    descriptiveString = `${days} day ${getHourString(hours)}`;
   } else if (days > 0) {
     descriptiveString = `${days} days`;
   } else {
     // there are 0 days left
     if (hours === 1) {
-      descriptiveString = `${hours} hour`;
+      descriptiveString = `${hours} hour ${getMinString(minutes)}`;
     } else if (hours > 0) {
-      descriptiveString = `${hours} hours`;
+      descriptiveString = `${hours + 1} hours`;
     } else {
       // there are 0 days and 0 hours, only minutes left
       if (minutes > 0) {
@@ -37,6 +37,59 @@ export const descriptiveTime = ({
     }
   }
   return descriptiveString;
+};
+export const descriptiveTime = ({
+  hours,
+  minutes,
+  days,
+}: {
+  hours: number;
+  minutes: number;
+  days: number;
+}) => {
+  days++;
+  minutes++;
+  hours++;
+  if (days > 1 || (days === 1 && hours === 24)) {
+    return `${getDayString(days, hours)}`;
+  } else if (hours > 1 || (hours === 0 && minutes === 60)) {
+    return `${getHourString(hours, minutes)}`;
+  } else {
+    if (minutes === 1) {
+      return "less than a minute";
+    }
+    return `${getMinString(minutes)}`;
+  }
+};
+
+const getDayString = (days: number, hours: number) => {
+  if (days === 1) {
+    return `${days} day ${hours < 24 ? getHourString(hours) : ""}`;
+  } else if (days > 0) {
+    return `${days} days`;
+  } else {
+    return `1 day`;
+  }
+};
+
+const getHourString = (hours: number, minutes?: number) => {
+  if (hours === 1) {
+    return `${minutes ? getMinString(minutes) : ""}`;
+  } else if (hours > 0) {
+    return `${hours} hours`;
+  } else {
+    return `1 hour`;
+  }
+};
+
+const getMinString = (minutes: number) => {
+  if (minutes === 1) {
+    return `${minutes} minute`;
+  } else if (minutes > 0) {
+    return `${minutes} minutes`;
+  } else {
+    return ``;
+  }
 };
 
 /**
@@ -154,7 +207,7 @@ const timeIntervalMap = {
  */
 const getTimerInterval = (dateDiff: DateDiff): number | null => {
   //
-  if (dateDiff.days > 0) {
+  if (dateDiff.days > 1) {
     // the hours variable will have remaining hours for the day
     // ie.
     //  dateDiff.hours = 21  - hours left in the current day
@@ -163,12 +216,13 @@ const getTimerInterval = (dateDiff: DateDiff): number | null => {
     //  by multiplying these together, it will make the timer fire
     //  again in 21 hours to refresh for the next day.
     //
+
     return (
       dateDiff.hours * timeIntervalMap.hour +
       dateDiff.minutes * timeIntervalMap.minute +
       dateDiff.seconds * timeIntervalMap.second
     );
-  } else if (dateDiff.hours > 0) {
+  } else if (dateDiff.hours > 1) {
     // gives the amount of minutes left in the hour so the timer
     // can refresh on the hour
     return (

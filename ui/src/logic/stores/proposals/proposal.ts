@@ -153,7 +153,7 @@ export const ProposalModel = types
 
     getVotes: flow(function* () {
       self.voteLoader.set("loading");
-      yield timeout(500);
+      // yield timeout(500);
       try {
         const [response, error] = yield votesApi.initialVotes(
           self.boothKey,

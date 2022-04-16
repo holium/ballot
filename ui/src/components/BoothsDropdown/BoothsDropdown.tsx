@@ -43,7 +43,7 @@ const EmptyGroup = styled.div`
   border-radius: 4px;
 `;
 
-const sortOrderStatus = ["active", "invited", "enlisted", "pending"];
+const sortOrderStatus = ["invited", "active", "enlisted", "pending"];
 const sortOrderType = ["group", "ship"];
 export const BoothsDropdown: FC<BoothDrowdownProps> = (
   props: BoothDrowdownProps
@@ -148,83 +148,6 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
           )
         )}
       </DropdownBody>
-      {/* <DropdownHeader>
-        <Text
-          fontSize="14px"
-          color="text.primary"
-          style={{ textTransform: "uppercase", fontWeight: 600, opacity: 0.6 }}
-        >
-          Groups
-        </Text>
-      </DropdownHeader>
-      <DropdownBody>
-        {groupBooths.length ? (
-          groupBooths.map((group: any, index: number) => {
-            return (
-              <GroupBooths
-                key={`group-${index}`}
-                group={group}
-                onContextClick={onContextClick}
-                onJoin={onJoin}
-              />
-            );
-          })
-        ) : (
-          <Text
-            style={{ height: 40, opacity: 0.4 }}
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            textAlign="center"
-            variant="caption"
-          >
-            No booths
-          </Text>
-        )}
-      </DropdownBody>
-      <DropdownHeader>
-        <Text
-          fontSize="14px"
-          color="text.primary"
-          style={{ textTransform: "uppercase", fontWeight: 600, opacity: 0.6 }}
-        >
-          Booths
-        </Text>
-      </DropdownHeader>
-      <DropdownBody>
-        {shipBooths.length ? (
-          shipBooths.map((ship: any, index: number) => {
-            return (
-              <ShipBooths
-                key={`ship-${index}`}
-                ship={ship}
-                onContextClick={onContextClick}
-                onAccept={onAccept}
-              />
-            );
-          })
-        ) : (
-          <Text
-            style={{ height: 40, opacity: 0.4 }}
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            textAlign="center"
-            variant="caption"
-          >
-            No groups
-          </Text>
-        )}
-      </DropdownBody> */}
-      {/* NOTE: this was for open group joining or manual booth joining, removing for now */}
-      {/* <Box ml={2} mt={2}>
-        <TextButton
-          style={{ fontSize: "14px", fontWeight: 500 }}
-          onClick={onNewBooth}
-        >
-          Join new booth
-        </TextButton>
-      </Box> */}
     </Flex>
   );
 };
@@ -356,9 +279,20 @@ const GroupBooths = (props: {
                   {/* TODO add notification */}
                   {/* <Icons.ExpandMore ml="6px" /> */}
                 </Text>
-                <Text fontWeight={500} mt="1px" opacity={0.6} variant="hint">
-                  Group
-                </Text>
+                <Flex flexDirection="row" justifyContent="space-between">
+                  <Text
+                    fontWeight={500}
+                    mt="1px"
+                    mr={1}
+                    opacity={0.6}
+                    variant="hint"
+                  >
+                    Group
+                  </Text>
+                  <Text fontWeight={500} mt="1px" opacity={0.6} variant="hint">
+                    {group.hasAdmin && `(owner)`}
+                  </Text>
+                </Flex>
               </Box>
             </Box>
             {group.status === "pending" && (

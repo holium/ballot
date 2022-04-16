@@ -13,6 +13,7 @@ import { rootStore } from "../root";
 export const ResultSummaryModel = types.model({
   voteCount: types.optional(types.number, 0),
   participantCount: types.optional(types.number, 1),
+  reason: types.maybeNull(types.enumeration(["tied", "support"])),
   status: types.optional(
     types.enumeration("ResultStatus", ["counted", "failed", "preliminary"]),
     "preliminary"

@@ -30,6 +30,7 @@ import { useMst } from "../../../logic/stores/root";
 import { ProposalModelType } from "../../../logic/stores/proposals";
 import { getProposalFilters } from "../../../logic/stores/proposals/utils";
 import { getBoothName } from "../../../logic/utils/metadata";
+import { toJS } from "mobx";
 
 export const ProposalList: FC = observer(() => {
   const [selectedOption, setSelectedOption] = useState("All");
@@ -303,72 +304,7 @@ export const ProposalList: FC = observer(() => {
             <Grid2.Column xs={4} sm={3} md={3} lg={3}>
               <Participants
                 loading={participantLoading}
-                participants={[
-                  ...participants,
-                  // {
-                  //   created: "1648727455199",
-                  //   key: "~dev",
-                  //   metadata: { color: "#365" },
-                  //   name: "~dev",
-                  //   status: "active",
-                  // },
-                  // {
-                  //   created: "1648727455199",
-                  //   key: "~mul",
-                  //   metadata: { color: "#779" },
-                  //   name: "~mul",
-                  //   status: "active",
-                  // },
-                  // {
-                  //   created: "1648727455199",
-                  //   key: "~lux",
-                  //   metadata: { color: "#861" },
-                  //   name: "~lux",
-                  //   status: "active",
-                  // },
-                  // {
-                  //   created: "1648727455199",
-                  //   key: "~rib",
-                  //   metadata: { color: "#026" },
-                  //   name: "~rib",
-                  //   status: "active",
-                  // },
-                  // {
-                  //   created: "1648727455199",
-                  //   key: "~hal",
-                  //   metadata: { color: "#311" },
-                  //   name: "~hal",
-                  //   status: "active",
-                  // },
-                  // {
-                  //   created: "1648727455199",
-                  //   key: "~dib",
-                  //   metadata: { color: "#0a9e11" },
-                  //   name: "~dib",
-                  //   status: "active",
-                  // },
-                  // {
-                  //   created: "1648727455199",
-                  //   key: "~hocnus",
-                  //   metadata: { color: "#311" },
-                  //   name: "~hocnus",
-                  //   status: "active",
-                  // },
-                  // {
-                  //   created: "1648727455199",
-                  //   key: "~dovnus",
-                  //   metadata: { color: "#9e4500" },
-                  //   name: "~dovnus",
-                  //   status: "active",
-                  // },
-                  // {
-                  //   created: "1648727455199",
-                  //   key: "~sap",
-                  //   metadata: { color: "#000" },
-                  //   name: "~sap",
-                  //   status: "active",
-                  // },
-                ]}
+                participants={participants}
                 onAdd={(patp: string) => {
                   booth!.participantStore.add(patp);
                 }}

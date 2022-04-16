@@ -78,25 +78,28 @@ export const BoothStore = types
         if (error) throw error;
         self.loader.set("loaded");
         Object.values(response).forEach(async (booth: any) => {
-          const newBooth = BoothModel.create({
-            ...booth,
-            meta: {
-              ...booth.meta,
-              color: "#000000",
-            },
-            proposalStore: ProposalStore.create({
-              boothKey: booth.key,
-            }),
-            participantStore: ParticipantStore.create({
-              boothKey: booth.key,
-            }),
-            loader: { state: "loaded" },
-          });
+          // a hacky way to remove dms for now
+          if (!booth.key.includes("dm--")) {
+            const newBooth = BoothModel.create({
+              ...booth,
+              meta: {
+                ...booth.meta,
+                color: "#000000",
+              },
+              proposalStore: ProposalStore.create({
+                boothKey: booth.key,
+              }),
+              participantStore: ParticipantStore.create({
+                boothKey: booth.key,
+              }),
+              loader: { state: "loaded" },
+            });
 
-          newBooth.isActive && newBooth.proposalStore.getProposals();
-          // Initialize booth store
-          newBooth.isActive && newBooth.participantStore.getParticipants();
-          self.booths.set(newBooth.key, newBooth);
+            newBooth.isActive && newBooth.proposalStore.getProposals();
+            // Initialize booth store
+            newBooth.isActive && newBooth.participantStore.getParticipants();
+            self.booths.set(newBooth.key, newBooth);
+          }
         });
       } catch (err: any) {
         self.loader.error(err);
