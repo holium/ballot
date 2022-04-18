@@ -67,7 +67,7 @@
     ['data' [%o data.delegate]]
   ==
 
-  =/  effect=json
+  =/  effects=json
   %-  pairs:enjs:format
   :~
     ['action' s+'delegate-reaction']
@@ -75,15 +75,32 @@
     ['effects' [%a ~[resource-effect]]]
   ==
 
-  =/  effects=(list card)
-
-      :: =/  resource-effects=(list card)
-      :: %-  ~(rep by resources)
-      ::   |=  [[p=@t q=json] acc=(list card)]
-      ::     (snoc acc [%pass /bind-resource %agent [our.bowl %ballot] %poke %bind !>(q)])
-
   =/  store  (~(put by store) key.delegate [%o data.delegate])
 
-  [~ store]
+  :_  store
+      ::  inform the UI
+  :~  [%give %fact [/booths]~ %json !>(effects)]
+      ::  send off to remote booth participants
+      [%give %fact [/booths/(scot %tas booth-key)]~ %json !>(effects)]
+  ==
+
+++  delegate-reaction
+  |=  [action-data=json]
+  ^-  [effects=(list card) state=(map @t json)]
+
+  =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
+
+  =/  data  ((om json):dejs:format action-data)
+
+  =/  effects  (~(get by data) 'effects')
+  ?~  effects
+    ~&  >>>  "{<dap.bowl>}: delegate-reaction. missing effects data"
+    !!
+  =/  effects  ((ar json):dejs:format (need effects))
+
+  :_  store
+      ::  inform the UI
+  :~  [%give %fact [/booths]~ %json !>(effects)]
+  ==
 
 --
