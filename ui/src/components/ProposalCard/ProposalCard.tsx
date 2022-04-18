@@ -19,6 +19,7 @@ import { descriptiveTimeString } from "../../logic/utils/time";
 import { useMst } from "../../logic/stores/root";
 import { ProposalModelType } from "../../logic/stores/proposals";
 import { ContactModelType } from "../../logic/stores/metadata";
+import { failedReason } from "../../logic/utils/poll-failed";
 
 export type ProposalCardType = {
   proposal: ProposalModelType;
@@ -217,17 +218,8 @@ const TallyStatus: FC<TallyProps> = (props: TallyProps) => {
         Failed to pass:
       </Text>
       <Text ml={1} fontSize={2} fontWeight="500" color="ui.intent.alert">
-        {/* TODO backend errors */}
-        Not enough support
+        {failedReason(tally)}
       </Text>
-      {/* <Text ml={1} fontSize={2} fontWeight="500" color="ui.intent.alert">
-        Not enough support (
-        {`${
-          Math.round((tally.voteCount / tally.participantCount) * 1000) / 10
-        }% `}
-        of
-        {` ${proposal.support}%`})
-      </Text> */}
     </Flex>
   ) : (
     <Flex flexDirection="row" alignItems="center">

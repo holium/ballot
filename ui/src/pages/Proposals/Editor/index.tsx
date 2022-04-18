@@ -343,7 +343,7 @@ export const ProposalEditor: FC = observer(() => {
                 {() => {
                   return (
                     <FormControl.Field inline>
-                      <Label>Support</Label>
+                      <Label>Quorum</Label>
                       <Box justifyContent="flex-end">
                         <Input
                           style={{ width: 75 }}

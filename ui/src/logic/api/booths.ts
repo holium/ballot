@@ -21,6 +21,26 @@ export class BoothsApi extends BaseAPI {
     }
   }
 
+  // /**
+  //  *
+  //  * @returns - array of booth objects
+  //  */
+  // async getAllVotes(): Promise<any> {
+  //   const scryUrl = `${this.baseUrl}/~/scry/ballot/booths.json`;
+  //   try {
+  //     const response = await fetch(scryUrl, {
+  //       method: "GET",
+  //       credentials: "include",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //     });
+  //     return [await response.json(), null];
+  //   } catch (error) {
+  //     return [this.handleErrors(error), null];
+  //   }
+  // }
+
   /**
    *
    * @param boothKey - booth key value

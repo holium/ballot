@@ -1,3 +1,4 @@
+import { ParticipantModelType } from "./../participants/participant";
 import {
   ContactMetadataModel,
   ContactModelType,
@@ -21,6 +22,7 @@ import { GroupMetadataModel } from "../metadata";
 import { ParticipantStore } from "../participants";
 import { ProposalModelType, ProposalStore } from "../proposals";
 import { rootStore } from "../root";
+import { toJS } from "mobx";
 
 const sortMap = {
   recent: (list: ProposalModelType[]) =>

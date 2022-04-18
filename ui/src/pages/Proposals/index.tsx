@@ -1,6 +1,7 @@
 import React, { FC } from "react";
 import { Outlet, useParams } from "react-router";
 import { useMst } from "../../logic/stores/root";
+import { Spinner, Flex } from "@holium/design-system";
 import { toJS } from "mobx";
 import { observer } from "mobx-react";
 import { getKeyFromUrl } from "../../logic/utils/path";
@@ -12,5 +13,10 @@ export const Proposals: FC = observer(() => {
   if (urlBooth && urlBooth.proposalStore.isLoaded) {
     return <Outlet />;
   }
-  return null; // todo some loading or initial state
+  // todo better loading state
+  return (
+    <Flex flex={1} alignItems="center" justifyContent="center">
+      <Spinner size={2} />
+    </Flex>
+  );
 });

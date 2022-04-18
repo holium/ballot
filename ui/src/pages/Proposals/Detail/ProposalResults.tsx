@@ -3,6 +3,7 @@ import { Text, KPI, TlonIcon, Skeleton, Flex } from "@holium/design-system";
 import { ProposalResultSection } from "./Detail.styles";
 import { ProposalModelType } from "../../../logic/stores/proposals";
 import { BoothModelType } from "../../../logic/stores/booths";
+import { failedReason } from "../../../logic/utils/poll-failed";
 
 type ProposalResultType = {
   booth: BoothModelType;
@@ -38,7 +39,7 @@ export const ProposalResult: FC<ProposalResultType> = (
               Failed to pass:
             </Text>
             <Text ml={1} fontSize={2} fontWeight="500" color="ui.intent.alert">
-              Not enough support
+              {failedReason(tally)}
             </Text>
           </Flex>
         ) : (

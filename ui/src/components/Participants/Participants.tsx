@@ -19,6 +19,7 @@ import { getKeyFromUrl } from "../../logic/utils/path";
 import { ParticipantModal } from "./Modal/ParticipantModal";
 import { ParticipantRow } from "./ParticipantRow";
 import { ParticipantModelType } from "../../logic/stores/participants";
+import { toJS } from "mobx";
 
 export const Container = styled(Card);
 
@@ -30,6 +31,9 @@ export type ParticipantsProps = {
   onClick?: () => any;
 };
 
+const sortOrderType = ["active", "enlisted", "invited", "pending"];
+const sortRole = ["owner", "participant"];
+
 export const Participants: FC<ParticipantsProps> = (
   props: ParticipantsProps
 ) => {
@@ -38,8 +42,19 @@ export const Participants: FC<ParticipantsProps> = (
   const urlParams = useParams();
   const { store, metadata } = useMst();
   const [page, setPage] = useState(0);
+  let sortedParticipants = participants
+    .sort((a: ParticipantModelType, b: ParticipantModelType) => {
+      return sortOrderType.indexOf(b.type) - sortOrderType.indexOf(a.type);
+    })
+    .sort(
+      (a: ParticipantModelType, b: ParticipantModelType) =>
+        sortRole.indexOf(a.role) - sortRole.indexOf(b.role)
+    );
+
   const pages =
-    participants.length / 10 === 1 ? 0 : Math.floor(participants.length / 10);
+    sortedParticipants.length / 10 === 1
+      ? 0
+      : Math.floor(sortedParticipants.length / 10);
 
   const booth = store.booth!;
   const isGroup = store.booth?.type === "group";
@@ -89,26 +104,17 @@ export const Participants: FC<ParticipantsProps> = (
         )}
       </Flex>
       <Flex flex={1} justifyContent="space-between" flexDirection="column">
-        {participants && (
+        {sortedParticipants && (
           <Grid2.Box pl="2px" pr="2px">
             <Grid2.Column noGutter>
               <Observer>
                 {() => {
                   const startIndex = page * 10;
                   const endIndex = startIndex + 10;
-
                   return (
                     <>
-                      {participants
+                      {sortedParticipants
                         .slice(startIndex, endIndex)
-                        .sort(
-                          (a: ParticipantModelType, b: ParticipantModelType) =>
-                            b.role === "owner"
-                              ? 1
-                              : a.status === "invited"
-                              ? 0
-                              : -1
-                        )
                         .map((ship: ParticipantModelType) => {
                           const participantMetadata: any =
                             metadata.contactsMap.get(ship.name) || {
