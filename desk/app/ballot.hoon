@@ -864,9 +864,14 @@
         =/  data=octs
               (as-octs:mimes:html body)
 
-        ::  no changes to state. state will change when poke ack'd
-        :_  state(proposals (~(put by proposals.state) booth-key booth-proposals), votes (~(put by votes.state) booth-key booth-votes))
+        ::  delete any timers that have been created to handle start/end actions
+        =/  booth-polls  (~(get by polls.state) booth-key)
+        =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
+        =/  poll  (~(get by booth-polls) proposal-key)
+        =/  poll  ?~(poll ~ ((om json):dejs:format (need poll)))
+        =/  booth-polls  (~(del by booth-polls) proposal-key)
 
+        =/  effects=(list card)
         :~
           [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
           [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
@@ -876,6 +881,28 @@
           ::  for remote subscribers, indicate over booth specific wire
           [%give %fact [remote-agent-wire]~ %json !>([%o payload])]
         ==
+
+        ::  kill any timers that were set when the proposal was created
+        =/  effects  ?.  =(~ poll)
+          =/  poll-start-date  (~(get by poll) 'start')
+          =/  poll-start-date  ?~(poll-start-date ~ (du:dejs:format (need poll-start-date)))
+          =/  effects  ?.  =(~ poll-start-date)
+            %-  (slog leaf+"ballot: killing start timer {<poll-start-date>}..." ~)
+            (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/start %arvo %b %rest `@da`poll-start-date])
+          effects
+          =/  poll-end-date  (~(get by poll) 'end')
+          =/  poll-end-date  ?~(poll-end-date ~ (du:dejs:format (need poll-end-date)))
+          =/  effects  ?.  =(~ poll-end-date)
+              %-  (slog leaf+"ballot: killing end timer {<poll-end-date>}..." ~)
+              (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/end %arvo %b %rest `@da`poll-end-date])
+            effects
+          effects
+        effects
+
+        ::  no changes to state. state will change when poke ack'd
+        :_  state(proposals (~(put by proposals.state) booth-key booth-proposals), votes (~(put by votes.state) booth-key booth-votes), polls (~(put by polls.state) booth-key booth-polls))
+
+        effects
 
       ++  save-proposal-api
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
@@ -2890,14 +2917,16 @@
     =/  poll  ?~(poll ~ ((om json):dejs:format (need poll)))
 
     =/  poll-key  (~(get by poll) 'key')
-    =/  poll-key  ?~  poll-key  !!
+    =/  poll-key  ?~  poll-key
+      ~&  >>>  "ballot: error. poll key not found."
+      !!
       :: %-  (log:core %error "poll not found")  !!
     (so:dejs:format (need poll-key))
 
     =/  poll  (~(put by poll) 'status' s+'opened')
     =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
 
-    %-  (log:core %info "on-start-poll called")
+    %-  (slog leaf+"on-start-poll called {<poll>}..." ~)
 
     =/  context=json
     %-  pairs:enjs:format
@@ -2942,14 +2971,16 @@
     |=  [booth-key=@t proposal-key=@t]
     ^-  (quip card _this)
 
-    %-  (log:core %info "on-end-poll called")
+    %-  (slog leaf+"on-end-poll called" ~)
     =/  booth-polls  (~(get by polls.state) booth-key)
     =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
     =/  poll  (~(get by booth-polls) proposal-key)
     =/  poll  ?~(poll ~ ((om json):dejs:format (need poll)))
 
     =/  poll-key  (~(get by poll) 'key')
-    =/  poll-key  ?~  poll-key  !!
+    =/  poll-key  ?~  poll-key
+      ~&  >>>  "ballot: error. poll key not found"
+      !!
       :: %-  (log:core %error "poll not found")  !!
     (so:dejs:format (need poll-key))
 
@@ -3019,6 +3050,7 @@
     =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
     =/  threshold  (~(get by proposal) 'support')
     ?~  threshold
+      ~&  >>>  "ballot: error. missing voter support value"
       :: %-  (log:core %error "ballot: missing voter support value")
       !!
     ::  value comes in from UI as a "whole" percentage (e.g. 50%); conver
