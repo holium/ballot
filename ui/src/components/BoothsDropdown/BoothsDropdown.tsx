@@ -279,7 +279,7 @@ const GroupBooths = (props: {
                   {/* TODO add notification */}
                   {/* <Icons.ExpandMore ml="6px" /> */}
                 </Text>
-                <Flex flexDirection="row" justifyContent="space-between">
+                <Flex flexDirection="row">
                   <Text
                     fontWeight={500}
                     mt="1px"

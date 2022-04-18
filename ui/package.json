@@ -6,7 +6,7 @@
     "dev": "vite",
     "dev:env": "vite --mode ",
     "prebuild": "yarn clean",
-    "build": "tsc && vite build --base=/dist/",
+    "build": "tsc && vite build --mode production --base=/dist/",
     "clean": "rimraf dist",
     "serve": "vite preview",
     "test": "tsc --noEmit",
