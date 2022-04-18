@@ -97,10 +97,37 @@
     ~&  >>>  "{<dap.bowl>}: delegate-reaction. missing effects data"
     !!
   =/  effects  ((ar json):dejs:format (need effects))
+  =/  error  %-  roll
+    :-  effects
+    |:  [effect=`json`~ results=`(map @t json)`~]
+    (handle-effect effect)
+
 
   :_  store
       ::  inform the UI
   :~  [%give %fact [/booths]~ %json !>(effects)]
   ==
+
+  ++  handle-effect
+    |=  [payload=json]
+
+    =/  data  ((om json):dejs:format payload)
+    =/  key  (so:dejs:format (~(got by data) 'key'))
+    =/  effect  (so:dejs:format (~(got by data) 'effect'))
+    =/  effect-data  ((om json):dejs:format (~(got by data) 'data'))
+
+    ?+  effect  (give-effect-error payload)
+
+      %add
+        (~(put by store) key [%o effect-data])
+
+      %update
+        =/  delegate  ((om json):dejs:format (~(got by store) key))
+        ::  merge new data with existing data
+        =/  delegate  (~(gas by delegate) ~(tap by effect-data))
+        (~(put by store) key [%o delegate])
+
+    ==
+
 
 --
