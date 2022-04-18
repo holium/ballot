@@ -7,3 +7,4 @@
   ?~  entry  ``json+!>(s+'resource entries not found')
   =/  entry  ((om json):dejs:format entry)
   ``json+!>([%a (~(val by entry))])
+

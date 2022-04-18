@@ -1,13 +1,9 @@
 {
   "log-level": 0,
   "resources": {
-    "booth": {
-      "stores": {
-        "booth": null
-      },
-      "actions": {
-        "add": {}
-      }
-    }
+    "booth": {},
+    "proposal": {},
+    "participants": {},
+    "delegate": {}
   }
 }

@@ -11,7 +11,7 @@
 ::   - security (e.g. pub/priv key signing, ring sig, etc...)
 ::
 /-  *group, group-store, ballot-store
-/+  store=group-store, default-agent, dbug, resource, pill, core=ballot-core
+/+  store=group-store, default-agent, dbug, resource, pill, core=ballot-core, del=ballot-resources-delegate-delegate
 
 |%
 +$  card  card:agent:gall
@@ -142,7 +142,7 @@
         ~&  >>>  "ballot: resources element not found. please fix the /cfg/ballot.json file and try again"
         `state
 
-      =/  resources  ((om json):dejs:format (need resources))
+      =/  resources  (need resources)
 
       =/  log-level  (~(get by cfg) 'log-level')
       =/  log-level  ?~  log-level
@@ -157,7 +157,7 @@
       ::   |=  [[p=@t q=json] acc=(list card)]
       ::     (snoc acc [%pass /bind-resource %agent [our.bowl %ballot] %poke %bind !>(q)])
 
-      `state
+      `state(store (~(put by store.state) 'resources' resources))
 
       ::  initialization affects the booth and participant stores
       :: =/  booth-store  ((om json):dejs:format (~(got by store.state) 'booth'))
@@ -285,58 +285,78 @@
         (handle-resource-action payload)
 
       ++  handle-resource-action
-        |=  [data=json]
+        |=  [payload=json]
 
-        =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/ballot/resources/delegate/lib/hoon
+        ::  check store in state to ensure there's configured resources
+        =/  resources  (~(get by store.state) 'resources')
+        ?~  resources  (send-error "{<dap.bowl>}: invalid agent state. missing resources" ~)
+        =/  resources  ((om json):dejs:format (need resources))
 
+        ::  do some initial validation
+        =/  action-payload  ((om json):dejs:format payload)
 
+        =/  context  (~(get by action-payload) 'context')
+        ?~  context  (send-error "{<dap.bowl>}: invalid payload. missing context element" ~)
 
-      %-  (log:core "ballot: ballot initializing...")
+        =/  action  (~(get by action-payload) 'action')
+        ?~  action  (send-error "{<dap.bowl>}: invalid payload. missing action element" ~)
+        =/  action  (so:dejs:format (need action))
 
-      ?.  .^(? %cu config-file)
-        ~&  >>>  "ballot: ballot config file not found. create a /cfg/ballot.json file and try again"
+        =/  data  (~(get by action-payload) 'data')
+        ?~  data  (send-error "{<dap.bowl>}: invalid payload. missing data element" ~)
+        =/  data  (need data)
+
+        =/  resource  (~(get by action-payload) 'resource')
+        ?~  resource  (send-error "{<dap.bowl>}: invalid payload. missing resource element" ~)
+        =/  resource  (so:dejs:format (need resource))
+
+        =/  resource-store  (~(get by resources) resource)
+        ?~  resource-store  (send-error "{<dap.bowl>}: resource {<resource>} store not found" ~)
+        =/  resource-store  ((om json):dejs:format (need resource-store))
+
+        =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action)/hoon
+
+        ?.  .^(? %cu lib-file)
+          (send-error "{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
+
+        =/  action-lib  .^([p=type q=*] %ca lib-file)
+        :: ~&  >  action-lib
+        :: =/  action-hoon  (reck lib-file)
+        :: =/  action-hoon  (ream action-lib)
+        :: =/  action-lib  !>(action-hoon)
+        =/  action-result  (slam (slam (slap action-lib [%limb %on-action]) !>([action payload])) !>([bowl=bowl store=resource-store context=context]))
+
+        :: =/  action-hoon  (ream action-lib)
+        :: =/  action-result  (slap !>(~) action-hoon)
+        :: =/  val  `@ud`1
+        :: =/  action-result  (!<($-(@ud [effects=(list card) state=(map @t json)]) (slap !>([bowl=bowl context=context store=resource-store]) (ream action-lib))) val)
+        :: =/  action-result=[effects=(list card) state=(map @t json)]  (!<($-([@t json]] [effects=(list card) state=(map @t json)])) (slam (slap !>(action-hoon) [%limb %on-action]) !>([action payload])))
+        :: =/  action-result  (slap !>(bowl=bowl context=context store=store) action-hoon)) payload)
+
+        %-  (log:core "{<dap.bowl>}: committing store to agent state...")
+
         `state
+        :: :_  state(store (~(put by store.state) resource [%o state.action-result]))
 
-      =/  config  .^(json %cx config-file)
-
-        :: =/  payload  ((om json):dejs:format data)
-        :: =/  context  ((om json):dejs:format (~(got by payload) 'context'))
-        :: =/  action  (so:dejs:format (~(got by payload) 'action'))
-        :: =/  resource  (so:dejs:format (~(got by payload) 'resource'))
-
-        :: =/  handler  (~(get by handlers) (spat /(scot %tas resource)/(scot %tas action)))
-        :: ?~  handler  (send-api-error req 'ballot: handler not found')
-        :: =/  handler  ((om json):dejs:format (need handler))
-
-        :: =/  stores  (~(get by store.handler) 'stores')
-        :: ?~  stores  (send-api-error req 'ballot: handler stores not found')
-
-        :: ::  intersect the handler stores map with ALL this agent's stores
-        :: ::    what will be returned is only those entries that exist in both
-        :: ::    maps with stores.state entries taking priority
-        :: =/  stores  (~(int by stores) stores.state)
-
-        :: =/  core  (~(get by core))
-
-        :: =/  result=[effects=(list card) state=(map @t json)]
-        ::       (~(on-action core [bowl stores]) payload)
-
-        :: ::  update the store map with results from the action handler
-        :: =/  stores  (~(int by stores.state) state.result)
-
-        :: :_  state(stores stores)
-
-        :: [effects.result]
-
-        `state
+        :: effects.action-result
 
       ::  send an error as poke back to calling agent
       ++  send-error
-        |=  [jon=json]
+        |=  [reason=tape jon=json]
+        ~&  >>>  tape
+        ::  if json is null, send back reason error as json string
+        =/  payload=json  ?~  jon
+              ::  then
+              s+(crip reason)  :: send back reason error as string
+            :: else stuff payload with error message
+            %-  pairs:enjs:format
+            :~
+              ['error' s+(crip reason)]
+            ==
         ::  ensure action: 'error' in json for this to be recognized
         ::   on the remote agent
         :_  state
-        :~  [%pass /errors %agent [src.bowl %ballot] %poke %json !>(jon)]
+        :~  [%pass /errors %agent [src.bowl %ballot] %poke %json !>(payload)]
         ==
 
       ::  use this for errors that should appear in UI
@@ -408,9 +428,9 @@
 
   %-  (slog leaf+"ballot: scry called with path => {<path>}..." ~)
 
-  =/  root  (~(get by store.state) 'booth')
+  =/  root  (~(get by store.state) 'resources')
   ?~  root
-    ~&  >>>  "ballot: invalid agent state"
+    ~&  >>>  "{<dap.bowl>}: invalid agent state"
     !!
   =/  root  (need root)
 
