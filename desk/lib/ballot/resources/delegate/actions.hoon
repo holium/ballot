@@ -6,20 +6,22 @@
 
 |_  [=bowl:gall store=(map @t json) context=(map @t json)]
 
-++  on-action
-  |=  [action=@t payload=json]
-  ^-  [effects=(list card) state=(map @t json)]
+:: ++  on-action
+::   |=  [action=@t payload=json]
+::   ^-  [effects=(list card) state=(map @t json)]
 
-  %-  (slog leaf+"{<dap.bowl>}: action handler called {<bowl>}, {<action>}, {<payload>}..." ~)
+::   %-  (slog leaf+"{<dap.bowl>}: action handler called {<bowl>}, {<action>}, {<payload>}..." ~)
 
-  ?+  action  [~ store]
+::   ?+  action  [~ store]
 
-    %delegate
-      (on-delegate payload)
+::     %delegate
+::       (on-delegate payload)
 
-  ==
+::   ==
 
-++  on-delegate
+::  ++  delegate
+::  delegate action arm
+++  delegate
   |=  [action-data=json]
   ^-  [effects=(list card) state=(map @t json)]
 
@@ -72,6 +74,13 @@
     ['context' [%o context]]
     ['effects' [%a ~[resource-effect]]]
   ==
+
+  =/  effects=(list card)
+
+      :: =/  resource-effects=(list card)
+      :: %-  ~(rep by resources)
+      ::   |=  [[p=@t q=json] acc=(list card)]
+      ::     (snoc acc [%pass /bind-resource %agent [our.bowl %ballot] %poke %bind !>(q)])
 
   =/  store  (~(put by store) key.delegate [%o data.delegate])
 

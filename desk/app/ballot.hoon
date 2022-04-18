@@ -314,24 +314,14 @@
         ?~  resource-store  (send-error "{<dap.bowl>}: resource {<resource>} store not found" ~)
         =/  resource-store  ((om json):dejs:format (need resource-store))
 
-        =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action)/hoon
+        :: =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action)/hoon
+        =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/actions/hoon
 
         ?.  .^(? %cu lib-file)
           (send-error "{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
 
         =/  action-lib  .^([p=type q=*] %ca lib-file)
-        :: ~&  >  action-lib
-        :: =/  action-hoon  (reck lib-file)
-        :: =/  action-hoon  (ream action-lib)
-        :: =/  action-lib  !>(action-hoon)
-        =/  action-result  (slam (slam (slap action-lib [%limb %on-action]) !>([action payload])) !>([bowl=bowl store=resource-store context=context]))
-
-        :: =/  action-hoon  (ream action-lib)
-        :: =/  action-result  (slap !>(~) action-hoon)
-        :: =/  val  `@ud`1
-        :: =/  action-result  (!<($-(@ud [effects=(list card) state=(map @t json)]) (slap !>([bowl=bowl context=context store=resource-store]) (ream action-lib))) val)
-        :: =/  action-result=[effects=(list card) state=(map @t json)]  (!<($-([@t json]] [effects=(list card) state=(map @t json)])) (slam (slap !>(action-hoon) [%limb %on-action]) !>([action payload])))
-        :: =/  action-result  (slap !>(bowl=bowl context=context store=store) action-hoon)) payload)
+        =/  action-result  (slam (slam (slap action-lib [%limb action]) !>([action payload])) !>([bowl=bowl store=resource-store context=context]))
 
         %-  (log:core "{<dap.bowl>}: committing store to agent state...")
 
@@ -476,30 +466,6 @@
 
   =/  wirepath  `path`wire
   %-  (slog leaf+"ballot: on-agent {<wirepath>} data received..." ~)
-
-  :: =/  wry  (~(get by wires.state) (spat path))
-  :: ?~  wry  (send-api-error req 'ballot: scry not found')
-  :: =/  wry  ((om json):dejs:format (need wry))
-
-  :: =/  stores  (~(get by wry) 'stores')
-  :: ?~  stores  (send-api-error req 'ballot: scry {<path>} stores not found')
-
-  :: ::  intersect the handler stores map with ALL this agent's stores
-  :: ::    what will be returned is only those entries that exist in both
-  :: ::    maps with stores.state entries taking priority
-  :: =/  stores  (~(int by stores) stores.state)
-
-  :: =/  core  (~(get by core))
-
-  :: =/  result=[effects=(list card) state=(map @t json)]
-  ::       (~(on-wire core [bowl stores]) payload)
-
-  :: ::  update the store map with results from the action handler
-  :: =/  stores  (~(int by stores.state) state.result)
-
-  :: :_  this(stores stores)
-
-  :: [effects.result]
 
   `this
 
