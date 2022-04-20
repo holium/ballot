@@ -337,7 +337,6 @@
           (send-error "{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
 
         =/  action-lib  .^([p=type q=*] %ca lib-file)
-        :: =/  action-result=[effects=(list card) state=(map @t json)]  !<([(list card) (map @t json)] (slam (slap action-lib [%limb action]) !>([bowl resource-store context data])))
         =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl resource-store context]))
         =/  action-result=[effects=(list card) state=(map @t json)]  !<([(list card) (map @t json)] (slam (slap on-func [%limb action]) !>(data)))
 
