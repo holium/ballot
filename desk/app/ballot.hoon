@@ -35,7 +35,7 @@
 ++  on-init
   ^-  (quip card _this)
 
-  %-  (log:core "ballot: ballot starting...")
+  %-  (log:core "{<dap.bowl>}: {<dap.bowl>} starting...")
 
   :: %-  (set-log-level:core log-level)
 
@@ -111,7 +111,7 @@
 
     ++  set-authentication-mode
       |=  [mode=@t]
-      %-  (slog leaf+"ballot: setting authentication {<mode>}..." ~)
+      %-  (slog leaf+"{<dap.bowl>}: setting authentication {<mode>}..." ~)
       :: `state(authentication mode)
       `state
 
@@ -276,7 +276,23 @@
         ::  variable to hold request body (as $json)
         =/  payload  (need (de-json:html q.til))
 
-        (handle-resource-action payload)
+        =/  result  (handle-resource-action payload)
+
+        =/  =response-header:http
+          :-  500
+          :~  ['Content-Type' 'text/plain']
+          ==
+
+        ::  convert the string to a form that arvo will understand
+        =/  data=octs
+              (as-octs:mimes:html 'ok')
+
+        :_  state
+        :~
+          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
+          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
+          [%give %kick [/http-response/[p.req]]~ ~]
+        ==
 
       ++  handle-resource-action-poke
         |=  [payload=json]
@@ -297,6 +313,7 @@
 
         =/  context  (~(get by action-payload) 'context')
         ?~  context  (send-error "{<dap.bowl>}: invalid payload. missing context element" ~)
+        =/  context  ((om json):dejs:format (need context))
 
         =/  action  (~(get by action-payload) 'action')
         ?~  action  (send-error "{<dap.bowl>}: invalid payload. missing action element" ~)
@@ -314,21 +331,19 @@
         ?~  resource-store  (send-error "{<dap.bowl>}: resource {<resource>} store not found" ~)
         =/  resource-store  ((om json):dejs:format (need resource-store))
 
-        :: =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action)/hoon
         =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/actions/hoon
 
         ?.  .^(? %cu lib-file)
           (send-error "{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
 
         =/  action-lib  .^([p=type q=*] %ca lib-file)
-        =/  action-result  (slam (slam (slap action-lib [%limb action]) !>([action payload])) !>([bowl=bowl store=resource-store context=context]))
+        :: =/  action-result=[effects=(list card) state=(map @t json)]  !<([(list card) (map @t json)] (slam (slap action-lib [%limb action]) !>([bowl resource-store context data])))
+        =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl resource-store context]))
+        =/  action-result=[effects=(list card) state=(map @t json)]  !<([(list card) (map @t json)] (slam (slap on-func [%limb action]) !>(data)))
 
-        %-  (log:core "{<dap.bowl>}: committing store to agent state...")
+        %-  (log:core "{<dap.bowl>}: committing store to agent state {<state.action-result>}...")
 
-        `state
-        :: :_  state(store (~(put by store.state) resource [%o state.action-result]))
-
-        :: effects.action-result
+        `state :: (store (~(put by store.state) resource [%o (tail action-result)]))
 
       ::  send an error as poke back to calling agent
       ++  send-error
