@@ -11,7 +11,7 @@
 ::   - security (e.g. pub/priv key signing, ring sig, etc...)
 ::
 /-  *group, group-store, ballot-store
-/+  store=group-store, default-agent, dbug, resource, pill, core=ballot-core, del=ballot-resources-delegate-delegate
+/+  store=group-store, default-agent, dbug, resource, pill, core=ballot-core, del=ballot-resources-delegate-actions
 
 |%
 +$  card  card:agent:gall

@@ -49,7 +49,6 @@
       :~
         ['resource' s+'delegate']
         ['effect' s+?:(is-create 'add' 'update')]
-        ['key' s+key.delegate]
         ['data' [%o data.delegate]]
       ==
 
@@ -84,43 +83,37 @@
         !!
       =/  effects  ((ar json):dejs:format (need effects))
 
-      =/  result  %-  roll
+      =/  result=[effects=(list json) state=(map @t json)]  %-  roll
         :-  effects
-        |:  [effect=`json`~ acc=`[ok=? jon=json]`[%.n ~]]
-        =/  result  (handle-effect effect)
-        =/  has-error  ?.  ok.result  =.  ok.acc  %.n
-        [has-error data.result]
+        |:  [effect=`json`~ acc=`[effects=(list json) state=(map @t json)]`[~ ~]]
+        =/  result=[effect=json state=(map @t json)]  (handle-effect effect)
+        [(snoc effects.acc effect.result) state.result]
 
-      ::  lodlev-migdev - only update the official
-      ::   store/state if all effects succeeded
-      =/  new-state  ?:  -.result
-          =/  dat  ((om json):dejs:format +.acc)
-          (~(gas by state) ~(tap by dat))
-        state
+      =/  updated-effects  (~(put by data) 'effects' [%a effects.result])
 
-      :_  new-state
-          ::  inform the UI
-      :~  [%give %fact [/booths]~ %json !>(effects)]
+      :_  state.result
+      :~  [%give %fact [/booths]~ %json !>([%o updated-effects])]
       ==
 
       ++  handle-effect
-        |=  [payload=json acc=[@f json]]
-        ^-  [? json]
+        |=  [payload=json]
+        ^-  [effect=json state=(map @t json)]
 
-        =/  result  ?~  payload
-          [%.y (make-error (crip "{<dap.bowl>}: handle-effect error. missing payload"))]
+        ?~  payload
+          ~&  >>>  "{<dap.bowl>}: handle-effect error. null effect payload encountered"
+          [(inject-error ~ (crip "missing data attribute")) store]
 
         =/  data  ((om json):dejs:format payload)
 
         =/  effect  (~(get by data) 'effect')
-        ?~  effect  [%.y (inject-error data (crip "{<dap.bowl>}: handle-effect error. missing effect attribute"))]
+        ?~  effect  [(inject-error data (crip "missing effect attribute")) store]
         =/  effect  (so:dejs:format (need effect))
 
         =/  effect-data  (~(get by data) 'data')
-        ?~  effect-data  [%.y (inject-error data (crip "{<dap.bowl>}: handle-effect error. missing data attribute"))]
+        ?~  effect-data  [(inject-error data (crip "missing data attribute")) store]
         =/  effect-data  ((om json):dejs:format (need effect-data))
 
-        ?+  effect  [%.y (inject-error data (crip "{<dap.bowl>}: handle-effect error. effect not supported"))]
+        ?+  effect  [(inject-error data (crip "effect not supported")) store]
 
           %add
             (add data)
@@ -132,28 +125,30 @@
 
       ++  add
         |=  [data=(map @t json)]
-        ^-  [? json]
+        ^-  [effect=json state=(map @t json)]
         =/  key  (~(get by data) 'key')
-        ?~  key  [%.n (inject-error data (crip "{<dap.bowl>}: delegate add error. data missing key"))]
+        ?~  key  [(inject-error data (crip "{<dap.bowl>}: delegate add error. data missing key")) store]
         =/  key  (so:dejs:format (need key))
-        [%.y [%o data]]
+        [[%o data] (~(put by store) key [%o data])]
 
       ++  update
         |=  [data=(map @t json)]
-        ^-  [? json]
+        ^-  [effect=json state=(map @t json)]
         =/  key  (~(get by data) 'key')
-        ?~  key  [%.n (inject-error data (crip "{<dap.bowl>}: delegate update error. data missing key"))
+        ?~  key  [(inject-error data (crip "{<dap.bowl>}: delegate update error. data missing key")) store]
         =/  key  (so:dejs:format (need key))
         =/  delegate  (~(get by store) key)
-        ?~  delegate  [%.n (inject-error data (crip "{<dap.bowl>}: update error. delegate not found in store"))]
+        ?~  delegate  [(inject-error data (crip "{<dap.bowl>}: update error. delegate not found in store")) store]
         =/  delegate  ((om json):dejs:format (need delegate))
         ::  merge new data with existing data
         =/  delegate  (~(gas by delegate) ~(tap by data))
-        [%.y [%o delegate]]
+        [[%o data] (~(put by store) key [%o delegate])]
 
       ++  inject-error
         |=  [data=(map @t json) msg=@t]
         ^-  json
-        (~(put by data) 'error' s+msg)
+        =/  data  (~(put by data) 'effect' s+'error')
+        =/  data  (~(put by data) 'data' s+msg)
+        [%o data]
   --
 --
