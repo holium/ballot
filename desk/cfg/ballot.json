@@ -1,5 +1,6 @@
 {
   "log-level": 0,
+  "action-endpoint": "/ballot/api/booths",
   "resources": {
     "booth": {},
     "proposal": {},
