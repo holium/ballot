@@ -2,9 +2,10 @@
   "log-level": 0,
   "action-endpoint": "/ballot/api/booths",
   "resources": {
-    "booth": {},
+    "ballot": {},
     "proposal": {},
-    "participants": {},
+    "booth": {},
+    "participant": {},
     "delegate": {}
   }
 }

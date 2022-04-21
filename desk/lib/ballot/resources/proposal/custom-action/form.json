@@ -1,0 +1,16 @@
+{
+  "kick-member": {
+    "ship": {
+      "type": "string",
+      "label": "remote ship",
+      "required": true
+    }
+  },
+  "add-member": {
+    "ship": {
+      "type": "string",
+      "label": "remote ship",
+      "required": true
+    }
+  }
+}

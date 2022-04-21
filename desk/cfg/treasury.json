@@ -1,0 +1,7 @@
+{
+  "log-level": 0,
+  "action-endpoint": "/treasury/api/wallet",
+  "resources": {
+    "wallet": {}
+  }
+}
