@@ -3,9 +3,35 @@
   "action-endpoint": "/ballot/api/booths",
   "resources": {
     "ballot": {},
-    "proposal": {},
+    "proposal": {
+      "actions": {
+        "kick-member": {
+          "name": "Kick Member",
+          "description": "Kick a member from a group.",
+          "form": {
+            "ship": {
+              "type": "string",
+              "input": "text",
+              "label": "Member ship"
+            }
+          }
+        },
+        "add-member": {
+          "name": "Add Member",
+          "description": "Add a member to a group.",
+          "form": {
+            "ship": {
+              "type": "string",
+              "input": "text",
+              "label": "Member ship"
+            }
+          }
+        }
+      }
+    },
     "booth": {},
     "participant": {},
     "delegate": {}
-  }
+  },
+  "custom-action": {}
 }

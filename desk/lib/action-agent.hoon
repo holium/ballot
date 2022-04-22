@@ -1,3 +1,4 @@
+/-  plugin
 /+  log=log-core
 |%
 +$  card  card:agent:gall
@@ -36,29 +37,30 @@
   |=  [jon=json]
   ^-  [(list card) (map @t json)]
 
-  =/  config-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/cfg/(scot %tas dap.bowl)/json
-
   %-  (write:log "{<dap.bowl>}: {<dap.bowl>} initializing...")
 
+  =/  config-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/(scot %tas dap.bowl)/cfg
+
   ?.  .^(? %cu config-file)
-    ~&  >>>  "{<dap.bowl>}: {<dap.bowl>} config file not found. create a /cfg/{<dap.bowl>}.json file and try again"
+    ~&  >>>  "{<dap.bowl>}: {<dap.bowl>} config file not found. create a /lib/{<dap.bowl>}/.cfg file and try again"
     `store
 
   =/  config  .^(json %cx config-file)
   =/  cfg  ((om json):dejs:format config)
-
-  =/  resources  (~(get by cfg) 'resources')
-  ?~  resources
-    ~&  >>>  "{<dap.bowl>}: resources element not found. please fix the /cfg/{<dap.bowl>}.json file and try again"
-    `store
-
-  =/  resources  (need resources)
 
   =/  log-level  (~(get by cfg) 'log-level')
   =/  log-level  ?~  log-level
     ~&  >>  "{<dap.bowl>}: log-level not found in config. defaulting to 0."
     0
   (ni:dejs:format (need log-level))
+
+  =/  config-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/(scot %tas dap.bowl)/resources/cfg
+
+  ?.  .^(? %cu config-file)
+    ~&  >>>  "{<dap.bowl>}: /lib/{<dap.bowl>}/resources config file not found. create a /lib/{<dap.bowl>}/resources/.cfg file and try again"
+    `store
+
+  =/  resources  .^(json %cx config-file)
 
   ~&  >  "{<dap.bowl>}: initialized"
 
@@ -184,23 +186,57 @@
   ?~  resource-store  (send-error "{<dap.bowl>}: resource {<resource>} store not found" ~)
   =/  resource-store  ((om json):dejs:format (need resource-store))
 
+  =/  dispatch-mode  (~(get by resource-store) 'dispatcher')
+  =/  dispatch-mode  ?~(dispatch-mode 'direct' (so:dejs:format (need dispatch-mode)))
+
+  =+  c-ctx=`call-context:plugin`[bowl context store data]
+
+  ?+  dispatch-mode  (send-error "{<dap.bowl>}: unrecognized dispatcher value" ~)
+
+    %direct
+      (execute-direct resource action c-ctx)
+
+    %proxy
+      (execute-by-proxy resource action c-ctx)
+
+  ==
+
+++  execute-direct
+  |=  [resource=@t action=@t c=call-context:plugin]
+  ^-  [(list card) (map @t json)]
+
+  =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action)/hoon
+
+  ?.  .^(? %cu lib-file)
+    (send-error "{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
+
+  =/  action-lib  .^([p=type q=*] %ca lib-file)
+  =/  result=[effects=(list card) state=(map @t json)]  !<([(list card) (map @t json)] (slam (slap action-lib [%limb %run]) !>(c)))
+
+  %-  (write:log "{<dap.bowl>}: committing store to agent state {<result>}...")
+
+  :_  state.result
+
+  effects.result
+
+++  execute-by-proxy
+  |=  [resource=@t action=@t c=call-context:plugin]
+  ^-  [(list card) (map @t json)]
+
   =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/actions/hoon
 
   ?.  .^(? %cu lib-file)
     (send-error "{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
 
   =/  action-lib  .^([p=type q=*] %ca lib-file)
-  :: =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl resource-store context]))
-  =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl resource-store context]))
-  =/  action-result  (slam (slap on-func [%limb action]) !>(data))
-  :: =/  action-result=[effects=(list card) state=(map @t json)]  !<([(list card) (map @t json)] (slam (slap on-func [%limb action]) !>(s+'hello')))
-  :: =/  action-result=[effects=(list card) state=(map @t json)]  (slam (!<($-(json [(list card) (map @t json)]) (slap on-func [%limb action]))) !>(s+'hello'))
-  =/  typed-result  !<([(list card) (map @t json)] action-result)
+  =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl.c store.c args.c]))
+  =/  result=[effects=(list card) state=(map @t json)]  !<([(list card) (map @t json)] (slam (slap on-func [%limb action]) !>(payload.c)))
 
-  %-  (write:log "{<dap.bowl>}: committing store to agent state {<typed-result>}...")
+  %-  (write:log "{<dap.bowl>}: committing store to agent state {<result>}...")
 
-  :: q.action-result
-  `store
+  :_  state.result
+
+  effects.result
 
 ::  send an error as poke back to calling agent
 ++  send-error
