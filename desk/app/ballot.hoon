@@ -86,50 +86,15 @@
   |=  =path
   ^-  (unit (unit cage))
 
-  |^
 
-  %-  (slog leaf+"ballot: scry called with path => {<path>}..." ~)
 
-  =/  root  (~(get by store.state) 'resources')
-  ?~  root
-    ~&  >>>  "{<dap.bowl>}: invalid agent state"
-    !!
-  =/  root  (need root)
 
-  =/  item=json  (find-node `(list @tas)`path root)
+  :: if there's two more path segments after the resource (e.g. delegate),
+  ::   assume it's an action on a specific resource (e.g. delegate-key); however
+  ::   if there's only a single segment after the resource, assume it's a "view"
+  ::   action where the action is 'view-delegates'
 
-  ?~  item  ``json+!>(s+'not found')
-  =/  item  ((om json):dejs:format item)
-  =/  tag  (~(get by item) 'tag')
-  ?~  tag  ``json+!>(s+'invalid resource. missing tag.')
-  =/  tag  (so:dejs:format (need tag))
-
-  ?+  tag  ``json+!>(s+'unrecognized tag')
-
-    %f  :: file
-      =/  data  (~(get by item) 'data')
-      ?~  data  ``json+!>(s+'invalid state')
-      =/  data  (need data)
-      ``json+!>(data)
-
-    %d  :: directory
-      ``json+!>([%a ~(val by item)])
-
-  ==
-
-  ++  find-node
-    |=  [items=(list @tas) node=json]
-      ^-  json
-      |-
-        ?:  ?|  =(0 (lent items))
-                =(~ node)
-            ==
-            node
-          =/  next-key  (snag 0 items)
-          =/  next-node  ((om json):dejs:format node)
-          =/  next-node  (~(get by next-node) next-key)
-          $(items (oust [0 1] items), node (need next-node))
-  --
+  (~(peek act [bowl store.state]) path)
 
 ::
 ++  on-agent

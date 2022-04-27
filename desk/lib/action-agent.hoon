@@ -28,6 +28,12 @@
 
     ==
 
+++  peek
+  |=  =path
+  ^-  (unit (unit cage))
+
+  (handle-scry path)
+
 ++  set-authentication-mode
   |=  [mode=@t]
   %-  (slog leaf+"{<dap.bowl>}: setting authentication {<mode>}..." ~)
@@ -287,4 +293,62 @@
     [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
     [%give %kick [/http-response/[p.req]]~ ~]
   ==
+
+  ++  handle-scry
+    |=  res-path=path
+    ^-  (unit (unit cage))
+
+    :: assuming all paths start with /%x/ballot means we need at least 4 segments
+    ::  for this to be a valid path. aka we need at least one resource to either lookup
+    ::  or take action on
+    ?:  (lth (lent res-path) 4)
+        ``json+!>(s+'invalid path')
+
+    =/  result=[idx=@ud last-seg=(unit @t) action=json]
+      %-  roll
+      :-  `(list @t)`res-path
+      |:  [seg=`@t`~ curr=`[idx=@ud last-seg=(unit @t) action=json]`[0 ~ ~]]
+      =/  action  ?~(action.curr ~ ((om json):dejs:format action.curr))
+      =/  context  (~(get by action) 'context')
+      =/  context  ?~(context ~ ((om json):dejs:format (need context)))
+
+      :: is this the last segment?
+      ?:  =((add idx.curr 1) (lent res-path))
+        =/  action  (~(put by action) 'resource' s+(need last-seg.curr))
+        :: it's a resource/key pair if the idx is odd; otherwise it's an action
+        ?:  =((mod idx.curr 2) 1)
+          =/  context  (~(put by context) (need last-seg.curr) s+seg)
+          =/  action  (~(put by action) 'context' [%o context])
+          [(add idx.curr 1) (some seg) [%o action]]
+        =/  action  (~(put by action) 'action' s+seg)
+        [(add idx.curr 1) (some seg) [%o action]]
+      ?:  =((mod idx.curr 2) 1)
+        :: odd
+        =/  context  (~(put by context) (need last-seg.curr) s+seg)
+        =/  action  (~(put by action) 'context' [%o context])
+        [(add idx.curr 1) (some seg) [%o action]]
+      :: even
+      [(add idx.curr 1) (some seg) [%o action]]
+
+    =/  action  ?~(action.result ~ ((om json):dejs:format action.result))
+    =/  resource  (~(get by action) 'resource')
+    ?~  resource  ``json+!>(s+'failed to resolve resource')
+    =/  resource  (so:dejs:format (need resource))
+    =/  action-name  (~(get by action) 'action')
+    ?~  action-name  ``json+!>(s+'failed to resolve action')
+    =/  action-name  (so:dejs:format (need action-name))
+    =/  context  (~(get by action) 'context')
+    =/  action  (~(put by action) 'data' ~)
+
+    =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action-name)
+
+    ?.  .^(? %cu lib-file)
+      ``json+!>(s+(crip "{<dap.bowl>}: resource action lib file {<lib-file>} not found"))
+
+    =/  action  (snag (sub (lent res-path) 1) res-path)
+    =/  action-lib  .^([p=type q=*] %ca lib-file)
+    =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl store context]))
+    =/  result  !<((unit (unit cage)) (slam (slap on-func [%limb action]) !>(action)))
+
+    result
 --
