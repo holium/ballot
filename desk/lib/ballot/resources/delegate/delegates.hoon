@@ -5,7 +5,7 @@
   |%
     ++  get
       |=  [payload=json]
-      ^-  (unit (unit cage))
+      ^-  (unit cage)
 
       =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
 
@@ -36,6 +36,6 @@
           =/  delegate  (~(put by delegate) 'vote-count' n+count)
           (~(put by view) entry-ship [%o delegate])
 
-      ``json+!>([%o result])
+      `json+!>([%o result])
   --
 --

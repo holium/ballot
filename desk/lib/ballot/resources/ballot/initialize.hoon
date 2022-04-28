@@ -2,13 +2,13 @@
 ++  on
   |=  [=bowl:gall store=(map @t json) context=(map @t json)]
   |%
-    ++  initialize
+    ++  on-action
       |=  data=json
       :: ^-  [(list card:agent:gall) (map @t json)]
-      ^-  (unit (unit cage))
+      ^-  (unit cage)
 
       ~&  >>  "{<dap.bowl>}: hello from ballot initialize action => {<[bowl store context data]>}"
 
-      (some (some [%quip [~ store]]))
+      `quip+!>([~ store])
   --
 --

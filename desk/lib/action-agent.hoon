@@ -41,15 +41,17 @@
 
 ++  initialize
   |=  [jon=json]
-  ^-  [(list card) (map @t json)]
+  ^-  action-result:plugin
+  :: ^-  [(list card) (map @t json)]
+  :: ^-  action-result:plugin
 
   %-  (write:log "{<dap.bowl>}: {<dap.bowl>} initializing...")
 
-  =/  config-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/(scot %tas dap.bowl)/cfg
+  =/  config-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/cfg/(scot %tas dap.bowl)/json
 
   ?.  .^(? %cu config-file)
-    ~&  >>>  "{<dap.bowl>}: {<dap.bowl>} config file not found. create a /lib/{<dap.bowl>}/.cfg file and try again"
-    `store
+    ~&  >>>  "{<dap.bowl>}: {<dap.bowl>} config file not found. create a /cfg/{<dap.bowl>}/.json file and try again"
+    !!
 
   =/  config  .^(json %cx config-file)
   =/  cfg  ((om json):dejs:format config)
@@ -60,13 +62,18 @@
     0
   (ni:dejs:format (need log-level))
 
-  =/  config-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/(scot %tas dap.bowl)/resources/cfg
+  :: =/  config-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/(scot %tas dap.bowl)/resources/cfg
 
-  ?.  .^(? %cu config-file)
-    ~&  >>>  "{<dap.bowl>}: /lib/{<dap.bowl>}/resources config file not found. create a /lib/{<dap.bowl>}/resources/.cfg file and try again"
-    `store
+  :: ?.  .^(? %cu config-file)
+  ::   ~&  >>>  "{<dap.bowl>}: /lib/{<dap.bowl>}/resources config file not found. create a /lib/{<dap.bowl>}/resources/.cfg file and try again"
+  ::   `store
 
-  =/  resources  .^(json %cx config-file)
+  :: =/  resources  .^(json %cx config-file)
+  =/  resources  (~(get by cfg) 'resources')
+  ?~  resources
+    ~&  >>>  "{<dap.bowl>}: {<dap.bowl>} resources not found. fix the config file, nuke, and reinstall"
+    !!
+  =/  resources  (need resources)
 
   ~&  >  "{<dap.bowl>}: initialized"
 
@@ -79,10 +86,18 @@
     ['data' ~]
   ==
 
-  :_  (~(put by store) 'resources' resources)
+  =/  store  (~(put by store) 'resources' resources)
+  =/  effects
+    :~  [%pass /(scot %tas dap.bowl) %agent [our.bowl dap.bowl] %poke %json !>(action)]
+    ==
 
-  :~  [%pass /(scot %tas dap.bowl) %agent [our.bowl dap.bowl] %poke %json !>(action)]
-  ==
+  `action-result:plugin`[success=%.y data=[%o store] effects=effects]
+  :: `action-result:plugin+!>([success=%.y data=[%o store] effects=effects])
+
+  :: :_  (~(put by store) 'resources' resources)
+
+  :: :~  [%pass /(scot %tas dap.bowl) %agent [our.bowl dap.bowl] %poke %json !>(action)]
+  :: ==
 
 ::
 ::  ARM:  ++  on-http-request
@@ -131,18 +146,23 @@
   ::  variable to hold request body (as $json)
   =/  payload  (need (de-json:html q.til))
 
-  =/  result=[effects=(list card) state=(map @t json)]  (handle-resource-action payload)
+  =/  result=action-result:plugin  (handle-resource-action payload)
 
   =/  =response-header:http
-    :-  500
-    :~  ['Content-Type' 'text/plain']
+    :-  ?:(success.result 200 500)
+    :~  ['Content-Type' 'application/json']
     ==
+
+  =/  response-data  (crip (en-json:html data.result))
 
   ::  convert the string to a form that arvo will understand
   =/  data=octs
-        (as-octs:mimes:html 'ok')
+        (as-octs:mimes:html response-data)
 
-  :_  state.result
+  =/  new-state  ?:(success.result data.result ~)
+  =/  new-state  ?~(new-state ~ ((om json):dejs:format data.result))
+
+  :_  new-state
   :~
     [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
     [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
@@ -153,11 +173,20 @@
   |=  [payload=json]
   ^-  [(list card) (map @t json)]
 
-  (handle-resource-action payload)
+  =/  result=action-result:plugin  (handle-resource-action payload)
+
+  =/  new-state=json  ?:(success.result data.result ~)
+  =/  new-state  ?~(new-state `(map @t json)`~ ((om json):dejs:format new-state))
+
+  :_  new-state  effects.result
+  :: [~ ~]
 
 ++  handle-resource-action
   |=  [payload=json]
-  ^-  [(list card) (map @t json)]
+  :: ^-  [(list card) (map @t json)]
+  ^-  action-result:plugin
+
+  ~&  >>  "{<dap.bowl>}: handle-resource-action called {<payload>}..."
 
   ::  check store in state to ensure there's configured resources
   =/  resources  (~(get by store) 'resources')
@@ -209,7 +238,8 @@
 
 ++  execute-direct
   |=  [resource=@t action=@t c=call-context:plugin]
-  ^-  [(list card) (map @t json)]
+  :: ^-  [(list card) (map @t json)]
+  ^-  action-result:plugin
 
   =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action)/hoon
 
@@ -217,17 +247,24 @@
     (send-error "{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
 
   =/  action-lib  .^([p=type q=*] %ca lib-file)
-  =/  result=[effects=(list card) state=(map @t json)]  !<([(list card) (map @t json)] (slam (slap action-lib [%limb %run]) !>(c)))
+  =/  action-lib  .^([p=type q=*] %ca lib-file)
+  =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl.c store.c args.c]))
+  =/  result  !<(action-result:plugin (slam (slap on-func [%limb %action]) !>(payload.c)))
+  :: =/  result=[effects=(list card) state=(map @t json)]  !<([(list card) (map @t json)] (slam (slap action-lib [%limb %run]) !>(c)))
 
   %-  (write:log "{<dap.bowl>}: committing store to agent state {<result>}...")
 
-  :_  state.result
+  result
+  :: `action-result+!>([%.y ~ ~ ])
 
-  effects.result
+  :: :_  state.result
+
+  :: effects.result
 
 ++  execute-by-proxy
   |=  [resource=@t action=@t c=call-context:plugin]
-  ^-  [(list card) (map @t json)]
+  :: ^-  [(list card) (map @t json)]
+  ^-  action-result:plugin
 
   =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/actions/hoon
 
@@ -236,18 +273,20 @@
 
   =/  action-lib  .^([p=type q=*] %ca lib-file)
   =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl.c store.c args.c]))
-  =/  result=[effects=(list card) state=(map @t json)]  !<([(list card) (map @t json)] (slam (slap on-func [%limb action]) !>(payload.c)))
+  =/  result=action-result:plugin  !<(action-result:plugin (slam (slap on-func [%limb action]) !>(payload.c)))
 
   %-  (write:log "{<dap.bowl>}: committing store to agent state {<result>}...")
 
-  :_  state.result
+  result
+  :: :_  state.result
 
-  effects.result
+  :: effects.result
 
 ::  send an error as poke back to calling agent
 ++  send-error
   |=  [reason=tape jon=json]
-  ^-  [(list card) (map @t json)]
+  :: ^-  [(list card) (map @t json)]
+  ^-  action-result:plugin
   ~&  >>>  (crip reason)
   ::  if json is null, send back reason error as json string
   =/  payload=json  ?~  jon
@@ -262,18 +301,27 @@
   ?.  =(our.bowl src.bowl)
     ::  ensure action: 'error' in json for this to be recognized
     ::   on the remote agent
-    :_  store
+    =/  effects
     :~  [%pass /errors %agent [src.bowl dap.bowl] %poke %json !>(payload)]
     ==
+    !<(action-result:plugin !>([success=%.n data=payload effects=effects]))
+    :: :_  store
+    :: :~  [%pass /errors %agent [src.bowl dap.bowl] %poke %json !>(payload)]
+    :: ==
   (give-error payload)
 
 ::  use this for errors that should appear in UI
 ++  give-error
   |=  [jon=json]
-  ^-  [(list card) (map @t json)]
-  :_  store
+  :: ^-  [(list card) (map @t json)]
+  ^-  action-result:plugin
+  =/  effects
   :~  [%give %fact ~[/errors] %json !>(jon)]
   ==
+  !<(action-result:plugin !>([success=%.n data=jon effects=effects]))
+  :: :_  store
+  :: :~  [%give %fact ~[/errors] %json !>(jon)]
+  :: ==
 
 ++  send-api-error
   |=  [req=(pair @ta inbound-request:eyre) msg=@t]
@@ -298,10 +346,11 @@
     |=  res-path=path
     ^-  (unit (unit cage))
 
-    :: assuming all paths start with /%x/ballot means we need at least 4 segments
-    ::  for this to be a valid path. aka we need at least one resource to either lookup
-    ::  or take action on
-    ?:  (lth (lent res-path) 4)
+    ~&  >>  (spat res-path)
+    :: assuming all paths start with /%x/<resource>/<action | key> means we need at least
+    ::  3 segments  for this to be a valid path. aka we need at least one resource to
+    ::  either lookup or take action on
+    ?:  (lth (lent res-path) 3)
         ``json+!>(s+'invalid path')
 
     =/  result=[idx=@ud last-seg=(unit @t) action=json]
@@ -338,17 +387,19 @@
     ?~  action-name  ``json+!>(s+'failed to resolve action')
     =/  action-name  (so:dejs:format (need action-name))
     =/  context  (~(get by action) 'context')
+    ?~  context  ``json+!>(s+'failed to find context')
+    =/  context  ((om json):dejs:format (need context))
     =/  action  (~(put by action) 'data' ~)
 
-    =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action-name)
+    =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action-name)/hoon
 
     ?.  .^(? %cu lib-file)
       ``json+!>(s+(crip "{<dap.bowl>}: resource action lib file {<lib-file>} not found"))
 
-    =/  action  (snag (sub (lent res-path) 1) res-path)
     =/  action-lib  .^([p=type q=*] %ca lib-file)
     =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl store context]))
-    =/  result  !<((unit (unit cage)) (slam (slap on-func [%limb action]) !>(action)))
+    =/  result  !<((unit action-result:plugin) (slam (slap on-func [%limb %action]) !>([%o action])))
+    =/  result  ?~(result ~ (need result))
 
-    result
+    ``json+!>(?~(result ~ data.result))
 --

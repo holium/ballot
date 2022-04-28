@@ -10,7 +10,7 @@
 ::   - post voting results actions (e.g. boot member from group)
 ::   - security (e.g. pub/priv key signing, ring sig, etc...)
 ::
-/-  *group, group-store, ballot-store
+/-  *group, group-store, ballot-store, *plugin
 /+  store=group-store, default-agent, act=action-agent, dbug, resource, pill, log=log-core
 
 |%
@@ -37,11 +37,11 @@
 
   %-  (write:log "{<dap.bowl>}: {<dap.bowl>} starting...")
 
-  =/  result=[effects=(list card) state=(map @t json)]  (~(initialize act [bowl store.state]) ~)
+  =/  result=action-result  (~(initialize act [bowl store.state]) ~)
 
-  :_  this(store state.result)
-
-  effects.result
+  ?:  success.result
+    :_  this(store ?~(data.result ~ ((om json):dejs:format data.result)))  effects.result
+  :_  this  ~
 
 ::
 ++  on-save
@@ -86,15 +86,15 @@
   |=  =path
   ^-  (unit (unit cage))
 
-
-
-
   :: if there's two more path segments after the resource (e.g. delegate),
   ::   assume it's an action on a specific resource (e.g. delegate-key); however
   ::   if there's only a single segment after the resource, assume it's a "view"
   ::   action where the action is 'view-delegates'
 
-  (~(peek act [bowl store.state]) path)
+  ?+  path  (~(peek act [bowl store.state]) path)
+    [%x %dbug *]
+      (on-peek:def path)
+  ==
 
 ::
 ++  on-agent
