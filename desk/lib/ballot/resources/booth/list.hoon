@@ -1,4 +1,5 @@
 /-  *plugin
+/+  *plugin
 |%
 ++  on
   |=  [=bowl:gall store=(map @t json) context=(map @t json)]
@@ -16,10 +17,5 @@
       =/  booth-store  (need booth-store)
 
       (some `action-result`[success=%.y data=booth-store effects=~])
-
-    ++  return-error
-      |=  [data=json]
-      ^-  (unit action-result)
-      (some `action-result`[success=%.n data=data effects=~])
   --
 --

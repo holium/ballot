@@ -346,10 +346,14 @@
     |=  res-path=path
     ^-  (unit (unit cage))
 
+    ::  remove /x/ballot part of path
+    =/  segments  `(list @t)`(oust [0 1] res-path)
+    =/  num-segments  (lent segments)
+
     :: assuming all paths start with /%x/<resource>/<action | key> means we need at least
     ::  3 segments  for this to be a valid path. aka we need at least one resource to
     ::  either lookup or take action on
-    ?:  (lth (lent res-path) 3)
+    ?:  (lth (lent segments) 2)
         ``json+!>(s+'invalid path')
 
     =/  resource-store  (~(get by store) 'resources')
@@ -360,31 +364,22 @@
 
     =/  result=[idx=@ud last-seg=(unit @t) action=json]
       %-  roll
-      :-  `(list @t)`res-path
+      :-  segments
       |:  [seg=`@t`~ curr=`[idx=@ud last-seg=(unit @t) action=json]`[0 ~ ~]]
       =/  action  ?~(action.curr ~ ((om json):dejs:format action.curr))
       =/  context  (~(get by action) 'context')
       =/  context  ?~(context ~ ((om json):dejs:format (need context)))
-
-      :: is this the last segment?
-      ?:  =((add idx.curr 1) (lent res-path))
-        =/  action  (~(put by action) 'resource' s+(need last-seg.curr))
-        :: it's a resource/key pair if the idx is odd; otherwise it's an action
-        ?:  =((mod idx.curr 2) 1)
-          ?.  (~(has by resource-store) (need last-seg.curr))  !!  :: pass on to default handler if not a resource we recognize
-          =/  context  (~(put by context) (need last-seg.curr) s+seg)
-          =/  action  (~(put by action) 'context' [%o context])
-          [(add idx.curr 1) (some seg) [%o action]]
+      ?:  =((add idx.curr 1) num-segments)
         =/  action  (~(put by action) 'action' s+seg)
         [(add idx.curr 1) (some seg) [%o action]]
       ?:  =((mod idx.curr 2) 1)
         :: odd
-        :: if odd, and not the last segment. should be a resource
-        ?.  (~(has by resource-store) seg)  !!
         =/  context  (~(put by context) (need last-seg.curr) s+seg)
         =/  action  (~(put by action) 'context' [%o context])
         [(add idx.curr 1) (some seg) [%o action]]
       :: even
+      ?.  (~(has by resource-store) seg)  !!
+      =/  action  (~(put by action) 'resource' s+seg)
       [(add idx.curr 1) (some seg) [%o action]]
 
     =/  action  ?~(action.result ~ ((om json):dejs:format action.result))
@@ -395,8 +390,7 @@
     ?~  action-name  ``json+!>(s+'failed to resolve action')
     =/  action-name  (so:dejs:format (need action-name))
     =/  context  (~(get by action) 'context')
-    ?~  context  ``json+!>(s+'failed to find context')
-    =/  context  ((om json):dejs:format (need context))
+    =/  context  ?~(context ~ ((om json):dejs:format (need context)))
     =/  action  (~(put by action) 'data' ~)
 
     =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action-name)/hoon
