@@ -346,12 +346,17 @@
     |=  res-path=path
     ^-  (unit (unit cage))
 
-    ~&  >>  (spat res-path)
     :: assuming all paths start with /%x/<resource>/<action | key> means we need at least
     ::  3 segments  for this to be a valid path. aka we need at least one resource to
     ::  either lookup or take action on
     ?:  (lth (lent res-path) 3)
         ``json+!>(s+'invalid path')
+
+    =/  resource-store  (~(get by store) 'resources')
+    ?~  resource-store
+      ~&  >>>  "{<dap.bowl>}: invalid app state. no resources in store. crash."
+      !!
+    =/  resource-store  ((om json):dejs:format (need resource-store))
 
     =/  result=[idx=@ud last-seg=(unit @t) action=json]
       %-  roll
@@ -366,6 +371,7 @@
         =/  action  (~(put by action) 'resource' s+(need last-seg.curr))
         :: it's a resource/key pair if the idx is odd; otherwise it's an action
         ?:  =((mod idx.curr 2) 1)
+          ?.  (~(has by resource-store) (need last-seg.curr))  !!  :: pass on to default handler if not a resource we recognize
           =/  context  (~(put by context) (need last-seg.curr) s+seg)
           =/  action  (~(put by action) 'context' [%o context])
           [(add idx.curr 1) (some seg) [%o action]]
@@ -373,6 +379,8 @@
         [(add idx.curr 1) (some seg) [%o action]]
       ?:  =((mod idx.curr 2) 1)
         :: odd
+        :: if odd, and not the last segment. should be a resource
+        ?.  (~(has by resource-store) seg)  !!
         =/  context  (~(put by context) (need last-seg.curr) s+seg)
         =/  action  (~(put by action) 'context' [%o context])
         [(add idx.curr 1) (some seg) [%o action]]

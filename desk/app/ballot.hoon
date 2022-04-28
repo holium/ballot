@@ -90,11 +90,10 @@
   ::   assume it's an action on a specific resource (e.g. delegate-key); however
   ::   if there's only a single segment after the resource, assume it's a "view"
   ::   action where the action is 'view-delegates'
+  =/  result  (~(peek act [bowl store.state]) path)
+  ?~  result  (on-peek:def path)
 
-  ?+  path  (~(peek act [bowl store.state]) path)
-    [%x %dbug *]
-      (on-peek:def path)
-  ==
+  result
 
 ::
 ++  on-agent
