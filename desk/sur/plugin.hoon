@@ -13,6 +13,7 @@
     $:  success=?
         :: contains error data when success is %.n; otherwise contains response data data
         data=json
+        store=json
         effects=(list card:agent:gall)
     ==
 --

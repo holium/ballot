@@ -8,12 +8,12 @@
       |=  [payload=json]
       ^-  action-result
 
-      ?~  payload  ~
+      ?~  payload  (return-error store s+'error: empty payload')
 
       ?>  ?=(%o -.payload)
 
       =/  data  (~(get by p.payload) 'data')
-      ?~  data  (return-error s+'error: missing data element')
+      ?~  data  (return-error store s+'error: missing data element')
       =/  data  (need data)
       ?>  ?=(%o -.data)
 
@@ -24,14 +24,13 @@
         'new-booth'
       (so:dejs:format (need key))
 
-      =/  store=json  ?~(store [%o ~] store)
-      ?>  ?=(%o -.store)
-      =/  resource-store  (~(get by p.store) 'resources')
-      ?~  resource-store  (return-error s+'error: resources not found')
+      =/  store  (to-map store)
+      =/  resource-store  (~(get by store) 'resources')
+      ?~  resource-store  (return-error store s+'error: resources not found')
       =/  resource-store  (need resource-store)
       ?>  ?=(%o -.resource-store)
       =/  booth-store  (~(get by p.resource-store) 'booth')
-      ?~  booth-store  (return-error s+'error: booth store not found')
+      ?~  booth-store  (return-error store s+'error: booth store not found')
       =/  booth-store  (need booth-store)
       ?>  ?=(%o -.booth-store)
       =/  booth  ?~(key ~ (~(get by p.booth-store) key))
@@ -42,6 +41,6 @@
       =/  booth  (~(put by booth-store) key [%o booth])
       =/  resource-store  (~(put by resource-store) 'booth' [%o booth-store])
 
-      `action-result`[success=%.y data=[%o resource-store] effects=~]
+      `action-result`[success=%.y data=[%o booth] store=[%o resource-store] effects=~]
   --
 --

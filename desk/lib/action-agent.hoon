@@ -93,7 +93,7 @@
     :~  [%pass /(scot %tas dap.bowl) %agent [our.bowl dap.bowl] %poke %json !>(action)]
     ==
 
-  `action-result:plugin`[success=%.y data=[%o store] effects=effects]
+  `action-result:plugin`[success=%.y data=~ store=[%o store] effects=effects]
   :: `action-result:plugin+!>([success=%.y data=[%o store] effects=effects])
 
   :: :_  (~(put by store) 'resources' resources)
@@ -161,7 +161,7 @@
   =/  data=octs
         (as-octs:mimes:html response-data)
 
-  :_  data.result
+  :_  store.result
   :~
     [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
     [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
@@ -174,7 +174,7 @@
 
   =/  result=action-result:plugin  (handle-resource-action payload)
 
-  :_  data.result  effects.result
+  :_  store.result  effects.result
 
 ++  handle-resource-action
   |=  [payload=json]
@@ -315,7 +315,7 @@
   =/  effects
   :~  [%give %fact ~[/errors] %json !>(jon)]
   ==
-  !<(action-result:plugin !>([success=%.n data=jon effects=effects]))
+  !<(action-result:plugin !>([success=%.n data=jon store=store effects=effects]))
   :: :_  store
   :: :~  [%give %fact ~[/errors] %json !>(jon)]
   :: ==
