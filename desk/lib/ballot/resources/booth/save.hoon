@@ -8,6 +8,8 @@
       |=  [payload=json]
       ^-  action-result
 
+      =/  timestamp  (en-json:html (time:enjs:format now.bowl))
+
       ?~  payload  (return-error store s+'error: empty payload')
 
       ?>  ?=(%o -.payload)
@@ -19,10 +21,10 @@
 
       =/  data  ((om json):dejs:format (need data))
 
-      =/  key   (~(get by data) 'key')
-      ?~  key :: no key, means we're adding a new booth
-        'new-booth'
-      (so:dejs:format (need key))
+        =/  proposal-key
+              ?:  is-update
+                    (so:dejs:format (~(got by context) 'proposal'))
+                  (crip (weld "proposal-" timestamp))
 
       =/  store  (to-map store)
       =/  resource-store  (~(get by store) 'resources')
@@ -33,6 +35,18 @@
       ?~  booth-store  (return-error store s+'error: booth store not found')
       =/  booth-store  (need booth-store)
       ?>  ?=(%o -.booth-store)
+
+      ::  because any given event is not guaranteed to be unique, we
+      ::  cannot rely on eny.bowl or now.bowl to create a unique booth
+      ::  name. therefore we incorporate a next sequence # based on the
+      ::  size of the booth map to ensure we get an extra value to ensure
+      ::  uniqueness
+      =/  seq-num  ~(wyt in ~(key by p.booth-store))
+      =/  key   (~(get by data) 'key')
+      ?~  key :: no key, means we're adding a new booth
+        (crip (weld "booth-{<seq-num>}-" timestamp))
+      (so:dejs:format (need key))
+
       =/  booth  ?~(key ~ (~(get by p.booth-store) key))
       =/  booth=json  ?~(booth [%o ~] (need booth))
       ?>  ?=(%o -.booth)

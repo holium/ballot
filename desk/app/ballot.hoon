@@ -40,7 +40,7 @@
   =/  result=action-result  (~(initialize act [bowl store.state]) ~)
 
   ?:  success.result
-    :_  this(store data.result)  effects.result
+    :_  this(store store.result)  effects.result
   :_  this  ~
 
 ::

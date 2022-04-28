@@ -1,5 +1,5 @@
 /-  plugin
-/+  log=log-core
+/+  log=log-core, plugin
 |%
 +$  card  card:agent:gall
 --
@@ -86,9 +86,8 @@
     ['data' ~]
   ==
 
-  =/  store=json  ?~(store [%o ~] store)
-  ?>  ?=(%o -.store)
-  =/  store  (~(put by p.store) 'resources' resources)
+  =/  store  (to-map:plugin store)
+  =/  store  (~(put by store) 'resources' resources)
   =/  effects
     :~  [%pass /(scot %tas dap.bowl) %agent [our.bowl dap.bowl] %poke %json !>(action)]
     ==
@@ -184,23 +183,22 @@
   ~&  >>  "{<dap.bowl>}: handle-resource-action called {<payload>}..."
 
   ::  check store in state to ensure there's configured resources
-  ?>  ?=(%o -.store)
+  =/  store  (to-map:plugin store)
 
-  =/  resources  (~(get by p.store) 'resources')
+  =/  resources  (~(get by store) 'resources')
   ?~  resources  (send-error "{<dap.bowl>}: invalid agent state. missing resources" ~)
-  =/  resources  ((om json):dejs:format (need resources))
+  =/  resources  (to-map:plugin (need resources))
 
   ::  do some initial validation
-  =/  action-payload  ((om json):dejs:format payload)
+  =/  action-payload  (to-map:plugin payload)
 
-  %-  (write:log "{<dap.bowl>}: fetching context...")
+  %-  (slog leaf+"{<dap.bowl>}: fetching context..." ~)
 
   =/  context  (~(get by action-payload) 'context')
   ?~  context  (send-error "{<dap.bowl>}: invalid payload. missing context element" ~)
-  =/  context  (need context)
-  =/  context  ?~(context ~ ((om json):dejs:format context))
+  =/  context  (to-map:plugin (need context))
 
-  %-  (write:log "{<dap.bowl>}: {<context>}...")
+  %-  (slog leaf+"{<dap.bowl>}: {<context>}..." ~)
 
   =/  action  (~(get by action-payload) 'action')
   ?~  action  (send-error "{<dap.bowl>}: invalid payload. missing action element" ~)
@@ -221,7 +219,9 @@
   =/  dispatch-mode  (~(get by resource-store) 'dispatcher')
   =/  dispatch-mode  ?~(dispatch-mode 'direct' (so:dejs:format (need dispatch-mode)))
 
-  =+  c-ctx=`call-context:plugin`[bowl context p.store data]
+  =+  c-ctx=`call-context:plugin`[bowl args=context store=[%o store] payload=data]
+
+  %-  (slog leaf+"{<dap.bowl>}: dispatching action {<resource>}, {<action>}..." ~)
 
   ?+  dispatch-mode  (send-error "{<dap.bowl>}: unrecognized dispatcher value" ~)
 
@@ -243,9 +243,14 @@
   ?.  .^(? %cu lib-file)
     (send-error "{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
 
+  %-  (slog leaf+"{<dap.bowl>}: firing action1..." ~)
   =/  action-lib  .^([p=type q=*] %ca lib-file)
-  =/  action-lib  .^([p=type q=*] %ca lib-file)
+
+  %-  (slog leaf+"{<dap.bowl>}: firing action2..." ~)
   =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl.c store.c args.c]))
+
+  %-  (slog leaf+"{<dap.bowl>}: firing action3..." ~)
+
   =/  result  !<(action-result:plugin (slam (slap on-func [%limb %action]) !>(payload.c)))
   :: =/  result=[effects=(list card) state=(map @t json)]  !<([(list card) (map @t json)] (slam (slap action-lib [%limb %run]) !>(c)))
 
