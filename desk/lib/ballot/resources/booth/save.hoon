@@ -10,10 +10,13 @@
 
       ?~  payload  ~
 
-      =/  action  ((om json):dejs:format payload)
+      ?>  ?=(%o -.payload)
 
-      =/  data  (~(get by action) 'data')
+      =/  data  (~(get by p.payload) 'data')
       ?~  data  (return-error s+'error: missing data element')
+      =/  data  (need data)
+      ?>  ?=(%o -.data)
+
       =/  data  ((om json):dejs:format (need data))
 
       =/  key   (~(get by data) 'key')
@@ -21,17 +24,20 @@
         'new-booth'
       (so:dejs:format (need key))
 
-      =/  resource-store  (~(get by store) 'resources')
+      =/  store=json  ?~(store [%o ~] store)
+      ?>  ?=(%o -.store)
+      =/  resource-store  (~(get by p.store) 'resources')
       ?~  resource-store  (return-error s+'error: resources not found')
-      =/  resource-store  ((om json):dejs:format (need resource-store))
-
-      =/  booth-store  (~(get by resource-store) 'booth')
+      =/  resource-store  (need resource-store)
+      ?>  ?=(%o -.resource-store)
+      =/  booth-store  (~(get by p.resource-store) 'booth')
       ?~  booth-store  (return-error s+'error: booth store not found')
-      =/  booth-store  ((om json):dejs:format (need booth-store))
-
-      =/  booth  ?~(key ~ (~(get by booth-store) key))
-      =/  booth  ?~(booth ~ ((om json):dejs:format (need booth)))
-      =/  booth  (~(gas by booth) (~tap by data)
+      =/  booth-store  (need booth-store)
+      ?>  ?=(%o -.booth-store)
+      =/  booth  ?~(key ~ (~(get by p.booth-store) key))
+      =/  booth=json  ?~(booth [%o ~] (need booth))
+      ?>  ?=(%o -.booth)
+      =/  booth  (~(gas by p.booth) (~tap by p.data)
 
       =/  booth  (~(put by booth-store) key [%o booth])
       =/  resource-store  (~(put by resource-store) 'booth' [%o booth-store])
