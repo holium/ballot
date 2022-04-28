@@ -19,7 +19,7 @@
   $%  state-0
   ==
 ::  'main' agent store is a tree (map) of stores
-+$  state-0  [%0 store=(map @t json)]
++$  state-0  [%0 store=json]
 --
 
 %-  agent:dbug
@@ -40,7 +40,7 @@
   =/  result=action-result  (~(initialize act [bowl store.state]) ~)
 
   ?:  success.result
-    :_  this(store ?~(data.result ~ ((om json):dejs:format data.result)))  effects.result
+    :_  this(store data.result)  effects.result
   :_  this  ~
 
 ::
@@ -62,7 +62,7 @@
   |=  [=mark =vase]
   ^-  (quip card _this)
 
-  =/  result=[effects=(list card) state=(map @t json)]  (~(poke act [bowl store.state]) mark vase)
+  =/  result=[effects=(list card) state=json]  (~(poke act [bowl store.state]) mark vase)
 
   :: ?+  mark  :_  this(store state.result)  effects.result
 

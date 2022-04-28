@@ -2,11 +2,11 @@
 /+  *plugin
 |%
 ++  on
-  |=  [=bowl:gall store=(map @t json) context=(map @t json)]
+  |=  [=bowl:gall store=json context=(map @t json)]
   |%
     ++  action
       |=  [payload=json]
-      ^-  (unit action-result)
+      ^-  action-result
 
       ?~  payload  ~
 
@@ -34,7 +34,8 @@
       =/  booth  (~(gas by booth) (~tap by data)
 
       =/  booth  (~(put by booth-store) key [%o booth])
+      =/  resource-store  (~(put by resource-store) 'booth' [%o booth-store])
 
-      (some `action-result`[success=%.y data=booth effects=~])
+      `action-result`[success=%.y data=[%o resource-store] effects=~]
   --
 --

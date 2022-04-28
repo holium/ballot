@@ -2,11 +2,11 @@
 /+  *plugin
 |%
 ++  on
-  |=  [=bowl:gall store=(map @t json) context=(map @t json)]
+  |=  [=bowl:gall store=json context=(map @t json)]
   |%
     ++  action
       |=  [payload=json]
-      ^-  (unit action-result)
+      ^-  action-result
 
       ?~  payload  ~
 
@@ -32,6 +32,6 @@
       ?~  booth  (return-error s+'error: context booth not found')
       =/  booth  (need booth)
 
-      (some `action-result`[success=%.y data=booth effects=~])
+      `action-result`[success=%.y data=booth effects=~]
   --
 --

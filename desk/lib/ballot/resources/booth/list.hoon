@@ -2,11 +2,11 @@
 /+  *plugin
 |%
 ++  on
-  |=  [=bowl:gall store=(map @t json) context=(map @t json)]
+  |=  [=bowl:gall store=json context=(map @t json)]
   |%
     ++  action
       |=  [payload=json]
-      ^-  (unit action-result)
+      ^-  action-result
 
       =/  resource-store  (~(get by store) 'resources')
       ?~  resource-store  (return-error s+'error: resources not found')

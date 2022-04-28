@@ -4,11 +4,11 @@
 +$  card  card:agent:gall
 --
 
-|_  [=bowl:gall store=(map @t json)]
+|_  [=bowl:gall store=json]
 
 ++  poke
   |=  [=mark =vase]
-  ^-  [(list card) (map @t json)]
+  ^-  [(list card) json]
 
   ?+  mark  [~ store]
 
@@ -37,7 +37,7 @@
 ++  set-authentication-mode
   |=  [mode=@t]
   %-  (slog leaf+"{<dap.bowl>}: setting authentication {<mode>}..." ~)
-  `(~(put by store) 'authentication-mode' s+mode)
+  [~ store]
 
 ++  initialize
   |=  [jon=json]
@@ -86,7 +86,9 @@
     ['data' ~]
   ==
 
-  =/  store  (~(put by store) 'resources' resources)
+  =/  store=json  ?~(store [%o ~] store)
+  ?>  ?=(%o -.store)
+  =/  store  (~(put by p.store) 'resources' resources)
   =/  effects
     :~  [%pass /(scot %tas dap.bowl) %agent [our.bowl dap.bowl] %poke %json !>(action)]
     ==
@@ -138,7 +140,7 @@
 ::
 ++  handle-resource-action-http
   |=  [req=(pair @ta inbound-request:eyre) args=(map @t @t)]
-  ^-  [(list card) (map @t json)]
+  ^-  [(list card) json]
 
   =/  til=octs
         (tail body.request.q.req)
@@ -159,10 +161,7 @@
   =/  data=octs
         (as-octs:mimes:html response-data)
 
-  =/  new-state  ?:(success.result data.result ~)
-  =/  new-state  ?~(new-state ~ ((om json):dejs:format data.result))
-
-  :_  new-state
+  :_  data.result
   :~
     [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
     [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
@@ -171,15 +170,11 @@
 
 ++  handle-resource-action-poke
   |=  [payload=json]
-  ^-  [(list card) (map @t json)]
+  ^-  [(list card) json]
 
   =/  result=action-result:plugin  (handle-resource-action payload)
 
-  =/  new-state=json  ?:(success.result data.result ~)
-  =/  new-state  ?~(new-state `(map @t json)`~ ((om json):dejs:format new-state))
-
-  :_  new-state  effects.result
-  :: [~ ~]
+  :_  data.result  effects.result
 
 ++  handle-resource-action
   |=  [payload=json]
@@ -189,7 +184,9 @@
   ~&  >>  "{<dap.bowl>}: handle-resource-action called {<payload>}..."
 
   ::  check store in state to ensure there's configured resources
-  =/  resources  (~(get by store) 'resources')
+  ?>  ?=(%o -.store)
+
+  =/  resources  (~(get by p.store) 'resources')
   ?~  resources  (send-error "{<dap.bowl>}: invalid agent state. missing resources" ~)
   =/  resources  ((om json):dejs:format (need resources))
 
@@ -224,7 +221,7 @@
   =/  dispatch-mode  (~(get by resource-store) 'dispatcher')
   =/  dispatch-mode  ?~(dispatch-mode 'direct' (so:dejs:format (need dispatch-mode)))
 
-  =+  c-ctx=`call-context:plugin`[bowl context store data]
+  =+  c-ctx=`call-context:plugin`[bowl context p.store data]
 
   ?+  dispatch-mode  (send-error "{<dap.bowl>}: unrecognized dispatcher value" ~)
 
@@ -355,8 +352,8 @@
     ::  either lookup or take action on
     ?:  (lth (lent segments) 2)
         ``json+!>(s+'invalid path')
-
-    =/  resource-store  (~(get by store) 'resources')
+    ?>  ?=(%o -.store)
+    =/  resource-store  (~(get by p.store) 'resources')
     ?~  resource-store
       ~&  >>>  "{<dap.bowl>}: invalid app state. no resources in store. crash."
       !!
@@ -400,8 +397,9 @@
 
     =/  action-lib  .^([p=type q=*] %ca lib-file)
     =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl store context]))
-    =/  result  !<((unit action-result:plugin) (slam (slap on-func [%limb %action]) !>([%o action])))
-    =/  result  ?~(result ~ (need result))
+    =/  result  !<(action-result:plugin (slam (slap on-func [%limb %action]) !>([%o action])))
+    :: =/  result  ?~(result ~ (need result))
 
-    ``json+!>(?~(result ~ data.result))
+    ``json+!>(data.result)
+    :: ``json+!>(?~(result ~ data.result))
 --
