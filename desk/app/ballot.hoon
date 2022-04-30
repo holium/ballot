@@ -76,7 +76,12 @@
   |=  =path
   ^-  (quip card _this)
 
-  `this
+  %-  (slog leaf+"ballot: on-agent {<path>} data received..." ~)
+  =/  result=[effects=(list card) store=json]  (~(watch act [bowl store.state]) path)
+
+  :_  this(store store.result)
+
+  effects.result
 
 ::
 ++  on-leave  on-leave:def
@@ -101,9 +106,12 @@
   ^-  (quip card _this)
 
   =/  wirepath  `path`wire
-  %-  (slog leaf+"ballot: on-agent {<wirepath>} data received..." ~)
+  %-  (slog leaf+"ballot: on-agent {<wirepath>}, {<sign>} data received..." ~)
+  =/  result=[effects=(list card) store=json]  (~(agent act [bowl store.state]) wirepath)
 
-  `this
+  :_  this(store store.result)
+
+  effects.result
 
 ++  on-arvo
   |=  [=wire =sign-arvo]

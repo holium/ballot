@@ -81,7 +81,7 @@
       =/  booth-key  (so:dejs:format (~(got by booth) 'key'))
       =/  owner  (so:dejs:format (~(got by booth) 'owner'))
       =/  booth-ship=@p  `@p`(slav %p owner)
-      =/  destpath=path  `path`/booth/(scot %tas booth-key)
+      =/  destpath=path  `path`/resources/booth/(scot %tas booth-key)
       %-  (slog leaf+"ballot: subscribing to {<destpath>}..." ~)
       [%pass destpath %agent [booth-ship %ballot] %watch destpath]
   --
