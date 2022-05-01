@@ -12,7 +12,7 @@
 +$  versioned-state
   $%  state-0
   ==
-+$  state-0  [%0 authentication=@t mq=(map @t json) polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json))]
++$  state-0  [%0 authentication=@t mq=(map @t json) polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json)) delegates=(map @t (map @t json))]
 --
 %-  agent:dbug
 =|  state-0
@@ -251,6 +251,9 @@
             [%participant %delete-participant]
               (delete-participant-api req payload)
 
+            [%delegate %delegate]
+              (delegate-api req payload)
+
       ==
 
     ::  ARM: ++  handle-channel-poke
@@ -295,6 +298,9 @@
         %cast-vote
           %-  (log:core %info "ballot: %cast-vote from {<src.bowl>}...")
           (cast-vote-wire contract)
+
+        %delegate
+          (delegate-wire contract)
 
       ==
 
@@ -1344,6 +1350,296 @@
           [%give %fact [/booths]~ %json !>(updates)]
           [%pass /booths/(scot %tas booth-key)/msg/(scot %tas msg-id) %agent [participant-ship %ballot] %poke %json !>([%o wire-payload])]
         ==
+
+      ++  delegate-api
+        |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
+        ^-  (quip card _state)
+
+        :: =/  payload  ?:(=([%o *] payload) p.payload ~)
+
+        %-  (slog leaf+"{<dap.bowl>}: delegate-api {<payload>}..." ~)
+
+        =/  context  (~(get by payload) 'context')
+        ?~  context  (send-api-error req 'missing context')
+        =/  context  (need context)
+        =/  context  ?:  ?=([%o *] context)  p.context  ~
+
+        =/  booth-key  (~(get by context) 'booth')
+        ?~  booth-key  (send-api-error req 'missing context key. booth key')
+        =/  booth-key  (so:dejs:format (need booth-key))
+
+        =/  booth  (~(get by booths.state) booth-key)
+        ?~  booth  (send-api-error req 'unexpected error. booth {<booth-key>} not found in store')
+        =/  booth  (need booth)
+
+        =/  booth  ?:  ?=([%o *] booth)  p.booth  ~
+        =/  booth-owner  (~(get by booth) 'owner')
+        ?~  booth-owner  (send-api-error req 'booth owner not found')
+        =/  booth-owner  (need booth-owner)
+        =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
+
+        :: =/  signature  (sign:sig our.bowl now.bowl [%o payload-data])
+
+        :: =/  j-sig=json
+        :: %-  pairs:enjs:format
+        :: :~
+        ::   ['hash' s+`@t`(scot %ux p.signature)]
+        ::   ['voter' s+(crip "{<q.signature>}")]
+        ::   ['life' (numb:enjs:format r.signature)]
+        :: ==
+
+        :: =/  payload-data  (~(put by payload) 'sig' j-sig)
+
+        =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
+        %-  (log:core %warn "sending {<booth-owner>} delegate to {<remote-agent-wire>}...")
+
+        =/  =response-header:http
+          :-  200
+          :~  ['Content-Type' 'application/json']
+          ==
+
+        ::  encode the proposal as a json string
+        =/  body  (crip (en-json:html [%o payload]))
+
+        ::  convert the string to a form that arvo will understand
+        =/  data=octs
+              (as-octs:mimes:html body)
+
+        :_  state
+
+        :~
+          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
+          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
+          [%give %kick [/http-response/[p.req]]~ ~]
+          [%pass remote-agent-wire %agent [booth-owner %ballot] %poke %json !>([%o payload])]
+        ==
+
+      ++  delegate-wire
+        |=  [payload=(map @t json)]
+        ^-  (quip card _state)
+
+        %-  (slog leaf+"{<dap.bowl>}: delegate-wire {<payload>}..." ~)
+        :: =/  payload  ?:(=([%o *] payload) p.payload ~)
+
+        =/  context  (~(get by payload) 'context')
+        ?~  context  !!
+        =/  context  (need context)
+        =/  context  ?:  ?=([%o *] context)  p.context  ~
+
+        =/  booth-key  (~(get by context) 'booth')
+        ?~  booth-key  !!
+        =/  booth-key  (so:dejs:format (need booth-key))
+
+        =/  booth  (~(get by booths.state) booth-key)
+        ?~  booth  !!
+        =/  booth  (need booth)
+
+        =/  booth  ?:  ?=([%o *] booth)  p.booth  ~
+        =/  booth-owner  (~(get by booth) 'owner')
+        ?~  booth-owner  !!
+        =/  booth-owner  (need booth-owner)
+        =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
+
+        =/  participant-key  (~(get by context) 'participant')
+        ?~  participant-key  !!
+        =/  participant-key  (so:dejs:format (need participant-key))
+
+        =/  data  (~(get by payload) 'data')
+        ?~  data  !!
+        =/  data  (need data)
+        =/  data  ?:  ?=([%o *] data)  p.data  ~
+
+        =/  delegate-key  (~(get by data) 'delegate')
+        ?~  delegate-key  !!
+        =/  delegate-key  (so:dejs:format (need delegate-key))
+
+        %-  (log:core %warn "delegating participant {<participant-key>} vote to {<delegate-key>}...")
+
+        :: =/  j-sig  (~(get by vote) 'sig')
+        :: =/  j-sig  ?~(j-sig ~ ((om json):dejs:format (need j-sig)))
+        :: =/  hash  (~(get by j-sig) 'hash')
+        :: ?~  hash  !!  :: %-  (log:core %error "ballot: invalid vote signature. hash not found.")  !!
+        :: =/  hash  `@ux`((se %ux):dejs:format (need hash))
+        :: =/  voter-ship  (~(get by j-sig) 'voter')
+        :: ?~  voter-ship  !! :: %-  (log:core %error "ballot: invalid vote signature. voter not found.")  !!
+        :: =/  voter-ship  ((se %p):dejs:format (need voter-ship))
+        :: =/  life  (~(get by j-sig) 'life')
+        :: ?~  life  !! :: %-  (log:core %error "ballot: invalid vote signature. life not found.")  !!
+        :: =/  life  (ni:dejs:format (need life))
+        :: =/  sign=signature:ballot  [p=hash q=voter-ship r=life]
+        :: %-  (log:core %warn "{<[sign]>}")
+        :: %-  (log:core %info "ballot: verifying vote signature {<sign>}...")
+        :: =/  verified  (verify:sig our.bowl now.bowl sign)
+        :: ?~  verified  !!
+        ::       :: %-  (log:core %error "ballot: vote could not be verified")  !!
+        :: %-  (log:core %info "ballot: signature verified")
+
+        =/  booth-participants  (~(get by delegates.state) booth-key)
+        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+        =/  participant  (~(get by booth-participants) participant-key)
+        ?.  =(~ participant)  !!
+        =/  participant  (need participant)
+        =/  participant  ?:  ?=([%o *] participant)  p.participant  ~
+        =/  delegate=json
+        %-  pairs:enjs:format
+        :~
+          ['key' s+delegate-key]
+          ['created' (time:enjs:format now.bowl)]
+        ==
+        =/  booth-participants  (~(put by booth-participants) participant-key delegate)
+        =/  sig=@t  '012'
+
+        =/  effect-data=json
+        %-  pairs:enjs:format
+        :~
+          [delegate-key s+sig]
+        ==
+
+        =/  participant-effect=json
+        %-  pairs:enjs:format
+        :~
+          ['resource' s+'delegate']
+          ['effect' s+'add']
+          ['key' s+participant-key]
+          ['data' effect-data]
+        ==
+
+        =/  effects=json
+        %-  pairs:enjs:format
+        :~
+          ['action' s+'delegate-reaction']
+          ['context' [%o context]]
+          ['effects' [%a [participant-effect]~]]
+        ==
+
+        =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
+        %-  (log:core %warn "sending {<booth-owner>} delegate to {<remote-agent-wire>}...")
+
+        =/  =response-header:http
+          :-  200
+          :~  ['Content-Type' 'application/json']
+          ==
+
+        =/  payload  (~(put by payload) 'data' [%o participant])
+
+        ::  encode the proposal as a json string
+        =/  body  (crip (en-json:html [%o payload]))
+
+        ::  convert the string to a form that arvo will understand
+        =/  data=octs
+              (as-octs:mimes:html body)
+
+        :_  state(delegates (~(put by delegates.state) booth-key booth-participants))
+
+        :~
+          [%give %fact [/booths]~ %json !>(effects)]
+          [%give %fact [remote-agent-wire]~ %json !>(effects)]
+        ==
+
+      ++  undelegate-api
+        |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
+        ^-  (quip card _state)
+
+        :: =/  payload  ?:(=([%o *] payload) p.payload ~)
+
+        =/  context  (~(get by payload) 'context')
+        ?~  context  (send-api-error req 'missing context')
+        =/  context  (need context)
+        =/  context  ?:  ?=([%o *] context)  p.context  ~
+
+        =/  booth-key  (~(get by context) 'booth')
+        ?~  booth-key  (send-api-error req 'missing context key. booth key')
+        =/  booth-key  (so:dejs:format (need booth-key))
+
+        =/  booth  (~(get by booths.state) booth-key)
+        ?~  booth  (send-api-error req 'unexpected error. booth {<booth-key>} not found in store')
+        =/  booth  (need booth)
+
+
+        =/  booth  ?:  ?=([%o *] booth)  p.booth  ~
+        =/  booth-owner  (~(get by booth) 'owner')
+        ?~  booth-owner  (send-api-error req 'booth owner not found')
+        =/  booth-owner  (need booth-owner)
+        =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
+
+        =/  participant-key  (~(get by context) 'participant')
+        ?~  participant-key  (send-api-error req 'missing context key. participant key')
+        =/  participant-key  (so:dejs:format (need participant-key))
+
+        =/  data  (~(get by payload) 'data')
+        ?~  data  (send-api-error req 'missing data')
+        =/  data  (need data)
+        =/  data  ?:  ?=([%o *] data)  p.data  ~
+
+        =/  delegate-key  (~(get by data) 'delegate')
+        ?~  delegate-key  (send-api-error req 'missing data. delegate key')
+        =/  delegate-key  (so:dejs:format (need delegate-key))
+
+        %-  (log:core %warn "delegating participant {<participant-key>} vote to {<delegate-key>}...")
+
+        =/  booth-participants  (~(get by delegates.state) booth-key)
+        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+        =/  participant  (~(get by booth-participants) participant-key)
+        =/  participant  ?~(participant ~ (need participant))
+        =/  booth-participants  (~(del by booth-participants) participant-key)
+
+        =/  delegate=json
+        %-  pairs:enjs:format
+        :~
+          ['key' s+delegate-key]
+          ['created' (time:enjs:format now.bowl)]
+        ==
+        =/  booth-participants  (~(put by booth-participants) participant-key delegate)
+        =/  sig=@t  '012'
+
+        =/  effect-data=json
+        %-  pairs:enjs:format
+        :~
+          [delegate-key s+sig]
+        ==
+
+        =/  participant-effect=json
+        %-  pairs:enjs:format
+        :~
+          ['resource' s+'delegate']
+          ['effect' s+'delete']
+          ['key' s+participant-key]
+          ['data' effect-data]
+        ==
+
+        =/  effects=json
+        %-  pairs:enjs:format
+        :~
+          ['action' s+'delegate-reaction']
+          ['context' [%o context]]
+          ['effects' [%a [participant-effect]~]]
+        ==
+
+        =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
+        %-  (log:core %warn "sending {<booth-owner>} delegate to {<remote-agent-wire>}...")
+
+        =/  =response-header:http
+          :-  200
+          :~  ['Content-Type' 'application/json']
+          ==
+
+        =/  payload  (~(put by payload) 'data' participant)
+
+        ::  encode the proposal as a json string
+        =/  body  (crip (en-json:html [%o payload]))
+
+        ::  convert the string to a form that arvo will understand
+        =/  data=octs
+              (as-octs:mimes:html body)
+
+        :_  state(delegates (~(put by delegates.state) booth-key booth-participants))
+
+        :~
+          [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
+          [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
+          [%give %kick [/http-response/[p.req]]~ ~]
+          [%pass remote-agent-wire %agent [booth-owner %ballot] %poke %json !>([%o payload])]
+        ==
     --
 
 ::  ARM:  on-watch
@@ -1557,6 +1853,47 @@
         ?~  participants  ``json+!>(~)
         ``json+!>([%o (need participants)])
 
+      [%x %booths @ %delegates ~]
+        =/  segments  `(list @ta)`path
+        =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
+        %-  (log:core %warn "ballot: extracting participants for booth {<key>}...")
+        |^
+          =/  delegate-view  (view-delegates key)
+          ``json+!>(delegate-view)
+          ++  view-delegates
+            |=  key=@t
+            ^-  json
+            =/  participants  (~(get by delegates.state) key)
+            =/  participants  ?~(participants ~ (need participants))
+            =/  result
+            %-  ~(rep in participants)
+            |=  [[key=@t data=json] acc=json]
+              ^-  json
+              =/  view-data  ?:  ?=([%o *] acc)  p.acc  ~
+              =/  delegate-data  ?:  ?=([%o *] data)  p.data  ~
+              =/  delegate-key  (~(get by delegate-data) 'key')
+              ?~  delegate-key  acc
+              =/  delegate-key  (so:dejs:format (need delegate-key))
+              =/  view-entry  (~(get by view-data) delegate-key)
+              =/  view-entry  ?~(view-entry ~ (need view-entry))
+              =/  view-entry  ?:  ?=([%o *] view-entry)  p.view-entry  ~
+              =/  count  (~(get by view-entry) 'count')
+              =/  count  ?~(count 0 (ni:dejs:format (need count)))
+              =/  count  (add count 1)
+              =/  view-entry  (~(put by view-entry) 'count' n+count)
+              =/  view-data  (~(put by view-data) delegate-key [%o view-entry])
+              [%o view-data]
+            result
+        --
+
+      [%x %booths @ @ @ %delegates ~]
+        =/  segments  `(list @ta)`path
+        =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
+        %-  (log:core %warn "ballot: extracting participants for booth {<key>}...")
+        =/  participants  (~(get by delegates.state) key)
+        ?~  participants  ``json+!>(~)
+        ``json+!>([%o (need participants)])
+
   ==
 
 ::
@@ -1758,6 +2095,9 @@
                 %booth-reaction
                   (handle-booth-reaction payload)
 
+                %delegate-reaction
+                  (handle-delegate-reaction payload)
+
               ==
 
           ==
@@ -1785,6 +2125,45 @@
 
       %delete
         :_  this(booths (~(del by booths.state) booth-key))
+        :~  [%give %fact [/booths]~ %json !>([%o payload])]
+        ==
+
+    ==
+
+  ++  handle-delegate-reaction
+    |=  [payload=(map @t json)]
+
+    %-  (log:core %info "ballot: handle-delegate-reaction received...")
+
+    =/  context  (~(get by payload) 'context')
+    =/  context  ?~(context ~ (need context))
+    =/  context  ?:  ?=([%o *] context)  p.context  ~
+    =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+    =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
+
+    =/  effects  ((ar json):dejs:format (~(got by payload) 'effects'))
+    =/  effect  (snag 0 effects)
+    =/  effect  ?:  ?=([%o *] effect)  p.effect  ~
+
+    =/  effect-name  (so:dejs:format (~(got by effect) 'effect'))
+
+    ?+  effect-name  !!  :: %-  (log:core %error "ballot: unknown effect type")  !!
+
+      %add
+        =/  booth-participants  (~(get by delegates.state) booth-key)
+        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+        =/  participant  (~(get by booth-participants) participant-key)
+        =/  participant  ?~(participant ~ (need participant))
+        =/  participant  ?:  ?=([%o *] participant)  p.participant  ~
+        =/  effect-data  (~(get by effect) 'data')
+        ?~  effect-data  !!
+        =/  effect-data  (need effect-data)
+        =/  effect-data  ?:  ?=([%o *] effect-data)  p.effect-data  ~
+        =/  delegate  (snag 0 ~(tap by effect-data))
+        =/  delegate-key  p.delegate
+        =/  participant  (~(put by participant) '' [%o effect-data])
+        =/  booth-participants  (~(put by booth-participants) participant-key [%o participant])
+        :_  this(delegates (~(put by delegates.state) booth-key booth-participants))
         :~  [%give %fact [/booths]~ %json !>([%o payload])]
         ==
 
