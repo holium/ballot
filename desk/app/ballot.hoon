@@ -6,7 +6,7 @@
 ::
 :: ***********************************************************
 /-  *group, group-store, ballot-store, ballot
-/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature, views=ballot-views
+/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature, view=ballot-views
 |%
 +$  card  card:agent:gall
 +$  versioned-state
@@ -1947,14 +1947,14 @@
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
         %-  (slog leaf+"ballot: extracting participants for booth {<key>}..." ~)
-        =/  delegate-view  (view-delegates:views key)
+        =/  delegate-view  (~(dlg view [bowl delegates.state]) key)
         ``json+!>(delegate-view)
 
       [%x %booths @ @ @ %delegates ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
         %-  (log:core %warn "ballot: extracting participants for booth {<key>}...")
-        =/  delegate-view  (view-delegates:views key)
+        =/  delegate-view  (~(dlg view [bowl delegates.state]) key)
         ``json+!>(delegate-view)
 
   ==

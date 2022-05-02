@@ -1,9 +1,8 @@
-|%
-
+|_  [=bowl:gall store=(map @t (map @t json))]
 ++  dlg
   |=  key=@t
   ^-  json
-  =/  participants  (~(get by delegates.state) key)
+  =/  participants  (~(get by store) key)
   =/  participants  ?~(participants ~ (need participants))
   =/  result
   %-  ~(rep in participants)
