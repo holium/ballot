@@ -3127,6 +3127,9 @@
     =/  votes  ?~(votes ~ ((om json):dejs:format (need votes)))
     =/  polls  (~(get by data) 'polls')
     =/  polls  ?~(polls ~ ((om json):dejs:format (need polls)))
+    =/  delegates  (~(get by data) 'delegates')
+    =/  delegates  ?~(delegates ~ (need delegates))
+    =/  delegates  ?:  ?=([%o *] delegates)  p.delegates  ~
 
     =/  booth-key  (so:dejs:format (~(got by booth) 'key'))
 
@@ -3145,6 +3148,10 @@
     =/  booth-polls  (~(get by polls.state) booth-key)
     =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
     =/  booth-polls  (~(gas by booth-polls) ~(tap by polls))
+
+    =/  booth-delegates  (~(get by delegates.state) booth-key)
+    =/  booth-delegates  ?~(booth-delegates ~ (need booth-delegates))
+    =/  booth-delegates  (~(gas by booth-delegates) ~(tap by delegates))
 
     =/  initial-effect=json
     %-  pairs:enjs:format

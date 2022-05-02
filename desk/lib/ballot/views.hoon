@@ -3,7 +3,8 @@
   |=  key=@t
   ^-  json
   =/  participants  (~(get by store) key)
-  =/  participants  ?~(participants ~ (need participants))
+  ?~  participants  [%o ~]
+  =/  participants  (need participants)
   =/  result
   %-  ~(rep in participants)
   |=  [[key=@t data=json] acc=json]
