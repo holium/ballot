@@ -1391,17 +1391,32 @@
         =/  booth-owner  (need booth-owner)
         =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
 
-        :: =/  signature  (sign:sig our.bowl now.bowl [%o payload-data])
+        =/  data  (~(get by payload) 'data')
+        ?~  data  (send-api-error req 'payload data not found')
+        =/  data  (need data)
+        =/  data  ?:  ?=([%o *] data)  p.data  ~
+        =/  delegate  (~(get by data) 'delegate')
+        ?~  delegate  (send-api-error req 'delegate element not found')
+        =/  delegate  (so:dejs:format (need delegate))
 
-        :: =/  j-sig=json
-        :: %-  pairs:enjs:format
-        :: :~
-        ::   ['hash' s+`@t`(scot %ux p.signature)]
-        ::   ['voter' s+(crip "{<q.signature>}")]
-        ::   ['life' (numb:enjs:format r.signature)]
-        :: ==
+        =/  delegation=json
+        %-  pairs:enjs:format
+        :~
+          ['participant' s+(crip "{<our.bowl>}")]
+          ['delegate' s+delegate]
+        ==
 
-        :: =/  payload-data  (~(put by payload) 'sig' j-sig)
+        =/  signature  (sign:sig our.bowl now.bowl delegation)
+
+        =/  j-sig=json
+        %-  pairs:enjs:format
+        :~
+          ['hash' s+`@t`(scot %ux p.signature)]
+          ['voter' s+(crip "{<q.signature>}")]
+          ['life' (numb:enjs:format r.signature)]
+        ==
+
+        =/  payload-data  (~(put by payload) 'data' j-sig)
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
         %-  (log:core %warn "sending {<booth-owner>} delegate to {<remote-agent-wire>}...")
@@ -1424,7 +1439,7 @@
           [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
           [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
           [%give %kick [/http-response/[p.req]]~ ~]
-          [%pass remote-agent-wire %agent [booth-owner %ballot] %poke %json !>([%o payload])]
+          [%pass remote-agent-wire %agent [booth-owner %ballot] %poke %json !>([%o payload-data])]
         ==
 
       ++  delegate-wire
@@ -1461,12 +1476,6 @@
         =/  booth-owner  (need booth-owner)
         =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
 
-        =/  participant-key  (~(get by context) 'participant')
-        ?~  participant-key
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. context missing participant"
-          !!
-        =/  participant-key  (so:dejs:format (need participant-key))
-
         =/  data  (~(get by payload) 'data')
         ?~  data
           ~&  >>>  "{<dap.bowl>}: delegate wire error. payload missing data"
@@ -1480,27 +1489,26 @@
           !!
         =/  delegate-key  (so:dejs:format (need delegate-key))
 
-        %-  (log:core %warn "delegating participant {<participant-key>} vote to {<delegate-key>}...")
+        =/  j-sig  (~(get by data) 'sig')
+        =/  j-sig  ?~(j-sig ~ ((om json):dejs:format (need j-sig)))
+        =/  hash  (~(get by data) 'hash')
+        ?~  hash  !!  :: %-  (log:core %error "ballot: invalid vote signature. hash not found.")  !!
+        =/  hash  `@ux`((se %ux):dejs:format (need hash))
+        =/  voter-ship  (~(get by data) 'voter')
+        ?~  voter-ship  !! :: %-  (log:core %error "ballot: invalid vote signature. voter not found.")  !!
+        =/  voter-ship  ((se %p):dejs:format (need voter-ship))
+        =/  life  (~(get by data) 'life')
+        ?~  life  !! :: %-  (log:core %error "ballot: invalid vote signature. life not found.")  !!
+        =/  life  (ni:dejs:format (need life))
+        =/  sign=signature:ballot  [p=hash q=voter-ship r=life]
+        %-  (log:core %warn "{<[sign]>}")
+        %-  (log:core %info "ballot: verifying vote signature {<sign>}...")
+        =/  verified  (verify:sig our.bowl now.bowl sign)
+        ?~  verified  !!
+              :: %-  (log:core %error "ballot: vote could not be verified")  !!
+        %-  (log:core %info "ballot: signature verified {<verified>}")
 
-        :: =/  j-sig  (~(get by vote) 'sig')
-        :: =/  j-sig  ?~(j-sig ~ ((om json):dejs:format (need j-sig)))
-        :: =/  hash  (~(get by j-sig) 'hash')
-        :: ?~  hash  !!  :: %-  (log:core %error "ballot: invalid vote signature. hash not found.")  !!
-        :: =/  hash  `@ux`((se %ux):dejs:format (need hash))
-        :: =/  voter-ship  (~(get by j-sig) 'voter')
-        :: ?~  voter-ship  !! :: %-  (log:core %error "ballot: invalid vote signature. voter not found.")  !!
-        :: =/  voter-ship  ((se %p):dejs:format (need voter-ship))
-        :: =/  life  (~(get by j-sig) 'life')
-        :: ?~  life  !! :: %-  (log:core %error "ballot: invalid vote signature. life not found.")  !!
-        :: =/  life  (ni:dejs:format (need life))
-        :: =/  sign=signature:ballot  [p=hash q=voter-ship r=life]
-        :: %-  (log:core %warn "{<[sign]>}")
-        :: %-  (log:core %info "ballot: verifying vote signature {<sign>}...")
-        :: =/  verified  (verify:sig our.bowl now.bowl sign)
-        :: ?~  verified  !!
-        ::       :: %-  (log:core %error "ballot: vote could not be verified")  !!
-        :: %-  (log:core %info "ballot: signature verified")
-
+        =/  participant-key  (crip "{<src.bowl>}")
         =/  booth-participants  (~(get by delegates.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
         =/  participant  (~(get by booth-participants) participant-key)
@@ -1515,22 +1523,21 @@
           ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} already voted"
           !!
 
-        =/  sig=@t  '012'
-        =/  delegate=json
+        =/  delegation=json
         %-  pairs:enjs:format
         :~
           ['delegate' s+delegate-key]
-          ['sig' s+sig]
           ['created' (time:enjs:format now.bowl)]
         ==
-        =/  booth-participants  (~(put by booth-participants) participant-key delegate)
+
+        =/  booth-participants  (~(put by booth-participants) participant-key [%o data])
         =/  participant-effect=json
         %-  pairs:enjs:format
         :~
           ['resource' s+'delegate']
           ['effect' s+'add']
           ['key' s+participant-key]
-          ['data' delegate]
+          ['data' delegation]
         ==
 
         =/  effects=json
