@@ -231,6 +231,9 @@
       =/  action  (so:dejs:format (~(got by payload) 'action'))
       =/  resource  (so:dejs:format (~(got by payload) 'resource'))
 
+      ?:  =(resource 'custom-action')
+
+
       ?+  [resource action]  `state
 
             [%booth %invite]
@@ -257,7 +260,24 @@
             [%delegate %undelegate]
               (undelegate-api req payload)
 
+
       ==
+
+    ++  execute-direct
+      |=  [resource=@t action=@t c=call-context:plugin]
+      :: ^-  [(list card) (map @t json)]
+      ^-  action-result:plugin
+
+      =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action)/hoon
+
+      ?.  .^(? %cu lib-file)
+        (send-error "{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
+
+      =/  action-lib  .^([p=type q=*] %ca lib-file)
+      =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl.c store.c args.c]))
+      =/  result  !<(action-result:plugin (slam (slap on-func [%limb %action]) !>(payload.c)))
+
+      result
 
     ::  ARM: ++  handle-channel-poke
     ::  ~lodlev-migdev - handle actions coming in from eyre channeling mechanism
