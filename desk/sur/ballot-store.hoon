@@ -10,6 +10,8 @@
 
 +$  invitations  (map @t (set @p))
 
++$  state-0  [%0 authentication=@t mq=(map @t json) polls=(map @t (map @t json)) booths=booths proposals=proposals participants=participants invitations=invitations votes=(map @t (map @t json)) delegates=(map @t (map @t json))]
+
 +$  base-data
   $:  remote=?(%.y %.n)
       =ship

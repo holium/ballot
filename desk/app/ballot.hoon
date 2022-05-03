@@ -5,17 +5,17 @@
 ::    Ball app agent for contexts, booths, proposals, and participants.
 ::
 :: ***********************************************************
-/-  *group, group-store, ballot-store, ballot
+/-  *group, group-store, ballot-store, ballot, plugin
 /+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature, view=ballot-views
 |%
 +$  card  card:agent:gall
 +$  versioned-state
-  $%  state-0
+  $%  state-0:ballot-store
   ==
-+$  state-0  [%0 authentication=@t mq=(map @t json) polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json)) delegates=(map @t (map @t json))]
+:: +$  state-0  [%0 authentication=@t mq=(map @t json) polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json)) delegates=(map @t (map @t json))]
 --
 %-  agent:dbug
-=|  state-0
+=|  state-0:ballot-store
 =*  state  -
 ^-  agent:gall
 |_  =bowl:gall
@@ -231,9 +231,6 @@
       =/  action  (so:dejs:format (~(got by payload) 'action'))
       =/  resource  (so:dejs:format (~(got by payload) 'resource'))
 
-      ?:  =(resource 'custom-action')
-
-
       ?+  [resource action]  `state
 
             [%booth %invite]
@@ -262,22 +259,6 @@
 
 
       ==
-
-    ++  execute-direct
-      |=  [resource=@t action=@t c=call-context:plugin]
-      :: ^-  [(list card) (map @t json)]
-      ^-  action-result:plugin
-
-      =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/resources/(scot %tas resource)/(scot %tas action)/hoon
-
-      ?.  .^(? %cu lib-file)
-        (send-error "{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
-
-      =/  action-lib  .^([p=type q=*] %ca lib-file)
-      =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl.c store.c args.c]))
-      =/  result  !<(action-result:plugin (slam (slap on-func [%limb %action]) !>(payload.c)))
-
-      result
 
     ::  ARM: ++  handle-channel-poke
     ::  ~lodlev-migdev - handle actions coming in from eyre channeling mechanism
@@ -3492,9 +3473,10 @@
       :: %-  (log:core %error "poll not found")  !!
     (so:dejs:format (need poll-key))
 
-    =/  poll-results  (tally-results booth-key proposal-key)
+    =/  poll-results=[data=json effects=(list card)]  (tally-results booth-key proposal-key)
+
     =/  poll  (~(put by poll) 'status' s+'closed')
-    =/  poll  (~(put by poll) 'results' poll-results)
+    =/  poll  (~(put by poll) 'results' data.poll-results)
     =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
 
     =/  booth-proposals  (~(get by proposals.state) booth-key)
@@ -3502,7 +3484,7 @@
     =/  proposal  (~(get by booth-proposals) proposal-key)
     =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
     =/  proposal  (~(put by proposal) 'status' s+'poll-closed')
-    =/  proposal  (~(put by proposal) 'tally' poll-results)
+    =/  proposal  (~(put by proposal) 'tally' data.poll-results)
     =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal])
 
     %-  (log:core %info "poll results are in!!! => {<poll-results>}")
@@ -3519,7 +3501,7 @@
     %-  pairs:enjs:format
     :~
       ['status' s+'poll-closed']
-      ['tally' poll-results]
+      ['tally' data.poll-results]
     ==
 
     =/  results-effect=json
@@ -3541,14 +3523,18 @@
 
     %-  (log:core %info "sending poll results to subcribers => {<effects>}...")
 
-    :_  this(polls (~(put by polls.state) booth-key booth-polls), proposals (~(put by proposals.state) booth-key booth-proposals))
+    =/  effects=(list card)
     :~  [%give %fact [/booths]~ %json !>(effects)]
         [%give %fact [/booths/(scot %tas booth-key)]~ %json !>([effects])]
     ==
+    =/  effects  (weld effects effects.poll-results)
+
+    :_  this(polls (~(put by polls.state) booth-key booth-polls), proposals (~(put by proposals.state) booth-key booth-proposals))
+    effects
 
   ++  tally-results
     |=  [booth-key=@t proposal-key=@t]
-    ^-  json
+    ^-  [json (list card)]
 
     %-  (log:core %info "tally-results called. [booth-key={<booth-key>}, proposal-key={<proposal-key>}]")
 
@@ -3632,7 +3618,7 @@
             (gth val-a val-b)
           ~
 
-    =/  result=[choice=(unit @t) reason=(unit @t)]
+    =/  result=[choice=(unit @t) custom-action=(unit @t) data=json reason=(unit @t)]
         ?:  ?&  !=(~ tallies)
                 (gth (lent tallies) 0)
             ==
@@ -3648,11 +3634,15 @@
                         choice-1
                       ~
                     choice-1
-              ?~  top-choice  [~ (some 'tied')]
+              ?~  top-choice  [~ ~ ~ (some 'tied')]
               =/  label  (~(get by choice-1) 'label')
               =/  label  ?~(label '?' (so:dejs:format (need label)))
-              [(some label) ~]
-            [~ (some 'support')]
+              =/  custom-action  (~(get by choice-1) 'action')
+              =/  custom-action  ?~(custom-action ~ (some (so:dejs:format (need custom-action))))
+              =/  data  (~(get by choice-1) 'data')
+              =/  data  ?~(data ~ (need data))
+              [(some label) custom-action data ~]
+            [~ ~ ~ (some 'support')]
 
     ::  after list is sorted, top choice will be first item in list
 
@@ -3672,7 +3662,31 @@
         ['voteCount' (numb:enjs:format `@ud`vote-count)]
         ['participantCount' (numb:enjs:format `@ud`participant-count)]
       ==
-    results
+
+    =/  custom-action-effects=(list card)  ?:  ?&  !=(custom-action.result ~)
+            !=(choice.result ~)
+        ==
+      =/  custom-action-result  (execute-custom-action [booth-key proposal-key] (need custom-action.result) data.result results)
+      ?:(success.custom-action-result effects.custom-action-result ~)
+    ~
+
+    [results custom-action-effects]
+
+  ++  execute-custom-action
+    |=  [[booth-key=@t proposal-key=@t] action=@t action-data=json payload=json]
+    :: ^-  [(list card) (map @t json)]
+    ^-  action-result:plugin
+
+    =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/%custom-actions/(scot %tas action)/hoon
+
+    ?.  .^(? %cu lib-file)
+      (mean leaf+"{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
+
+    =/  action-lib  .^([p=type q=*] %ca lib-file)
+    =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl state [booth-key proposal-key] action-data]))
+    =/  result  !<(action-result:plugin (slam (slap on-func [%limb %action]) !>(payload)))
+
+    result
 
   ++  count-vote
     |:  [voter-count=`@ud`1 count=`@ud`1 vote=`[@t json]`[%null ~] results=`(map @t json)`~]
@@ -3685,6 +3699,7 @@
     =/  v  ((om json):dejs:format +.vote)
     =/  choice  ((om json):dejs:format (~(got by v) 'choice'))
     =/  label  (so:dejs:format (~(got by choice) 'label'))
+    =/  action  (so:dejs:format (~(got by choice) 'action'))
 
     ::  label, count, percentage
     =/  result  (~(get by results) label)
@@ -3698,6 +3713,7 @@
     :: =/  percentage  (div choice-count `@ud`voter-count)
 
     =.  result  (~(put by result) 'label' s+label)
+    =.  result  (~(put by result) 'action' s+action)
     =.  result  (~(put by result) 'count' (numb:enjs:format choice-count))
     =.  result  (~(put by result) 'percentage' n+(crip "{(r-co:co (drg:rd percentage))}"))
 
