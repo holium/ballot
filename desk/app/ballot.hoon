@@ -6,7 +6,7 @@
 ::
 :: ***********************************************************
 /-  *group, group-store, ballot-store, ballot, plugin
-/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature, view=ballot-views
+/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature, view=ballot-views, plugin=ballot-plugin, shared=ballot-shared
 |%
 +$  card  card:agent:gall
 +$  versioned-state
@@ -1394,8 +1394,7 @@
 
         =/  data  (~(get by payload) 'data')
         ?~  data  (send-api-error req 'payload data not found')
-        =/  data  (need data)
-        =/  data  ?:  ?=([%o *] data)  p.data  ~
+        =/  data  ?:(?=([%o *] u.data) p.u.data ~)
         =/  delegate  (~(get by data) 'delegate')
         ?~  delegate  (send-api-error req 'delegate element not found')
         =/  delegate  (so:dejs:format (need delegate))
@@ -1403,21 +1402,26 @@
         =/  delegation=json
         %-  pairs:enjs:format
         :~
-          ['participant' s+(crip "{<our.bowl>}")]
           ['delegate' s+delegate]
         ==
 
         =/  signature  (sign:sig our.bowl now.bowl delegation)
 
-        =/  j-sig=json
+        =/  sig-data=json
         %-  pairs:enjs:format
         :~
           ['hash' s+`@t`(scot %ux p.signature)]
           ['voter' s+(crip "{<q.signature>}")]
           ['life' (numb:enjs:format r.signature)]
         ==
+        =/  sig-payload=json
+        %-  pairs:enjs:format
+        :~
+          ['sig' sig-data]
+          ['delegate' s+delegate]
+        ==
 
-        =/  payload-data  (~(put by payload) 'data' j-sig)
+        =/  payload-data  (~(put by payload) 'data' sig-payload)
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
         %-  (log:core %warn "sending {<booth-owner>} delegate to {<remote-agent-wire>}...")
@@ -1490,24 +1494,27 @@
           !!
         =/  delegate-key  (so:dejs:format (need delegate-key))
 
-        =/  j-sig  (~(get by data) 'sig')
-        =/  j-sig  ?~(j-sig ~ ((om json):dejs:format (need j-sig)))
-        =/  hash  (~(get by data) 'hash')
-        ?~  hash  !!  :: %-  (log:core %error "ballot: invalid vote signature. hash not found.")  !!
-        =/  hash  `@ux`((se %ux):dejs:format (need hash))
-        =/  voter-ship  (~(get by data) 'voter')
-        ?~  voter-ship  !! :: %-  (log:core %error "ballot: invalid vote signature. voter not found.")  !!
-        =/  voter-ship  ((se %p):dejs:format (need voter-ship))
-        =/  life  (~(get by data) 'life')
-        ?~  life  !! :: %-  (log:core %error "ballot: invalid vote signature. life not found.")  !!
-        =/  life  (ni:dejs:format (need life))
-        =/  sign=signature:ballot  [p=hash q=voter-ship r=life]
-        %-  (log:core %warn "{<[sign]>}")
-        %-  (log:core %info "ballot: verifying vote signature {<sign>}...")
-        =/  verified  (verify:sig our.bowl now.bowl sign)
-        ?~  verified  !!
-              :: %-  (log:core %error "ballot: vote could not be verified")  !!
-        %-  (log:core %info "ballot: signature verified {<verified>}")
+        ::  is the delegate actually a member of the group?
+        =/  booth-members  (~(get by participants.state) booth-key)
+        ?~  booth-members
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. booth member store not found"
+          !!
+        =/  booth-members  (need booth-members)
+        =/  member  (~(get by booth-members) delegate-key)
+        ?~  member
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<delegate-key>} is not a booth participant"
+          !!
+
+        =/  sgn  (~(get by data) 'sig')
+        ?~  sgn
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload data missing sig"
+          !!
+        =/  sgn  (need sgn)
+
+        =/  verified  (ver:sig bowl sgn ~)
+        ?~  verified
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. unable to validate signature"
+          !!
 
         =/  participant-key  (crip "{<src.bowl>}")
         =/  booth-participants  (~(get by delegates.state) booth-key)
@@ -1528,10 +1535,11 @@
         %-  pairs:enjs:format
         :~
           ['delegate' s+delegate-key]
+          ['sig' sgn]
           ['created' (time:enjs:format now.bowl)]
         ==
 
-        =/  booth-participants  (~(put by booth-participants) participant-key [%o data])
+        =/  booth-participants  (~(put by booth-participants) participant-key delegation)
         =/  participant-effect=json
         %-  pairs:enjs:format
         :~
@@ -1563,9 +1571,7 @@
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
         ^-  (quip card _state)
 
-        :: =/  payload  ?:(=([%o *] payload) p.payload ~)
-
-        %-  (slog leaf+"{<dap.bowl>}: undelegate-api {<payload>}..." ~)
+        %-  (slog leaf+"{<dap.bowl>}: delegate-api {<payload>}..." ~)
 
         =/  context  (~(get by payload) 'context')
         ?~  context  (send-api-error req 'missing context')
@@ -1586,17 +1592,36 @@
         =/  booth-owner  (need booth-owner)
         =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
 
-        :: =/  signature  (sign:sig our.bowl now.bowl [%o payload-data])
+        =/  data  (~(get by payload) 'data')
+        ?~  data  (send-api-error req 'payload data not found')
+        =/  data  ?:(?=([%o *] u.data) p.u.data ~)
+        =/  delegate  (~(get by data) 'delegate')
+        ?~  delegate  (send-api-error req 'delegate element not found')
+        =/  delegate  (so:dejs:format (need delegate))
 
-        :: =/  j-sig=json
-        :: %-  pairs:enjs:format
-        :: :~
-        ::   ['hash' s+`@t`(scot %ux p.signature)]
-        ::   ['voter' s+(crip "{<q.signature>}")]
-        ::   ['life' (numb:enjs:format r.signature)]
-        :: ==
+        =/  delegation=json
+        %-  pairs:enjs:format
+        :~
+          ['delegate' s+delegate]
+        ==
 
-        :: =/  payload-data  (~(put by payload) 'sig' j-sig)
+        =/  signature  (sign:sig our.bowl now.bowl delegation)
+
+        =/  sig-data=json
+        %-  pairs:enjs:format
+        :~
+          ['hash' s+`@t`(scot %ux p.signature)]
+          ['voter' s+(crip "{<q.signature>}")]
+          ['life' (numb:enjs:format r.signature)]
+        ==
+        =/  sig-payload=json
+        %-  pairs:enjs:format
+        :~
+          ['sig' sig-data]
+          ['delegate' s+delegate]
+        ==
+
+        =/  payload-data  (~(put by payload) 'data' sig-payload)
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
         %-  (log:core %warn "sending {<booth-owner>} delegate to {<remote-agent-wire>}...")
@@ -1619,7 +1644,7 @@
           [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
           [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
           [%give %kick [/http-response/[p.req]]~ ~]
-          [%pass remote-agent-wire %agent [booth-owner %ballot] %poke %json !>([%o payload])]
+          [%pass remote-agent-wire %agent [booth-owner %ballot] %poke %json !>([%o payload-data])]
         ==
 
       ++  undelegate-wire
@@ -1631,102 +1656,110 @@
 
         =/  context  (~(get by payload) 'context')
         ?~  context
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload missing context"
+          ~&  >>>  "{<dap.bowl>}: undelegate wire error. payload missing context"
           !!
         =/  context  (need context)
         =/  context  ?:  ?=([%o *] context)  p.context  ~
 
         =/  booth-key  (~(get by context) 'booth')
         ?~  booth-key
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. context missing booth"
+          ~&  >>>  "{<dap.bowl>}: undelegate wire error. context missing booth"
           !!
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  booth  (~(get by booths.state) booth-key)
         ?~  booth
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<booth-key>} not found in booth store"
+          ~&  >>>  "{<dap.bowl>}: undelegate wire error. {<booth-key>} not found in booth store"
           !!
         =/  booth  (need booth)
 
         =/  booth  ?:  ?=([%o *] booth)  p.booth  ~
         =/  booth-owner  (~(get by booth) 'owner')
         ?~  booth-owner
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<booth-key>} missing owner"
+          ~&  >>>  "{<dap.bowl>}: undelegate wire error. {<booth-key>} missing owner"
           !!
         =/  booth-owner  (need booth-owner)
         =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
 
-        =/  participant-key  (~(get by context) 'participant')
-        ?~  participant-key
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. context missing participant"
-          !!
-        =/  participant-key  (so:dejs:format (need participant-key))
-
         =/  data  (~(get by payload) 'data')
         ?~  data
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload missing data"
+          ~&  >>>  "{<dap.bowl>}: undelegate wire error. payload missing data"
           !!
         =/  data  (need data)
         =/  data  ?:  ?=([%o *] data)  p.data  ~
 
         =/  delegate-key  (~(get by data) 'delegate')
         ?~  delegate-key
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload data missing delegate"
+          ~&  >>>  "{<dap.bowl>}: undelegate wire error. payload data missing delegate"
           !!
         =/  delegate-key  (so:dejs:format (need delegate-key))
 
-        %-  (log:core %warn "delegating participant {<participant-key>} vote to {<delegate-key>}...")
+        ::  is the delegate actually a member of the group?
+        =/  booth-members  (~(get by participants.state) booth-key)
+        ?~  booth-members
+          ~&  >>>  "{<dap.bowl>}: undelegate wire error. booth member store not found"
+          !!
+        =/  booth-members  (need booth-members)
+        =/  member  (~(get by booth-members) delegate-key)
+        ?~  member
+          ~&  >>>  "{<dap.bowl>}: undelegate wire error. {<delegate-key>} is not a booth participant"
+          !!
 
-        :: =/  j-sig  (~(get by vote) 'sig')
-        :: =/  j-sig  ?~(j-sig ~ ((om json):dejs:format (need j-sig)))
-        :: =/  hash  (~(get by j-sig) 'hash')
-        :: ?~  hash  !!  :: %-  (log:core %error "ballot: invalid vote signature. hash not found.")  !!
-        :: =/  hash  `@ux`((se %ux):dejs:format (need hash))
-        :: =/  voter-ship  (~(get by j-sig) 'voter')
-        :: ?~  voter-ship  !! :: %-  (log:core %error "ballot: invalid vote signature. voter not found.")  !!
-        :: =/  voter-ship  ((se %p):dejs:format (need voter-ship))
-        :: =/  life  (~(get by j-sig) 'life')
-        :: ?~  life  !! :: %-  (log:core %error "ballot: invalid vote signature. life not found.")  !!
-        :: =/  life  (ni:dejs:format (need life))
-        :: =/  sign=signature:ballot  [p=hash q=voter-ship r=life]
-        :: %-  (log:core %warn "{<[sign]>}")
-        :: %-  (log:core %info "ballot: verifying vote signature {<sign>}...")
-        :: =/  verified  (verify:sig our.bowl now.bowl sign)
-        :: ?~  verified  !!
-        ::       :: %-  (log:core %error "ballot: vote could not be verified")  !!
-        :: %-  (log:core %info "ballot: signature verified")
+        =/  sgn  (~(get by data) 'sig')
+        ?~  sgn
+          ~&  >>>  "{<dap.bowl>}: undelegate wire error. payload data missing sig"
+          !!
+        =/  sgn  (need sgn)
 
+        =/  verified  (ver:sig bowl sgn ~)
+        ?~  verified
+          ~&  >>>  "{<dap.bowl>}: undelegate wire error. unable to validate signature"
+          !!
+
+        =/  participant-key  (crip "{<src.bowl>}")
         =/  booth-participants  (~(get by delegates.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
-        =/  sig=@t  '012'
+        =/  participant  (~(get by booth-participants) participant-key)
+        ?:  =(~ participant)
+          ~&  >>  "{<dap.bowl>}: undelegate wire error. {<participant-key>} not found"
+          !!
 
-        =/  delegate=json
+        =/  booth-votes  (~(get by votes.state) booth-key)
+        =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
+        =/  participant  (~(get by booth-votes) participant-key)
+        ?.  =(~ participant)
+          ~&  >>  "{<dap.bowl>}: undelegate wire error. {<participant-key>} already voted"
+          !!
+
+        =/  delegation=json
         %-  pairs:enjs:format
         :~
-          ['key' s+delegate-key]
-          ['sig' s+sig]
+          ['delegate' s+delegate-key]
+          ['sig' sgn]
           ['created' (time:enjs:format now.bowl)]
         ==
-        =/  booth-participants  (~(put by booth-participants) participant-key delegate)
+
+        =/  booth-participants  (~(del by booth-participants) participant-key)
+
         =/  participant-effect=json
         %-  pairs:enjs:format
         :~
           ['resource' s+'delegate']
           ['effect' s+'delete']
           ['key' s+participant-key]
-          ['data' delegate]
+          ['data' delegation]
         ==
 
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'delegate-reaction']
+          ['action' s+'undelegate-reaction']
           ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (slog leaf+"sending {<booth-owner>} undelegate to {<remote-agent-wire>}..." ~)
+        %-  (slog leaf+"sending {<booth-owner>} delegate to {<remote-agent-wire>}..." ~)
 
         :_  state(delegates (~(put by delegates.state) booth-key booth-participants))
 
@@ -2238,34 +2271,6 @@
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
         =/  participant  (~(get by booth-participants) participant-key)
         =/  booth-participants  (~(del by booth-participants) participant-key)
-        :: =/  participant  ?~(participant ~ (need participant))
-        :: =/  participant  ?:  ?=([%o *] participant)  p.participant  ~
-        :: =/  delegate  (~(get by participant) 'delegate')
-        :: ?~  delegate  `this
-        :: =/  delegate  (so:dejs:format (need delegate))
-        :: ::  has the delegate voted already?
-        :: =/  booth-votes  (~(get by votes.state) booth-key)
-        :: =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
-        :: =/  vote  (~(get by booth-votes) delegate)
-        :: ?.  =(~ vote)
-        ::   =/  err=json
-        ::   %-  pairs:enjs:format
-        ::   :~
-        ::     ['key' s+participant-key]
-        ::     ['name' s+participant-key]
-        ::     ['status' s+?:(=(our.bowl entity.resource.action) 'active' 'enlisted')]
-        ::     ['created' (time:enjs:format now.bowl)]
-        ::     ['role' s+?:(=(our.bowl entity.resource.action) 'owner' 'participant')]
-        ::   ==
-        ::   :_  this
-        ::   :~  [%give %fact [/booths]~ %json !>([%o payload])]
-        ::   ==
-        :: =/  vote  ?~(vote ~ (need vote))
-        :: =/  vote  ?:  ?=([%o *] vote)  p.vote  ~
-
-        :: =/  effect-data  (~(get by effect) 'data')
-        :: ?~  effect-data  (mean leaf+"{<dap.bowl>}: no data" ~)
-        :: =/  booth-participants  (~(put by booth-participants) participant-key (need effect-data))
         :_  this(delegates (~(put by delegates.state) booth-key booth-participants))
         :~  [%give %fact [/booths]~ %json !>([%o payload])]
         ==
@@ -3677,7 +3682,7 @@
     :: ^-  [(list card) (map @t json)]
     ^-  action-result:plugin
 
-    =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/%custom-actions/(scot %tas action)/hoon
+    =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/(scot %tas action)/hoon
 
     ?.  .^(? %cu lib-file)
       (mean leaf+"{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)

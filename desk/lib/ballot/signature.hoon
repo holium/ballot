@@ -31,4 +31,20 @@
   :: ::  will be null if not valid, so check for that
   verified
 
+++  ver
+  |=  [=bowl:gall signed-data=json raw-data=json]
+  =/  sgn  ?:(?=([%o *] signed-data) p.signed-data ~)
+
+  =/  hash  (~(get by sgn) 'hash')
+  ?~  hash  (mean leaf+"{<dap.bowl>}: invalid vote signature. hash not found." ~)
+  =/  hash  `@ux`((se %ux):dejs:format (need hash))
+  =/  voter-ship  (~(get by sgn) 'voter')
+  ?~  voter-ship  (mean leaf+"{<dap.bowl>}: invalid vote signature. voter not found." ~)
+  =/  voter-ship  ((se %p):dejs:format (need voter-ship))
+  =/  life  (~(get by sgn) 'life')
+  ?~  life  (mean leaf+"{<dap.bowl>}: invalid vote signature. life not found." ~)
+  =/  life  (ni:dejs:format (need life))
+  =/  sign=signature:ballot  [p=hash q=voter-ship r=life]
+
+  (verify our.bowl now.bowl sign)
 --

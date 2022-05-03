@@ -6,11 +6,4 @@
   ^-  action-result
   `action-result`[success=%.n data=data store=store effects=~]
 
-++  to-map
-  |=  [jon=json]
-  ^-  (map @t json)
-  ?~  jon  ~
-  ?>  ?=(%o -.jon)
-  p.jon
-
 --
