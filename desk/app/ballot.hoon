@@ -6,7 +6,7 @@
 ::
 :: ***********************************************************
 /-  *group, group-store, ballot-store, ballot, plugin
-/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature, view=ballot-views, plugin=ballot-plugin, shared=ballot-shared
+/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature, view=ballot-views, plugin=ballot-plugin
 |%
 +$  card  card:agent:gall
 +$  versioned-state
@@ -972,17 +972,20 @@
         =/  booth-proposals  (~(get by proposals.state) booth-key)
         =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
         =/  proposal  (~(get by booth-proposals) proposal-key)
-        ?~  proposal  (send-api-error req 'proposal not found')
-        =/  proposal  ?:(?=([%o *] u.proposal) p.u.proposal ~)
-        =/  proposal-owner  (~(get by proposal) 'owner')
-        ?~  proposal-owner  (send-api-error req 'proposal owner not found')
-        =/  proposal-owner  (so:dejs:format (need proposal-owner))
-        =/  proposal-owner  `@p`(slav %p proposal-owner)
+        =/  proposal  ?~(proposal ~ (need proposal))
+        :: ?~  proposal  (send-api-error req 'proposal not found')
+        =/  proposal  ?~(proposal ~ ?:(?=([%o *] proposal) p.proposal ~))
+
+        =/  member-key  (crip "{<our.bowl>}")
 
         ::  anyone can create a proposal; however only booth owner, admin
         ::    or proposal creator can edit
         =/  tst=[success=? msg=@t]  ?:  is-update
-          =/  member-key  (crip "{<our.bowl>}")
+          =/  proposal-owner  (~(get by proposal) 'owner')
+          ?~  proposal-owner  [%.n 'proposal owner not found']
+          =/  proposal-owner  (so:dejs:format (need proposal-owner))
+          =/  proposal-owner  `@p`(slav %p proposal-owner)
+
           =/  booth-members  (~(get by participants.state) booth-key)
           =/  booth-members  ?~(booth-members ~ (need booth-members))
           =/  member  (~(get by booth-members) member-key)
@@ -1008,7 +1011,7 @@
         %-  (log:core %info "ballot: {<threshold>}")
         =/  proposal  (~(gas by proposal) ~(tap by data))
         =/  proposal  (~(put by proposal) 'key' s+proposal-key)
-        =/  proposal  (~(put by proposal) 'owner' s+(crip "{<proposal-owner>}"))
+        =/  proposal  (~(put by proposal) 'owner' s+member-key)
         =/  proposal  ?:(is-update proposal (~(put by proposal) 'created' (time:enjs:format now.bowl)))
         =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal])
 
