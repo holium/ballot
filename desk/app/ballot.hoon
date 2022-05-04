@@ -6,7 +6,7 @@
 ::
 :: ***********************************************************
 /-  *group, group-store, ballot-store, ballot, plugin
-/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature, view=ballot-views, plugin=ballot-plugin
+/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature, view=ballot-views, plugin=ballot-plugin, drv=ballot-driver
 |%
 +$  card  card:agent:gall
 +$  versioned-state
@@ -26,21 +26,6 @@
 
   %-  (log:core %info "ballot: on-init...")
 
-  :: *************************************************************
-  ::  WARNING: DO NOT REMOVE THIS CODE
-  ::
-  :: @~lodlev-migdev - this code is used to compile/load a lib at runtime
-  :: =/  lb=vase  .^(vase %ca /~zod/base/(scot %da now.bowl)/lib/ps-lib/hoon)
-
-  :: @~lodlev-migdev - here we see how to call a method (arm - %limb) in the lib
-  ::    using Hoon slam/slap. Note: %say-hi is the name of the arm. In this
-  ::    case the say-hi method takes a string as input and echoes the string
-  ::    back to the caller as the return value (stored in rs)
-  :: =/  rs  (slam (slap lb [%limb %say-hi]) !>('hello from runtime lib!'))
-  ::  @p.names - print return value (string in this case)
-  ::    %-  (log:core %warnrs
-  ::  END OF RUNTIME LIB LOADING BLOCK
-  :: *************************************************************
   :_  this(authentication 'enable')
 
       ::  initialize agent booths (ship, groups, etc...)
@@ -256,7 +241,6 @@
 
             [%delegate %undelegate]
               (undelegate-api req payload)
-
 
       ==
 
@@ -3728,27 +3712,12 @@
     =/  custom-action-effects=(list card)  ?:  ?&  !=(custom-action.result ~)
             !=(choice.result ~)
         ==
-      =/  custom-action-result  (execute-custom-action [booth-key proposal-key] (need custom-action.result) data.result results)
-      ?:(success.custom-action-result effects.custom-action-result ~)
+      =/  car  (~(eca drv [bowl state]) [booth-key proposal-key] (need custom-action.result) results)
+      :: =/  custom-action-result  (execute-custom-action:drv [booth-key proposal-key] (need custom-action.result) results)
+      ?:(success.car effects.car ~)
     ~
 
     [results custom-action-effects]
-
-  ++  execute-custom-action
-    |=  [[booth-key=@t proposal-key=@t] action=@t action-data=json payload=json]
-    :: ^-  [(list card) (map @t json)]
-    ^-  action-result:plugin
-
-    =/  lib-file=path  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/(scot %tas action)/hoon
-
-    ?.  .^(? %cu lib-file)
-      (mean leaf+"{<dap.bowl>}: resource action lib file {<lib-file>} not found" ~)
-
-    =/  action-lib  .^([p=type q=*] %ca lib-file)
-    =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl state [booth-key proposal-key] action-data]))
-    =/  result  !<(action-result:plugin (slam (slap on-func [%limb %action]) !>(payload)))
-
-    result
 
   ++  count-vote
     |:  [voter-count=`@ud`1 count=`@ud`1 vote=`[@t json]`[%null ~] results=`(map @t json)`~]
