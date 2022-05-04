@@ -830,13 +830,33 @@
         ?~  proposal-key  (send-api-error req 'missing context key. proposal key')
         =/  proposal-key  (so:dejs:format (need proposal-key))
 
-        %-  (log:core %warn "deleting proposal {<booth-key>}, {<proposal-key>}")
-
         =/  booth-proposals  (~(get by proposals.state) booth-key)
         =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
         =/  proposal  (~(get by booth-proposals) proposal-key)
         ?~  proposal  (send-api-error req 'proposal not found')
-        =/  proposal  (need proposal)
+        =/  proposal  ?:(?=([%o *] u.proposal) p.u.proposal ~)
+        =/  proposal-owner  (~(get by proposal) 'owner')
+        ?~  proposal-owner  (send-api-error req 'proposal missing owner')
+        =/  proposal-owner  (so:dejs:format (need proposal-owner))
+        =/  proposal-owner  `@p`(slav %p proposal-owner)
+
+        ::  anyone can create a proposal; however only booth owner, admin
+        ::    or proposal creator can delete
+        =/  member-key  (crip "{<our.bowl>}")
+        =/  booth-members  (~(get by participants.state) booth-key)
+        =/  booth-members  ?~(booth-members ~ (need booth-members))
+        =/  member  (~(get by booth-members) member-key)
+        ?~  member  (send-api-error req 'member not found')
+        =/  member  ?:(?=([%o *] u.member) p.u.member ~)
+        =/  role  (~(get by member) 'role')
+        ?~  role  (send-api-error req 'member role not found')
+        =/  role  (so:dejs:format (need role))
+        ?.  ?|  =(role 'owner')
+                =(role 'admin')
+                =(proposal-owner our.bowl)
+            ==
+            (send-api-error req 'insufficient privileges')
+
         =/  booth-proposals  (~(del by booth-proposals) proposal-key)
 
         =/  booth-votes  (~(get by votes.state) booth-key)
@@ -849,7 +869,7 @@
           ['resource' s+'proposal']
           ['effect' s+'delete']
           ['key' s+proposal-key]
-          ['data' proposal]
+          ['data' [%o proposal]]
         ==
 
         =/  effects=json
@@ -868,7 +888,7 @@
           :~  ['Content-Type' 'application/json']
           ==
 
-        =/  payload  (~(put by payload) 'data' proposal)
+        =/  payload  (~(put by payload) 'data' [%o proposal])
 
         ::  encode the proposal as a json string
         =/  body  (crip (en-json:html [%o payload]))
@@ -936,8 +956,6 @@
         ?~  booth-owner  !! :: %-  (log:core %error "ballot: booth {<booth-key>} missing owner")  !!
         =/  booth-owner  (so:dejs:format (need booth-owner))
         =/  booth-ship=@p  `@p`(slav %p booth-owner)
-        ?.  =(booth-ship our.bowl)
-          !! :: %-  (log:core %error "ballot: save-proposal error. only booth owner can edit proposals.")  !!
 
         =/  data  (~(get by payload) 'data')
         =/  data  ?~(data ~ ((om json):dejs:format (need data)))
@@ -945,6 +963,7 @@
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
 
         =/  is-update  (~(has by context) 'proposal')
+
         =/  proposal-key
               ?:  is-update
                     (so:dejs:format (~(got by context) 'proposal'))
@@ -953,7 +972,35 @@
         =/  booth-proposals  (~(get by proposals.state) booth-key)
         =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
         =/  proposal  (~(get by booth-proposals) proposal-key)
-        =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
+        ?~  proposal  (send-api-error req 'proposal not found')
+        =/  proposal  ?:(?=([%o *] u.proposal) p.u.proposal ~)
+        =/  proposal-owner  (~(get by proposal) 'owner')
+        ?~  proposal-owner  (send-api-error req 'proposal owner not found')
+        =/  proposal-owner  (so:dejs:format (need proposal-owner))
+        =/  proposal-owner  `@p`(slav %p proposal-owner)
+
+        ::  anyone can create a proposal; however only booth owner, admin
+        ::    or proposal creator can edit
+        =/  tst=[success=? msg=@t]  ?:  is-update
+          =/  member-key  (crip "{<our.bowl>}")
+          =/  booth-members  (~(get by participants.state) booth-key)
+          =/  booth-members  ?~(booth-members ~ (need booth-members))
+          =/  member  (~(get by booth-members) member-key)
+          ?~  member  [%.n 'member not found']
+          =/  member  ?:(?=([%o *] u.member) p.u.member ~)
+          =/  role  (~(get by member) 'role')
+          ?~  role  [%.n 'member role not found']
+          =/  role  (so:dejs:format (need role))
+          ?.  ?|  =(role 'owner')
+                  =(role 'admin')
+                  =(proposal-owner our.bowl)
+              ==
+              [%.n 'insuffficient privileges']
+          [%.y 'no error']
+        [%.y 'no error']
+
+        ?.  success.tst  (send-api-error req msg.tst)
+
         =/  threshold  (~(get by data) 'support')
         ?~  threshold  !!
           :: %-  (log:core %error "ballot: missing voter support value")  !!
@@ -961,7 +1008,7 @@
         %-  (log:core %info "ballot: {<threshold>}")
         =/  proposal  (~(gas by proposal) ~(tap by data))
         =/  proposal  (~(put by proposal) 'key' s+proposal-key)
-        =/  proposal  (~(put by proposal) 'owner' s+(crip "{<our.bowl>}"))
+        =/  proposal  (~(put by proposal) 'owner' s+(crip "{<proposal-owner>}"))
         =/  proposal  ?:(is-update proposal (~(put by proposal) 'created' (time:enjs:format now.bowl)))
         =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal])
 
@@ -1304,6 +1351,7 @@
           ['key' s+participant-key]
           ['name' s+participant-key]
           ['status' s+'pending']
+          ['role' s+'participant']
           ['created' (time:enjs:format now.bowl)]
         ==
         ::  convert to (map @t json)
@@ -1997,6 +2045,11 @@
         %-  (log:core %warn "ballot: extracting participants for booth {<key>}...")
         =/  delegate-view  (~(dlg view [bowl delegates.state]) key)
         ``json+!>(delegate-view)
+
+      [%x %custom-actions ~]
+        =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
+        =/  data  .^(json %cx lib-file)
+        ``json+!>(data)
 
   ==
 
@@ -2793,6 +2846,7 @@
             ['key' s+participant-key]
             ['name' s+participant-key]
             ['status' s+'enlisted']
+            ['role' s+'participant']
             ['created' (time:enjs:format now.bowl)]
           ==
           =/  member=json

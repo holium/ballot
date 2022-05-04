@@ -1,0 +1,10 @@
+{
+  "invite-member": {
+    "label": "Invite member",
+    "form": {}
+  },
+  "kick-member": {
+    "label": "Kick member",
+    "form": {}
+  }
+}
