@@ -60,6 +60,7 @@
   ::  ensure all members with pariticipant role (or no role) are given member role
   ++  upgrade-0-to-1
     |=  [old=state-0:ballot-store]
+    ^-  state-1:ballot-store
     =/  upgraded-participants
       %-  ~(rep in participants.state)
         |=  [[key=@t m=(map @t json)] acc-outer=(map @t (map @t json))]
@@ -73,7 +74,8 @@
           =/  member  (~(put by member) 'role' s+role)
           (~(put by acc-inner) key [%o member])
         (~(put by acc-outer) key result)
-    [%1 authentication.old mq.old polls.old booths.old proposals.old upgraded-participants invitations.old votes.old ~]
+    ~&  >>  "{<upgraded-participants>}"
+    [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=booths.old proposals=proposals.old participants=upgraded-participants invitations=invitations.old votes=votes.old delegates=~]
   --
 
 ::
