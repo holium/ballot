@@ -2,7 +2,7 @@
 /+  *ballot-plugin
 |%
 ++  on
-  |=  [=bowl:gall store=state-0:ballot-store context=[booth-key=@t proposal-key=@t]]
+  |=  [=bowl:gall store=state-1:ballot-store context=[booth-key=@t proposal-key=@t]]
   |%
     ++  action
       |=  [payload=json]

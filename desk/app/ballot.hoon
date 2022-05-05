@@ -11,11 +11,11 @@
 +$  card  card:agent:gall
 +$  versioned-state
   $%  state-0:ballot-store
+      state-1:ballot-store
   ==
-:: +$  state-0  [%0 authentication=@t mq=(map @t json) polls=(map @t (map @t json)) booths=booths:ballot-store proposals=proposals:ballot-store participants=participants:ballot-store invitations=invitations:ballot-store votes=(map @t (map @t json)) delegates=(map @t (map @t json))]
 --
 %-  agent:dbug
-=|  state-0:ballot-store
+=|  state-1:ballot-store
 =*  state  -
 ^-  agent:gall
 |_  =bowl:gall
@@ -48,10 +48,33 @@
 ++  on-load
   |=  old-state=vase
   ^-  (quip card _this)
+  |^
   =/  old  !<(versioned-state old-state)
   ?-  -.old
-    %0  `this(state old)
+    %1  `this(state old)
+    %0
+      =/  upgraded-state  (upgrade-0-to-1 old)
+      `this(state upgraded-state)
   ==
+  ::  ensure new delegates map is set to null ~
+  ::  ensure all members with pariticipant role (or no role) are given member role
+  ++  upgrade-0-to-1
+    |=  [old=state-0:ballot-store]
+    =/  upgraded-participants
+      %-  ~(rep in participants.state)
+        |=  [[key=@t m=(map @t json)] acc-outer=(map @t (map @t json))]
+        :: =/  members  ?:(?=([%o *] jon) p.jon ~)
+        =/  result  %-  ~(rep in m)
+          |=  [[key=@t jon=json] acc-inner=(map @t json)]
+          =/  member  ?:(?=([%o *] jon) p.jon ~)
+          =/  role  (~(get by member) 'role')
+          =/  role  ?~(role 'member' (so:dejs:format (need role)))
+          =/  role  ?:(=(role 'participant') 'member' role)
+          =/  member  (~(put by member) 'role' s+role)
+          (~(put by acc-inner) key [%o member])
+        (~(put by acc-outer) key result)
+    [%1 authentication.old mq.old polls.old booths.old proposals.old upgraded-participants invitations.old votes.old ~]
+  --
 
 ::
 ++  on-poke
