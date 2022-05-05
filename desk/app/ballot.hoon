@@ -1363,7 +1363,7 @@
           ['key' s+participant-key]
           ['name' s+participant-key]
           ['status' s+'pending']
-          ['role' s+'participant']
+          ['role' s+'member']
           ['created' (time:enjs:format now.bowl)]
         ==
         ::  convert to (map @t json)
@@ -2455,7 +2455,7 @@
       ['name' s+participant-key]
       ['status' s+?:(=(our.bowl entity.resource.action) 'active' 'enlisted')]
       ['created' (time:enjs:format now.bowl)]
-      ['role' s+?:(=(our.bowl entity.resource.action) 'owner' 'participant')]
+      ['role' s+?:(=(our.bowl entity.resource.action) 'owner' 'member')]
     ==
 
     =/  context=json
@@ -2604,7 +2604,7 @@
         ['key' s+participant-key]
         ['name' s+participant-key]
         ['status' s+'enlisted']
-        ['role' s+'participant']
+        ['role' s+'member']
         ['created' (time:enjs:format now.bowl)]
       ==
 
@@ -2799,7 +2799,7 @@
       ['key' s+participant-key]
       ['name' s+participant-key]
       ['status' s+'enlisted']
-      ['role' s+?:(=(our.bowl entity.resource.initial) 'owner' 'participant')]
+      ['role' s+?:(=(our.bowl entity.resource.initial) 'owner' 'member')]
       ['created' (time:enjs:format now.bowl)]
     ==
 
@@ -2858,7 +2858,7 @@
             ['key' s+participant-key]
             ['name' s+participant-key]
             ['status' s+'enlisted']
-            ['role' s+'participant']
+            ['role' s+'member']
             ['created' (time:enjs:format now.bowl)]
           ==
           =/  member=json
