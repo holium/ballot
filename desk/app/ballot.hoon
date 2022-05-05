@@ -62,7 +62,7 @@
     |=  [old=state-0:ballot-store]
     ^-  state-1:ballot-store
     =/  upgraded-participants
-      %-  ~(rep in participants.state)
+      %-  ~(rep in participants.old)
         |=  [[key=@t m=(map @t json)] acc-outer=(map @t (map @t json))]
         :: =/  members  ?:(?=([%o *] jon) p.jon ~)
         =/  result  %-  ~(rep in m)
