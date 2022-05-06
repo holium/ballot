@@ -61,6 +61,24 @@
   ++  upgrade-0-to-1
     |=  [old=state-0:ballot-store]
     ^-  state-1:ballot-store
+    =/  upgraded-booths
+      %-  ~(rep in booths.old)
+        |=  [[key=@t jon=json] acc=(map @t json)]
+          =/  booth  ?:(?=([%o *] jon) p.jon ~)
+          =/  defaults
+          %-  pairs:enjs:format
+          :~
+            ['support' n+'50']
+            ['duration' n+'7']
+          ==
+          =/  permissions
+          :~  s+'member'
+              s+'admin'
+          ==
+          =/  booth  (~(put by booth) 'defaults' defaults)
+          =/  booth  (~(put by booth) 'permissions' [%a permissions])
+          (~(put by acc) key [%o booth])
+    ~&  >>  "{<upgraded-booths>}"
     =/  upgraded-participants
       %-  ~(rep in participants.old)
         |=  [[key=@t m=(map @t json)] acc-outer=(map @t (map @t json))]
@@ -75,7 +93,7 @@
           (~(put by acc-inner) key [%o member])
         (~(put by acc-outer) key result)
     ~&  >>  "{<upgraded-participants>}"
-    [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=booths.old proposals=proposals.old participants=upgraded-participants invitations=invitations.old votes=votes.old delegates=~]
+    [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=upgraded-booths proposals=proposals.old participants=upgraded-participants invitations=invitations.old votes=votes.old delegates=~]
   --
 
 ::
@@ -187,6 +205,17 @@
       ::
       =|  booths=booths:ballot-store
 
+      =/  defaults
+      %-  pairs:enjs:format
+      :~
+        ['support' n+'50']
+        ['duration' n+'7']
+      ==
+      =/  permissions
+      :~  s+'member'
+          s+'admin'
+      ==
+
       =/  booth=json
       %-  pairs:enjs:format
       :~
@@ -199,6 +228,8 @@
         ['created' (time:enjs:format now.bowl)]
         ['policy' s+'invite-only']
         ['status' s+'active']
+        ['defaults' defaults]
+        ['permissions' [%a permissions]]
       ==
 
       =.  booths  (~(put by booths) booth-key booth)
@@ -2726,6 +2757,17 @@
     ::  if this ship is the owner of the group, set them as the owner of the booth
     =/  status=@t  ?:(=(our.bowl entity.resource) 'active' 'enlisted')
 
+    =/  defaults
+    %-  pairs:enjs:format
+    :~
+      ['support' n+'50']
+      ['duration' n+'7']
+    ==
+    =/  permissions
+    :~  s+'member'
+        s+'admin'
+    ==
+
     ::  create booth metadata
     =/  data=json
     %-  pairs:enjs:format
@@ -2739,6 +2781,8 @@
       ['owner' s+(crip "{<entity.resource>}")]
       ['created' (time:enjs:format now.bowl)]
       ['policy' s+'invite-only']
+      ['defaults' defaults]
+      ['permissions' [%a permissions]]
     ==
 
     [key status data]
