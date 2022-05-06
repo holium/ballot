@@ -18,6 +18,12 @@
     =/  view-entry  (~(get by view-data) delegate-key)
     =/  view-entry  ?~(view-entry ~ (need view-entry))
     =/  view-entry  ?:  ?=([%o *] view-entry)  p.view-entry  ~
+    =/  view-entry  ?~  view-entry
+        =/  sig  (~(get by delegate-data) 'sig')
+        =/  sig  ?~(sig ~ (need sig))
+        =|  view-entry=(map @t json)
+        (~(put by view-entry) 'sig' sig)
+      view-entry
     =/  count  (~(get by view-entry) 'count')
     =/  count  ?~(count 1 (ni:dejs:format (need count)))
     =/  count  (add count 1)
