@@ -56,8 +56,9 @@
       =/  upgraded-state  (upgrade-0-to-1 old)
             :: leave all booths, force resubscribe to pick up any new data
       =/  effects
-        %-  ~(rep by booths.state)
+        %-  ~(rep by booths.old)
           |=  [[key=@t jon=json] acc=(list card)]
+            ~&  >>  "{<dap.bowl>}: processing upgrade {<key>}, {<jon>}..."
             =/  data  ?:(?=([%o *] jon) p.jon ~)
             =/  owner  (~(get by data) 'owner')
             ?~  owner
