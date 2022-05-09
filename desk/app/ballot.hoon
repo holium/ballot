@@ -51,8 +51,10 @@
   |^
   =/  old  !<(versioned-state old-state)
   ?-  -.old
-    %1
-      :: leave all booths, force resubscribe to pick up any new data
+    %1  `this(state old)
+    %0
+      =/  upgraded-state  (upgrade-0-to-1 old)
+            :: leave all booths, force resubscribe to pick up any new data
       =/  effects
         %-  ~(rep by booths.state)
           |=  [[key=@t jon=json] acc=(list card)]
@@ -74,13 +76,11 @@
               ['context' context]
               ['data' ~]
             ==
+          ~&  >>  "{<dap.bowl>}: poking {<booth-ship>} with action {<action>}..."
           (snoc acc [%pass /booths/(scot %tas key) %agent [booth-ship %ballot] %poke %json !>(action)])
-      :_  this(state old)
-      effects
+      :_  this(state upgraded-state)
 
-    %0
-      =/  upgraded-state  (upgrade-0-to-1 old)
-      `this(state upgraded-state)
+      effects
   ==
   ::  ensure new delegates map is set to null ~
   ::  ensure all members with pariticipant role (or no role) are given member role
