@@ -2103,21 +2103,18 @@
       [%x %booths @ %custom-actions ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
-        %-  (slog leaf+"ballot: extracting participants for booth {<key>}..." ~)
-        =/  delegate-view  (~(dlg view [bowl delegates.state]) key)
-        ``json+!>(delegate-view)
+        %-  (slog leaf+"ballot: extracting custom-actions for booth {<key>}..." ~)
+        =/  custom-actions  (~(get by custom-actions.state) key)
+        =/  custom-actions  ?~(custom-actions ~ (need custom-actions))
+        ``json+!>(custom-actions)
 
       [%x %booths @ @ @ %custom-actions ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
-        %-  (log:core %warn "ballot: extracting participants for booth {<key>}...")
-        =/  delegate-view  (~(dlg view [bowl delegates.state]) key)
-        ``json+!>(delegate-view)
-
-      [%x %custom-actions ~]
-        =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
-        =/  data  .^(json %cx lib-file)
-        ``json+!>(data)
+        %-  (log:core %warn "ballot: extracting custom-actions for booth {<key>}...")
+        =/  custom-actions  (~(get by custom-actions.state) key)
+        =/  custom-actions  ?~(custom-actions ~ (need custom-actions))
+        ``json+!>(custom-actions)
 
   ==
 
