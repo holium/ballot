@@ -93,7 +93,14 @@
           (~(put by acc-inner) key [%o member])
         (~(put by acc-outer) key result)
     ~&  >>  "{<upgraded-participants>}"
-    [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=upgraded-booths proposals=proposals.old participants=upgraded-participants invitations=invitations.old votes=votes.old delegates=~]
+    =/  custom-actions=(map @t json)  ~
+    =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
+    ?.  .^(? %cu lib-file)
+      ~&  >>  "{<dap.bowl>}: warning. custom actions file not found"
+      [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=upgraded-booths proposals=proposals.old participants=upgraded-participants invitations=invitations.old votes=votes.old delegates=~ custom-actions=custom-actions]
+    =/  data  .^(json %cx lib-file)
+    =/  custom-actions  (~(put by custom-actions) (crip "{<our.bowl>}") data)
+    [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=upgraded-booths proposals=proposals.old participants=upgraded-participants invitations=invitations.old votes=votes.old delegates=~ custom-actions=custom-actions]
   --
 
 ::
@@ -2093,6 +2100,20 @@
         =/  delegate-view  (~(dlg view [bowl delegates.state]) key)
         ``json+!>(delegate-view)
 
+      [%x %booths @ %custom-actions ~]
+        =/  segments  `(list @ta)`path
+        =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
+        %-  (slog leaf+"ballot: extracting participants for booth {<key>}..." ~)
+        =/  delegate-view  (~(dlg view [bowl delegates.state]) key)
+        ``json+!>(delegate-view)
+
+      [%x %booths @ @ @ %custom-actions ~]
+        =/  segments  `(list @ta)`path
+        =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
+        %-  (log:core %warn "ballot: extracting participants for booth {<key>}...")
+        =/  delegate-view  (~(dlg view [bowl delegates.state]) key)
+        ``json+!>(delegate-view)
+
       [%x %custom-actions ~]
         =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
         =/  data  .^(json %cx lib-file)
@@ -3283,9 +3304,10 @@
     =/  booth-delegates  ?~(booth-delegates ~ (need booth-delegates))
     =/  booth-delegates  (~(gas by booth-delegates) ~(tap by delegates))
 
-    =/  booth-custom-actions  (~(get by delegates.state) booth-key)
+    =/  booth-custom-actions  (~(get by custom-actions.state) booth-key)
     =/  booth-custom-actions  ?~(booth-custom-actions ~ (need booth-custom-actions))
-    =/  booth-custom-actions  (~(gas by booth-custom-actions) ~(tap by delegates))
+    =/  booth-custom-actions  ?:  ?=([%o *] booth-custom-actions)  p.booth-custom-actions  ~
+    =/  booth-custom-actions  (~(gas by booth-custom-actions) ~(tap by custom-actions))
 
     =/  initial-effect=json
     %-  pairs:enjs:format
@@ -3304,7 +3326,7 @@
       ['effects' [%a [initial-effect]~]]
     ==
 
-    :_  this(booths (~(put by booths.state) booth-key [%o booth]), proposals (~(put by proposals.state) booth-key booth-proposals), participants (~(put by participants.state) booth-key booth-participants), votes (~(put by votes.state) booth-key booth-votes), polls (~(put by polls.state) booth-key booth-polls), delegates (~(put by delegates.state) booth-key booth-delegates))
+    :_  this(booths (~(put by booths.state) booth-key [%o booth]), proposals (~(put by proposals.state) booth-key booth-proposals), participants (~(put by participants.state) booth-key booth-participants), votes (~(put by votes.state) booth-key booth-votes), polls (~(put by polls.state) booth-key booth-polls), delegates (~(put by delegates.state) booth-key booth-delegates), custom-actions (~(put by custom-actions.state) booth-key [%o custom-actions]))
 
     :~
       ::  for clients (e.g. UI) and "our" agent, send to generic /booths path
