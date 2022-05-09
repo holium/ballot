@@ -1917,6 +1917,9 @@
         =/  booth-delegates  (~(get by delegates.state) booth-key)
         =/  booth-delegates  ?~(booth-delegates ~ (need booth-delegates))
 
+        =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
+        =/  booth-custom-actions  .^(json %cx lib-file)
+
         =/  context=json
           %-  pairs:enjs:format
           :~
@@ -1932,6 +1935,7 @@
             ['votes' [%o booth-votes]]
             ['polls' [%o booth-polls]]
             ['delegates' [%o booth-delegates]]
+            ['custom-actions' booth-custom-actions]
           ==
 
         ::  https://urbit.org/docs/userspace/gall-guide/8-subscriptions#incoming-subscriptions
@@ -3253,6 +3257,9 @@
     =/  delegates  (~(get by data) 'delegates')
     =/  delegates  ?~(delegates ~ (need delegates))
     =/  delegates  ?:  ?=([%o *] delegates)  p.delegates  ~
+    =/  custom-actions  (~(get by data) 'custom-actions')
+    =/  custom-actions  ?~(custom-actions ~ (need custom-actions))
+    =/  custom-actions  ?:  ?=([%o *] custom-actions)  p.custom-actions  ~
 
     =/  booth-key  (so:dejs:format (~(got by booth) 'key'))
 
@@ -3276,6 +3283,10 @@
     =/  booth-delegates  ?~(booth-delegates ~ (need booth-delegates))
     =/  booth-delegates  (~(gas by booth-delegates) ~(tap by delegates))
 
+    =/  booth-custom-actions  (~(get by delegates.state) booth-key)
+    =/  booth-custom-actions  ?~(booth-custom-actions ~ (need booth-custom-actions))
+    =/  booth-custom-actions  (~(gas by booth-custom-actions) ~(tap by delegates))
+
     =/  initial-effect=json
     %-  pairs:enjs:format
     :~
@@ -3293,7 +3304,7 @@
       ['effects' [%a [initial-effect]~]]
     ==
 
-    :_  this(booths (~(put by booths.state) booth-key [%o booth]), proposals (~(put by proposals.state) booth-key booth-proposals), participants (~(put by participants.state) booth-key booth-participants), votes (~(put by votes.state) booth-key booth-votes), polls (~(put by polls.state) booth-key booth-polls))
+    :_  this(booths (~(put by booths.state) booth-key [%o booth]), proposals (~(put by proposals.state) booth-key booth-proposals), participants (~(put by participants.state) booth-key booth-participants), votes (~(put by votes.state) booth-key booth-votes), polls (~(put by polls.state) booth-key booth-polls), delegates (~(put by delegates.state) booth-key booth-delegates))
 
     :~
       ::  for clients (e.g. UI) and "our" agent, send to generic /booths path
