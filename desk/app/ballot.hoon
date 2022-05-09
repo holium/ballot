@@ -51,7 +51,33 @@
   |^
   =/  old  !<(versioned-state old-state)
   ?-  -.old
-    %1  `this(state old)
+    %1
+      :: leave all booths, force resubscribe to pick up any new data
+      =/  effects
+        %-  ~(rep by booths.state)
+          |=  [[key=@t jon=json] acc=(list card)]
+            =/  data  ?:(?=([%o *] jon) p.jon ~)
+            =/  owner  (~(get by data) 'owner')
+            ?~  owner
+              ~&  >>  "{<dap.bowl>}: warning. booth {<key>} owner not found"
+              acc
+            =/  booth-ship=@p  `@p`(slav %p (so:dejs:format (need owner)))
+            =/  context=json
+            %-  pairs:enjs:format
+            :~
+              ['booth' s+key]
+            ==
+            =/  action=json
+            %-  pairs:enjs:format
+            :~
+              ['action' s+'request-custom-actions']
+              ['context' context]
+              ['data' ~]
+            ==
+          (snoc acc [%pass /booths/(scot %tas key) %agent [booth-ship %ballot] %poke %json !>(action)])
+      :_  this(state old)
+      effects
+
     %0
       =/  upgraded-state  (upgrade-0-to-1 old)
       `this(state upgraded-state)
@@ -356,6 +382,8 @@
         %undelegate
           (undelegate-wire contract)
 
+        %request-custom-actions
+          (request-custom-actions-wire contract)
       ==
 
       ++  send-nack
@@ -387,6 +415,48 @@
 
         ::  variable to convert $json (payload) as map : key => json pairs
         ((om json):dejs:format payload)
+
+      ++  request-custom-actions-wire
+        |=  [payload=(map @t json)]
+        =/  context  (~(get by payload) 'context')
+        ?~  context
+          ~&  >>>  "{<dap.bowl>}: error. action on wire missing context"
+          `state
+        =/  context  (need context)
+        =/  context  ?:(?=([%o *] context) p.context ~)
+        =/  booth-key  (~(get by context) 'booth')
+        ?~  booth-key
+          ~&  >>>  "{<dap.bowl>}: error. booth key not found in context"
+          `state
+        =/  booth-key  (so:dejs:format (need booth-key))
+        =/  custom-actions  (~(get by custom-actions.state) booth-key)
+        ?~  custom-actions
+          `state
+        =/  custom-actions  (need custom-actions)
+
+        =/  custom-action-effect=json
+        %-  pairs:enjs:format
+        :~
+          ['resource' s+'custom-action']
+          ['effect' s+'initial']
+          ['key' s+booth-key]
+          ['data' custom-actions]
+        ==
+        =/  effect-list  [custom-action-effect ~]
+        =/  effects=json
+        %-  pairs:enjs:format
+        :~
+          ['action' s+'request-custom-actions-reaction']
+          ['context' [%o context]]
+          ['effects' [%a effect-list]]
+        ==
+
+        :_  state
+
+        :~
+          [%give %fact [/booths]~ %json !>(effects)]
+          [%give %fact [/booths/(scot %tas booth-key)]~ %json !>(effects)]
+        ==
 
       ::  if we get this, bad news we've been kicked from the booth
       ++  delete-participant-wire
@@ -2293,6 +2363,9 @@
                 %initial
                   (handle-initial payload)
 
+                %request-custom-actions-reaction
+                  (handle-custom-actions-reaction payload)
+
                 %save-proposal
                   (handle-save-proposal payload)
 
@@ -3329,6 +3402,64 @@
       ::  for clients (e.g. UI) and "our" agent, send to generic /booths path
       [%give %fact [/booths]~ %json !>(effects)]
     ==
+
+  ++  handle-custom-actions-reaction
+    |=  [payload=(map @t json)]
+
+    :: =/  custom-action-effect
+    :: %-  pairs:enjs:format
+    :: :~
+    ::   ['resource' s+'custom-action']
+    ::   ['effect' s+'initial']
+    ::   ['key' s+booth-key]
+    ::   ['data' custom-actions]
+    :: ==
+    :: =/  effect-list  [custom-action-effect ~]
+    :: =/  effects=json
+    :: %-  pairs:enjs:format
+    :: :~
+    ::   ['action' s+'request-custom-actions-reaction']
+    ::   ['context' [%o context]]
+    ::   ['effects' [%a effect-list]]
+    :: ==
+
+    =/  context  (~(get by payload) 'context')
+    =/  context  ?~(context ~ (need context))
+    =/  context  ?:  ?=([%o *] context)  p.context  ~
+
+    =/  booth-key  (~(get by context) 'booth')
+    ?~  booth-key
+      ~&  >>>  "{<dap.bowl>}: error. context missing booth key"
+      `this
+    =/  booth-key  (so:dejs:format (need booth-key))
+
+    =/  effects  (~(get by payload) 'effects')
+    ?~  effects
+      ~&  >>>  "{<dap.bowl>}: error. reaction payload missing effects"
+      `this
+    =/  effects  (need effects)
+    =/  effects  ?:  ?=([%a *] effects)  p.effects  ~
+    =/  initial-effect  (snag 0 effects)
+    =/  initial-effect  ?:(?=([%o *] initial-effect) p.initial-effect ~)
+
+    :: %-  roll
+    :: :-  effects
+    :: |=  [jon=json acc=?]
+    ::   =/  effect  ?:(?=([%o *] jon) p.jon ~)
+    ::   =/  effect  (~(get by effect) 'effect')
+    ::   ?~  effect  !acc
+    ::   =/  effect  (so:dejs:format (need effect))
+    ::   ?-  effect
+    ::     %initial
+    ::   ==
+
+    =/  custom-actions  (~(get by initial-effect) 'data')
+    ?~  custom-actions
+          %-  (log:core %error "handle-initial missing data")
+          `this
+    =/  custom-actions  (need custom-actions)
+
+    `this(custom-actions (~(put by custom-actions.state) booth-key custom-actions))
 
   ++  handle-save-proposal
     |=  [payload=(map @t json)]
