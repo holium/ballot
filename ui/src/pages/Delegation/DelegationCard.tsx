@@ -18,6 +18,7 @@ import {
 import { pluralize } from "../../logic/utils/text";
 import { ShipModelType } from "../../logic/stores/app";
 import { getNameFromUrl } from "../../logic/utils/path";
+import { useMst } from "../../logic/stores/root";
 
 type DelegationCardProps = {
   votingPower: number;
@@ -28,6 +29,7 @@ type DelegationCardProps = {
 export const DelegationCard: FC<DelegationCardProps> = (
   props: DelegationCardProps
 ) => {
+  const { store } = useMst();
   const { ship, votingPower } = props;
   const urlParams = useParams();
   // const currentBooth = getKeyFromUrl(urlParams);
@@ -99,6 +101,7 @@ export const DelegationCard: FC<DelegationCardProps> = (
                       disabled={error ? true : false}
                       onClick={() => {
                         const formData = form.actions.submit();
+                        store.booth?.delegateStore.delegate(formData.delegate);
                         // onAdd(formData.delegate);
                       }}
                     >

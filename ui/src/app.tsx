@@ -160,6 +160,12 @@ export const App: FC = observer(() => {
                   ? `/apps/${appName}/booth/${store.booth?.key}/delegation`
                   : `/apps/${appName}/booth/${store.booth?.key}/delegation`,
             },
+            {
+              icon: <Icons.SettingsLine />,
+              name: "Settings",
+              nav: "settings",
+              uri: `/apps/${appName}/booth/${store.booth?.key}/settings`,
+            },
           ]}
           contexts={store.list}
         >

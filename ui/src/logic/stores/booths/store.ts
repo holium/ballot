@@ -25,6 +25,7 @@ import { ProposalStore } from "../proposals";
 import { toJS } from "mobx";
 import { GroupModelType } from "../metadata";
 import { rootStore } from "../root";
+import { DelegateStore } from "../delegates";
 
 export const BoothStore = types
   .model({
@@ -92,12 +93,16 @@ export const BoothStore = types
               participantStore: ParticipantStore.create({
                 boothKey: booth.key,
               }),
+              delegateStore: DelegateStore.create({
+                boothKey: booth.key,
+              }),
               loader: { state: "loaded" },
             });
 
             newBooth.isActive && newBooth.proposalStore.getProposals();
             // Initialize booth store
             newBooth.isActive && newBooth.participantStore.getParticipants();
+            newBooth.isActive && newBooth.delegateStore.getDelegates();
             self.booths.set(newBooth.key, newBooth);
           }
         });
@@ -156,6 +161,10 @@ export const BoothStore = types
             boothKey: booth.key,
             loader: { state: "loaded" },
           }),
+          delegateStore: DelegateStore.create({
+            boothKey: booth.key,
+            loader: { state: "loaded" },
+          }),
           loader: { state: "loaded" },
         })
       );
@@ -182,6 +191,9 @@ export const BoothStore = types
             boothKey: booth.key,
           }),
           participantStore: ParticipantStore.create({
+            boothKey: booth.key,
+          }),
+          delegateStore: DelegateStore.create({
             boothKey: booth.key,
           }),
           loader: { state: "loaded" },

@@ -23,6 +23,7 @@ import { ParticipantStore } from "../participants";
 import { ProposalModelType, ProposalStore } from "../proposals";
 import { rootStore } from "../root";
 import { toJS } from "mobx";
+import { DelegateStore } from "../delegates";
 
 const sortMap = {
   recent: (list: ProposalModelType[]) =>
@@ -71,6 +72,7 @@ export const BoothModel = types
     loader: LoaderModel,
     proposalStore: ProposalStore,
     participantStore: ParticipantStore,
+    delegateStore: DelegateStore,
     sortBy: types.optional(
       types.union(
         types.literal("recent"),
