@@ -1808,7 +1808,9 @@
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
         ^-  (quip card _state)
 
-        %-  (slog leaf+"{<dap.bowl>}: delegate-api {<payload>}..." ~)
+        :: =/  payload  ?:(=([%o *] payload) p.payload ~)
+
+        %-  (slog leaf+"{<dap.bowl>}: undelegate-api {<payload>}..." ~)
 
         =/  context  (~(get by payload) 'context')
         ?~  context  (send-api-error req 'missing context')
@@ -1823,7 +1825,7 @@
         ?~  booth  (send-api-error req 'unexpected error. booth {<booth-key>} not found in store')
         =/  booth  (need booth)
 
-        =/  booth  ?:  ?=([%o *] booth)  p.booth  ~
+        =/  booth  ?:(?=([%o *] booth) p.booth ~)
         =/  booth-owner  (~(get by booth) 'owner')
         ?~  booth-owner  (send-api-error req 'booth owner not found')
         =/  booth-owner  (need booth-owner)
@@ -1888,115 +1890,106 @@
         |=  [payload=(map @t json)]
         ^-  (quip card _state)
 
-        %-  (slog leaf+"{<dap.bowl>}: undelegate-wire {<payload>}..." ~)
+        %-  (slog leaf+"{<dap.bowl>}: delegate-wire {<payload>}..." ~)
         :: =/  payload  ?:(=([%o *] payload) p.payload ~)
 
         =/  context  (~(get by payload) 'context')
         ?~  context
-          ~&  >>>  "{<dap.bowl>}: undelegate wire error. payload missing context"
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload missing context"
           !!
         =/  context  (need context)
         =/  context  ?:  ?=([%o *] context)  p.context  ~
 
         =/  booth-key  (~(get by context) 'booth')
         ?~  booth-key
-          ~&  >>>  "{<dap.bowl>}: undelegate wire error. context missing booth"
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. context missing booth"
           !!
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  booth  (~(get by booths.state) booth-key)
         ?~  booth
-          ~&  >>>  "{<dap.bowl>}: undelegate wire error. {<booth-key>} not found in booth store"
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<booth-key>} not found in booth store"
           !!
         =/  booth  (need booth)
 
         =/  booth  ?:  ?=([%o *] booth)  p.booth  ~
         =/  booth-owner  (~(get by booth) 'owner')
         ?~  booth-owner
-          ~&  >>>  "{<dap.bowl>}: undelegate wire error. {<booth-key>} missing owner"
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<booth-key>} missing owner"
           !!
         =/  booth-owner  (need booth-owner)
         =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
 
         =/  data  (~(get by payload) 'data')
         ?~  data
-          ~&  >>>  "{<dap.bowl>}: undelegate wire error. payload missing data"
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload missing data"
           !!
         =/  data  (need data)
         =/  data  ?:  ?=([%o *] data)  p.data  ~
 
         =/  delegate-key  (~(get by data) 'delegate')
         ?~  delegate-key
-          ~&  >>>  "{<dap.bowl>}: undelegate wire error. payload data missing delegate"
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload data missing delegate"
           !!
         =/  delegate-key  (so:dejs:format (need delegate-key))
 
         ::  is the delegate actually a member of the group?
         =/  booth-members  (~(get by participants.state) booth-key)
         ?~  booth-members
-          ~&  >>>  "{<dap.bowl>}: undelegate wire error. booth member store not found"
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. booth member store not found"
           !!
         =/  booth-members  (need booth-members)
         =/  member  (~(get by booth-members) delegate-key)
         ?~  member
-          ~&  >>>  "{<dap.bowl>}: undelegate wire error. {<delegate-key>} is not a booth participant"
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<delegate-key>} is not a booth participant"
           !!
 
         =/  sgn  (~(get by data) 'sig')
         ?~  sgn
-          ~&  >>>  "{<dap.bowl>}: undelegate wire error. payload data missing sig"
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload data missing sig"
           !!
         =/  sgn  (need sgn)
 
         =/  verified  (ver:sig bowl sgn ~)
         ?~  verified
-          ~&  >>>  "{<dap.bowl>}: undelegate wire error. unable to validate signature"
+          ~&  >>>  "{<dap.bowl>}: delegate wire error. unable to validate signature"
           !!
 
         =/  participant-key  (crip "{<src.bowl>}")
         =/  booth-participants  (~(get by delegates.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
         =/  participant  (~(get by booth-participants) participant-key)
-        ?:  =(~ participant)
-          ~&  >>  "{<dap.bowl>}: undelegate wire error. {<participant-key>} not found"
+        ?.  =(~ participant)
+          ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} already delegated vote"
           !!
 
         =/  booth-votes  (~(get by votes.state) booth-key)
         =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
         =/  participant  (~(get by booth-votes) participant-key)
         ?.  =(~ participant)
-          ~&  >>  "{<dap.bowl>}: undelegate wire error. {<participant-key>} already voted"
+          ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} already voted"
           !!
 
-        =/  delegation=json
-        %-  pairs:enjs:format
-        :~
-          ['delegate' s+delegate-key]
-          ['sig' sgn]
-          ['created' (time:enjs:format now.bowl)]
-        ==
-
         =/  booth-participants  (~(del by booth-participants) participant-key)
-
         =/  participant-effect=json
         %-  pairs:enjs:format
         :~
           ['resource' s+'delegate']
           ['effect' s+'delete']
           ['key' s+participant-key]
-          ['data' delegation]
+          ['data' ~]
         ==
 
         =/  effects=json
         %-  pairs:enjs:format
         :~
-          ['action' s+'undelegate-reaction']
+          ['action' s+'delegate-reaction']
           ['context' [%o context]]
           ['effects' [%a [participant-effect]~]]
         ==
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (slog leaf+"sending {<booth-owner>} delegate to {<remote-agent-wire>}..." ~)
+        %-  (slog leaf+"sending {<booth-owner>} undelegate to {<remote-agent-wire>}..." ~)
 
         :_  state(delegates (~(put by delegates.state) booth-key booth-participants))
 
