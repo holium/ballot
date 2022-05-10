@@ -1760,6 +1760,23 @@
         ?.  =(~ participant)
           ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} already delegated vote"
           !!
+        ::  check to see if the one attempting to delegate is themselves a delegate. do not allow this.
+        =/  values  ~(val by booth-participants)
+        =/  matches
+          %-  skim
+          :-  values
+            |=  [a=json]
+            =/  data  ?:(?=([%o *] a) p.a ~)
+            =/  delegate  (~(get by data) 'delegate')
+            ?~  delegate  %.n
+            ?:  =(participant-key (so:dejs:format (need delegate)))
+              %.y
+            %.n
+        ::  is the member attempting to delegate already a delegate?
+        ?:  (gth 0 (lent matches))
+          ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} is a delegate and therefore cannot delegate"
+          !!
+        =/  context  (~(put by context) 'participant' s+participant-key)
 
         =/  booth-votes  (~(get by votes.state) booth-key)
         =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
@@ -1959,9 +1976,10 @@
         =/  booth-participants  (~(get by delegates.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
         =/  participant  (~(get by booth-participants) participant-key)
-        ?.  =(~ participant)
-          ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} already delegated vote"
+        ?:  =(~ participant)
+          ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} has not delegated"
           !!
+        =/  context  (~(put by context) 'participant' s+participant-key)
 
         =/  booth-votes  (~(get by votes.state) booth-key)
         =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
