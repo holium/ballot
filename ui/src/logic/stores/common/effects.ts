@@ -12,6 +12,7 @@ export const ContextModel = types.model({
   booth: types.maybeNull(types.string),
   participant: types.maybeNull(types.string),
   proposal: types.maybeNull(types.string),
+  delegate: types.maybeNull(types.string),
 });
 
 export type ContextModelType = Instance<typeof ContextModel>;

@@ -97,6 +97,8 @@ export const ProposalDetail: FC = observer((props: any) => {
       };
     }, []);
 
+    const delegateStore = booth.delegateStore;
+
     content = (
       <Grid2.Row reverse={["xs"]} justify="center">
         <Grid2.Column mb="16px" md={6} lg={9} xl={9}>
@@ -164,6 +166,7 @@ export const ProposalDetail: FC = observer((props: any) => {
               strategy={proposal.strategy}
               onVote={onVote}
               timeLeft={time}
+              votingPower={delegateStore.getVotingPower(app.account.patp)}
               chosenOption={chosenVote && chosenVote.choice}
               voteResults={proposal.results!.resultSummary}
               voteSubmitted={proposal.results!.didVote}

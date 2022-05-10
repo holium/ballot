@@ -42,6 +42,7 @@ export type VoteCardProps = {
   chosenOption?: ChoiceModelType;
   voteResults?: ResultSummaryType;
   voteSubmitted?: boolean;
+  votingPower?: number;
   onClick: (option: string) => any;
   onVote: (chosenVote: VoteType) => any;
 };
@@ -62,6 +63,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
     chosenOption,
     voteSubmitted,
     voteResults,
+    votingPower,
     onClick,
     onVote,
   } = props;
@@ -204,9 +206,9 @@ export const VoteCard: any = (props: VoteCardProps) => {
             size="small"
             clickable={false}
           />
-          {/* <Text variant="hint" opacity={0.5}>
-            {`1 ${pluralize("vote", 1)}`}
-          </Text> */}
+          <Text variant="hint" opacity={0.5}>
+            {`${votingPower} ${pluralize("vote", votingPower!)}`}
+          </Text>
         </Flex>
         <Text mt={3} mb={3} variant="body">
           {title}
