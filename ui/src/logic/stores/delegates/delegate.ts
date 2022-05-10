@@ -2,7 +2,7 @@ import { types, Instance } from "mobx-state-tree";
 
 export const DelegateModel: any = types
   .model({
-    key: types.identifier,
+    delegate: types.string,
     sig: types.maybeNull(
       types.model({
         voter: types.string,

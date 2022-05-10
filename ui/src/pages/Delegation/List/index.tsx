@@ -22,6 +22,7 @@ export const DelegationList: FC = observer(() => {
   const { app, metadata, store } = useMst();
   const urlParams = useParams();
   const currentBooth = store.booths.get(getKeyFromUrl(urlParams))!;
+  const delegateStore = currentBooth.delegateStore;
 
   const participants = currentBooth.participantStore.list;
   const totalVotingPower = participants.length;
@@ -45,7 +46,7 @@ export const DelegationList: FC = observer(() => {
         }
       />
       <Flex flexDirection="column">
-        <DelegationCard votingPower={1} ship={app.account!} />
+        <DelegationCard ship={app.account!} />
         <Card
           style={{ borderColor: "transparent" }}
           elevation="lifted"
@@ -63,7 +64,9 @@ export const DelegationList: FC = observer(() => {
                   participant.name !== app.ship.patp
               )
               .map((participant: ParticipantModelType) => {
-                const participantVotingPower = 1; // todo implement when delegaton backend is built
+                const participantVotingPower = delegateStore.getVotingPower(
+                  participant.key
+                ); // todo implement when delegaton backend is built
                 const participantMetadata: any = metadata.contactsMap.get(
                   participant.name
                 ) || {

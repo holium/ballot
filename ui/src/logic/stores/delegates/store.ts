@@ -32,6 +32,25 @@ export const DelegateStore = types
     get isLoaded() {
       return self.loader.isLoaded;
     },
+    getVotingPower(ship: string): number {
+      let votingPower = 1;
+      const memberDelegate = self.delegates.get(ship);
+
+      if (memberDelegate) {
+        votingPower = 0;
+      } else {
+        votingPower = Array.from(self.delegates.values()).reduce(
+          (power: number, delegateRecord: any) => {
+            if (delegateRecord.delegate === ship) {
+              return power + 1;
+            }
+            return power;
+          },
+          1
+        );
+      }
+      return votingPower;
+    },
   }))
   .actions((self) => ({
     getDelegates: flow(function* () {
@@ -40,9 +59,9 @@ export const DelegateStore = types
         const [response, error] = yield delegateApi.getDelegates(self.boothKey);
         if (error) throw error;
         self.loader.set("loaded");
-        Object.values(response || {}).forEach((delegate: any) => {
-          const newDelegate = DelegateModel.create(delegate);
-          self.delegates.set(newDelegate.key, newDelegate);
+        Object.keys(response || {}).forEach((delegatingShip: any) => {
+          const newDelegate = DelegateModel.create(response[delegatingShip]);
+          self.delegates.set(delegatingShip, newDelegate);
         });
       } catch (err: any) {
         self.loader.error(err);
@@ -66,7 +85,7 @@ export const DelegateStore = types
         self.loader.error(err);
       }
     }),
-    remove: flow(function* (delegateKey: string) {
+    undelegate: flow(function* (delegateKey: string) {
       try {
         const [response, error] = yield delegateApi.deleteDelegate(
           self.boothKey,
