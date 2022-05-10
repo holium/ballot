@@ -21,6 +21,7 @@ import { createPath, getKeyFromUrl } from "./logic/utils/path";
 import { toJS } from "mobx";
 import { useMst } from "./logic/stores/root";
 import { BoothModelType } from "./logic/stores/booths";
+import { useMobile } from "./logic/utils/useMobile";
 
 export const appName = "ballot";
 
@@ -29,7 +30,7 @@ export const App: FC = observer(() => {
   const location = useLocation();
   const urlParams = useParams();
   const { isShowing, toggle } = useDialog();
-
+  const isMobile = useMobile();
   const { store, app, metadata } = useMst();
 
   // Runs on initial load
