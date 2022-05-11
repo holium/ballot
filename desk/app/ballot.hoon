@@ -116,13 +116,24 @@
           =/  member  (~(put by member) 'role' s+role)
           (~(put by acc-inner) key [%o member])
         (~(put by acc-outer) key result)
-    =/  custom-actions=(map @t json)  ~
-    =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
-    ?.  .^(? %cu lib-file)
-      ~&  >>  "{<dap.bowl>}: warning. custom actions file not found"
-      [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=upgraded-booths proposals=proposals.old participants=upgraded-participants invitations=invitations.old votes=votes.old delegates=~ custom-actions=custom-actions]
-    =/  data  .^(json %cx lib-file)
-    =/  custom-actions  (~(put by custom-actions) (crip "{<our.bowl>}") data)
+    =/  custom-actions
+      %-  ~(rep in booths.old)
+        |=  [[key=@t jon=json] acc=(map @t json)]
+          =/  booth  ?:(?=([%o *] jon) p.jon ~)
+          =/  owner  (~(get by booth) 'owner')
+          ?~  owner  acc
+          =/  owner  (so:dejs:format (need owner))
+          =/  booth-ship=@p  `@p`(slav %p owner)
+          ::  if we are the owner of the booth, add our custom-actions
+          ?:  =(booth-ship our.bowl)
+            =/  custom-actions=(map @t json)  ~
+            =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
+            ?.  .^(? %cu lib-file)
+              ~&  >>  "{<dap.bowl>}: warning. custom actions file not found"
+              acc
+            =/  data  .^(json %cx lib-file)
+            (~(put by acc) key data)
+          acc
     [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=upgraded-booths proposals=proposals.old participants=upgraded-participants invitations=invitations.old votes=votes.old delegates=~ custom-actions=custom-actions]
   --
 
@@ -280,6 +291,13 @@
 
       =.  booth-participants  (~(put by booth-participants) participant-key participant)
 
+      =/  custom-actions=(map @t json)  ~
+      =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
+      =/  custom-actions  ?.  .^(? %cu lib-file)
+        ~&  >>  "{<dap.bowl>}: warning. custom actions file not found"
+        ~
+      .^(json %cx lib-file)
+
       %-  (log:core %good "ballot: context initialized!")
 
       =/  effects  (booths-to-subscriptions booths)
@@ -287,7 +305,7 @@
       %-  (log:core %info "subscribing to /groups...")
       =/  effects  (snoc effects [%pass /group %agent [our.bowl %group-store] %watch /groups])
 
-      :_  state(booths booths, participants (~(put by participants.state) booth-key booth-participants))
+      :_  state(booths booths, participants (~(put by participants.state) booth-key booth-participants), custom-actions (~(put by custom-actions.state) booth-key custom-actions))
 
       [effects]
 
@@ -2663,6 +2681,14 @@
     ::  generate a booth from the resource
     =/  booth  (booth-from-resource resource.action)
 
+    =|  custom-actions=(map @t json)
+    =/  custom-actions  ?.  =(our.bowl entity.resource.action)  ~
+      =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
+      ?.  .^(? %cu lib-file)
+        ~&  >>  "{<dap.bowl>}: warning. custom actions file not found"
+        ~
+      (~(put by custom-actions) key.booth .^(json %cx lib-file))
+
     %-  (log:core %info "ballot: on-group-added. adding group booth {<key.booth>}...")
 
     ::  generate a participant from the resource
@@ -2711,7 +2737,7 @@
     =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
     =/  booth-participants  (~(put by booth-participants) participant-key participant)
 
-    :_  this(booths (~(put by booths.state) key.booth data.booth), participants (~(put by participants.state) key.booth booth-participants))
+    :_  this(booths (~(put by booths.state) key.booth data.booth), participants (~(put by participants.state) key.booth booth-participants), custom-actions (~(gas by custom-actions.state) ~(tap by custom-actions)))
 
     :~  [%give %fact [/booths]~ %json !>(effects)]
         [%pass /booths/(scot %tas key.booth) %agent [our.bowl %ballot] %watch /booths/(scot %tas key.booth)]
@@ -2750,27 +2776,6 @@
 
     :~  [%give %fact [/booths]~ %json !>(effects)]
     ==
-
-  ++  extract-booth
-    |=  [res=resource eff=@t p=@p acc=[effects=(list card) data=(map @t json)]]
-    ^-  [effects=(list card) data=(map @t json)]
-    =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
-    =/  key  (crip "{<p>}")
-    =/  participant=json
-    %-  pairs:enjs:format
-    :~
-      ['key' s+key]
-      ['name' s+key]
-      ['slug' s+(spat /(scot %t key))]
-      ['status' s+'enlisted']
-      ['image' ~]
-      ['created' (time:enjs:format now.bowl)]
-    ==
-    ?:  =(our.bowl p)
-      %-  (log:core %info "ballot: this ship {<our.bowl>} has been added to the group. mounting booth...")
-      =/  booth  (booth-from-resource res)
-      [(snoc effects.acc (send-new-booth-effect eff key data.booth)) (~(put by data.acc) key.booth data.booth)]
-    [effects.acc data.acc]
 
   ++  send-new-booth-effect
     |=  [eff=@t key=@t booth=json]
@@ -2983,18 +2988,18 @@
     |=  [=initial:group-store]
     ?>  ?=(%initial -.initial)
     =/  data
-      ^-  [effects=(list card) booths=(map @t json) participants=(map @t (map @t json))] :: participants=(map @t (map @t json))]
+      ^-  [effects=(list card) booths=(map @t json) participants=(map @t (map @t json)) custom-actions=(map @t json)] :: participants=(map @t (map @t json))]
       ::  loop thru groups, creating a new booth (status='initial') for each
       ::    group in the map
       %-  ~(rep in groups.initial)
       ::  each map key/value pair is a resource => group. acc is an
       ::   accumulator which is used to store the final result
-      |=  [[=resource =group] acc=[effects=(list card) booths=(map @t json) participants=(map @t (map @t json))]]  :: participants=(map @t (map @t json))]]
-        ^-  [effects=(list card) booths=(map @t json) participants=(map @t (map @t json))] :: participants=(map @t (map @t json))]
+      |=  [[=resource =group] acc=[effects=(list card) booths=(map @t json) participants=(map @t (map @t json)) custom-actions=(map @t json)]]  :: participants=(map @t (map @t json))]]
+        ^-  [effects=(list card) booths=(map @t json) participants=(map @t (map @t json)) custom-actions=(map @t json)] :: participants=(map @t (map @t json))]
         =/  booth  (booth-from-resource resource)
         ?:  (~(has by booths.state) key.booth)
               %-  (log:core %warn "cannot add booth {<key.booth>} to store. already exists...")
-              [effects.acc booths.acc participants.acc]
+              [effects.acc booths.acc participants.acc custom-actions.acc]
         =/  effects
               ?:  =(status.booth 'active')
                 %-  (log:core %info "activating booth {<key.booth>} on {<our.bowl>}...")
@@ -3005,8 +3010,15 @@
                 =/  members  (members-to-participants resource group)
                 (~(put by participants.acc) key.booth members)
               [participants.acc]
-            [effects (~(put by booths.acc) key.booth data.booth) participants]
-    :_  this(booths (~(gas by booths.state) ~(tap by booths.data)), participants (~(gas by participants.state) ~(tap by participants.data)))
+        =/  custom-actions  ?.  =(our.bowl entity.resource)  custom-actions.acc
+          =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
+          ?.  .^(? %cu lib-file)
+            ~&  >>  "{<dap.bowl>}: warning. custom actions file not found"
+            custom-actions.acc
+          (~(put by custom-actions.acc) key.booth .^(json %cx lib-file))
+
+          [effects (~(put by booths.acc) key.booth data.booth) participants custom-actions]
+    :_  this(booths (~(gas by booths.state) ~(tap by booths.data)), participants (~(gas by participants.state) ~(tap by participants.data)), custom-actions (~(gas by custom-actions.state) ~(tap by custom-actions.data)))
     [effects.data]
 
   ++  on-group-initial-group
@@ -3014,6 +3026,14 @@
     ?>  ?=(%initial-group -.initial)
 
     =/  new-booth  (booth-from-resource resource.initial)
+
+    =|  custom-actions=(map @t json)
+    =/  custom-actions  ?.  =(our.bowl entity.resource.initial)  ~
+      =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
+      ?.  .^(? %cu lib-file)
+        ~&  >>  "{<dap.bowl>}: warning. custom actions file not found"
+        ~
+      (~(put by custom-actions) key.new-booth .^(json %cx lib-file))
 
     =/  booth  (~(get by booths.state) key.new-booth)
     ?.  =(booth ~)
@@ -3068,7 +3088,7 @@
       ['effects' [%a effect-list]]
     ==
 
-    :_  this(booths (~(put by booths.state) key.new-booth data.new-booth), participants (~(put by participants.state) key.new-booth booth-participants))
+    :_  this(booths (~(put by booths.state) key.new-booth data.new-booth), participants (~(put by participants.state) key.new-booth booth-participants), custom-actions (~(gas by custom-actions.state) ~(tap by custom-actions)))
 
     :~  [%give %fact [/booths]~ %json !>(effects)]
     ==
@@ -4007,7 +4027,8 @@
               =/  label  (~(get by choice-1) 'label')
               =/  label  ?~(label '?' (so:dejs:format (need label)))
               =/  custom-action  (~(get by choice-1) 'action')
-              =/  custom-action  ?~(custom-action ~ (some (so:dejs:format (need custom-action))))
+              =/  custom-action  ?~(custom-action ~ (need custom-action))
+              =/  custom-action  ?~(custom-action ~ (some (so:dejs:format custom-action)))
               =/  data  (~(get by choice-1) 'data')
               =/  data  ?~(data ~ (need data))
               [(some label) custom-action data ~]
@@ -4053,7 +4074,10 @@
     =/  v  ((om json):dejs:format +.vote)
     =/  choice  ((om json):dejs:format (~(got by v) 'choice'))
     =/  label  (so:dejs:format (~(got by choice) 'label'))
-    =/  action  (so:dejs:format (~(got by choice) 'action'))
+    =/  action  (~(get by choice) 'action')
+    =/  action  ?~(action ~ (need action))
+    =/  action=(unit @t)  ?~(action ~ (some (so:dejs:format action)))
+    :: =/  action  (so:dejs:format (~(got by choice) 'action'))
 
     ::  label, count, percentage
     =/  result  (~(get by results) label)
@@ -4067,7 +4091,7 @@
     :: =/  percentage  (div choice-count `@ud`voter-count)
 
     =.  result  (~(put by result) 'label' s+label)
-    =.  result  (~(put by result) 'action' s+action)
+    =.  result  (~(put by result) 'action' ?~(action ~ s+(need action)))
     =.  result  (~(put by result) 'count' (numb:enjs:format choice-count))
     =.  result  (~(put by result) 'percentage' n+(crip "{(r-co:co (drg:rd percentage))}"))
 
