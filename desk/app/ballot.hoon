@@ -98,8 +98,7 @@
             ['duration' n+'7']
           ==
           =/  permissions
-          :~  s+'member'
-              s+'admin'
+          :~  s+'admin'
           ==
           =/  booth  (~(put by booth) 'defaults' defaults)
           =/  booth  (~(put by booth) 'permissions' [%a permissions])
