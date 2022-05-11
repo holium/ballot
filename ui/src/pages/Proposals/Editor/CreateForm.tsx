@@ -100,8 +100,8 @@ export const createProposalFormFields = (defaults: any = {}) => {
     id: "choices",
     form,
     initialValue: defaultChoices || [
-      { label: "Approve", action: "approve-action" },
-      { label: "Reject", action: "reject-action" },
+      { label: "Approve", action: "" },
+      { label: "Reject", action: "" },
     ],
     validationSchema: yup.array().min(2, "Need at least two choices."),
   });
