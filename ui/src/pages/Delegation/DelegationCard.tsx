@@ -47,6 +47,7 @@ export const DelegationCard: FC<DelegationCardProps> = observer(
     const { store } = useMst();
     const { ship } = props;
     const urlParams = useParams();
+    const isLoading = store.booth?.isLoading;
     // const currentBooth = getKeyFromUrl(urlParams);
     const currentBooth = getNameFromUrl(urlParams);
     const delegateStore = store.booths.get(currentBooth)?.delegateStore;
@@ -84,9 +85,11 @@ export const DelegationCard: FC<DelegationCardProps> = observer(
           color={ship.metadata?.color || "#000000"}
           textOpacity={1}
         /> */}
-          <Text variant="body" opacity={0.7}>
-            {ourVotingPower} {pluralize("vote", ourVotingPower)}
-          </Text>
+          {!isLoading && (
+            <Text variant="body" opacity={0.7}>
+              {ourVotingPower} {pluralize("vote", ourVotingPower)}
+            </Text>
+          )}
         </Flex>
         <Flex flexDirection="column" mt={2}>
           {ourDelegate ? (

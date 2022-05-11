@@ -75,9 +75,8 @@ export const DelegateStore = types
         );
         if (error) throw error;
         const newParticipant = DelegateModel.create({
-          status: "pending",
-          key: delegateKey,
-          name: delegateKey,
+          delegate: delegateKey,
+          sig: null,
           created: 0,
         });
         self.delegates.set(newParticipant.key, newParticipant);

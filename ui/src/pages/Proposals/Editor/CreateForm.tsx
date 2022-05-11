@@ -48,7 +48,7 @@ export const createProposalFormFields = (defaults: any = {}) => {
   newStartTime.setMinutes(0);
   newStartTime.setSeconds(0);
   const newEndTime = new Date();
-  newEndTime.setDate(newStartTime.getDate() + 7);
+  newEndTime.setDate(newStartTime.getDate() + defaults.duration || 7);
   newEndTime.setHours(newStartTime.getHours());
   newEndTime.setMinutes(0);
   newEndTime.setSeconds(0);

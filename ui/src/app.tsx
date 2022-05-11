@@ -60,6 +60,36 @@ export const App: FC = observer(() => {
     app.setTheme(app.theme === "light" ? "dark" : "light");
   };
 
+  const routes = [
+    {
+      icon: <Icons.SurveyLine />,
+      name: "Proposals",
+      nav: "proposals",
+      uri:
+        store.booth?.type === "ship"
+          ? `/apps/${appName}/booth/${store.booth?.key}/proposals`
+          : `/apps/${appName}/booth/${store.booth?.key}/proposals`,
+    },
+    {
+      icon: <Icons.ParentLine />,
+      name: "Delegation",
+      nav: "delegation",
+      uri:
+        store.booth?.type === "ship"
+          ? `/apps/${appName}/booth/${store.booth?.key}/delegation`
+          : `/apps/${appName}/booth/${store.booth?.key}/delegation`,
+    },
+  ];
+
+  if (store.booth?.hasAdmin) {
+    routes.push({
+      icon: <Icons.SettingsLine />,
+      name: "Settings",
+      nav: "settings",
+      uri: `/apps/${appName}/booth/${store.booth?.key}/settings`,
+    });
+  }
+
   const contextLoading =
     store.isLoading ||
     metadata.groupsLoader.isLoading ||
@@ -142,32 +172,7 @@ export const App: FC = observer(() => {
             navigate(route.uri);
             app.setCurrentUrl(route.uri, route.name.toLowerCase());
           }}
-          subRoutes={[
-            {
-              icon: <Icons.SurveyLine />,
-              name: "Proposals",
-              nav: "proposals",
-              uri:
-                store.booth?.type === "ship"
-                  ? `/apps/${appName}/booth/${store.booth?.key}/proposals`
-                  : `/apps/${appName}/booth/${store.booth?.key}/proposals`,
-            },
-            {
-              icon: <Icons.ParentLine />,
-              name: "Delegation",
-              nav: "delegation",
-              uri:
-                store.booth?.type === "ship"
-                  ? `/apps/${appName}/booth/${store.booth?.key}/delegation`
-                  : `/apps/${appName}/booth/${store.booth?.key}/delegation`,
-            },
-            {
-              icon: <Icons.SettingsLine />,
-              name: "Settings",
-              nav: "settings",
-              uri: `/apps/${appName}/booth/${store.booth?.key}/settings`,
-            },
-          ]}
+          subRoutes={routes}
           contexts={store.list}
         >
           {store.booth && store.booth.isLoaded && <Outlet />}

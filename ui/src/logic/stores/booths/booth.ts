@@ -61,6 +61,14 @@ export const BoothModel = types
     permission: types.maybeNull(
       types.enumeration("Permission", ["owner", "admin", "member", "viewer"])
     ),
+    permissions: types.optional(
+      types.array(types.enumeration(["owner", "admin", "member"])),
+      []
+    ),
+    customActions: types.optional(types.array(types.string), []),
+    defaults: types.maybeNull(
+      types.model({ support: types.number, duration: types.number })
+    ),
     status: types.enumeration("State", [
       "pending", // spinner
       "enlisted", // group auto invite
@@ -119,10 +127,33 @@ export const BoothModel = types
     setSortBy(sortBy: "recent" | "ending" | "starting") {
       self.sortBy = sortBy;
     },
+    updateSettings: flow(function* (boothKey: string, updatedSettings: any) {
+      try {
+        self.loader.set("loading");
+        const [response, error] = yield boothApi.saveBooth(
+          boothKey,
+          updatedSettings
+        );
+        if (error) throw error;
+        self.loader.set("loaded");
+      } catch (err: any) {
+        self.loader.error(err);
+      }
+    }),
     acceptInvite: flow(function* (boothKey: string) {
       try {
         const [response, error] = yield boothApi.acceptInvite(boothKey);
         if (error) throw error;
+      } catch (err: any) {
+        self.loader.error(err);
+      }
+    }),
+    getCustomActions: flow(function* () {
+      try {
+        const [response, error] = yield boothApi.getCustomActions(self.key);
+        console.log(response);
+        if (error) throw error;
+        return response;
       } catch (err: any) {
         self.loader.error(err);
       }

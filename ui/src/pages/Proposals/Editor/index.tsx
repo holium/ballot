@@ -37,6 +37,7 @@ export const ProposalEditor: FC = observer(() => {
   const urlParams = useParams();
 
   let body = emptyState();
+  const booth = store.booth!;
   const proposalStore = store.booth?.proposalStore!;
   let proposal: any = store.booth?.proposalStore!.proposals.get(
     urlParams.proposalId!
@@ -63,6 +64,8 @@ export const ProposalEditor: FC = observer(() => {
     app.setCurrentUrl(newPath);
   };
 
+  let initialForm = proposal;
+
   const onSubmit = async () => {
     let responseProposal: any;
     const proposalStore = store.booth!.proposalStore;
@@ -83,6 +86,15 @@ export const ProposalEditor: FC = observer(() => {
     }
   };
 
+  if (isNew) {
+    initialForm = {
+      ...initialForm,
+      support: booth.defaults?.support,
+      duration: booth.defaults?.duration,
+    };
+  }
+  console.log(initialForm);
+
   const {
     form,
     title,
@@ -94,8 +106,8 @@ export const ProposalEditor: FC = observer(() => {
     support,
     choices,
   } = useMemo(
-    () => createProposalFormFields(proposal),
-    [proposal && proposal.isLoaded]
+    () => createProposalFormFields(initialForm),
+    [proposal, proposal && proposal.isLoaded]
   );
 
   body =

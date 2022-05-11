@@ -1,6 +1,6 @@
-import React, { FC, useMemo } from "react";
+import React, { FC, useEffect, useMemo } from "react";
 import { useParams } from "react-router";
-import { Observer } from "mobx-react";
+import { observer, Observer } from "mobx-react";
 import { createField, createForm } from "mobx-easy-form";
 import * as yup from "yup";
 import {
@@ -17,7 +17,8 @@ import {
   Select,
   Button,
 } from "@holium/design-system";
-import { getNameFromUrl } from "../../logic/utils/path";
+import { getKeyFromUrl, getNameFromUrl } from "../../logic/utils/path";
+import { useMst } from "../../logic/stores/root";
 
 const createSettingsForm = (defaults: any = {}) => {
   const form = createForm({
@@ -25,11 +26,11 @@ const createSettingsForm = (defaults: any = {}) => {
       return values;
     },
   });
-  const redactVotes = createField({
-    id: "redacted",
-    form,
-    initialValue: defaults.redacted || "false",
-  });
+  // const redactVotes = createField({
+  //   id: "redacted",
+  //   form,
+  //   initialValue: defaults.redacted || "false",
+  // });
 
   const proposalPermission = createField({
     id: "proposal-permission",
@@ -54,22 +55,53 @@ const createSettingsForm = (defaults: any = {}) => {
   return { form, support, duration, proposalPermission };
 };
 
-export const Settings: FC = () => {
+const permissionMap: any = {
+  owner: [],
+  admin: ["admin"],
+  "member-admin": ["member", "admin"],
+};
+
+const getSelectValueFromPermissions = (permissions: string[]) => {
+  if (permissions.length === 0) {
+    return "owner";
+  } else if (permissions.length === 1) {
+    return "admin";
+  } else {
+    return "member-admin";
+  }
+};
+
+export const Settings: FC = observer(() => {
+  const { store } = useMst();
   const urlParams = useParams();
   const saveButton = React.createRef<HTMLButtonElement>();
+
+  const booth = store.booths.get(getKeyFromUrl(urlParams))!;
+
+  useEffect(() => {
+    booth.getCustomActions();
+  }, []);
 
   const { form, support, duration, proposalPermission } = useMemo(
     () =>
       createSettingsForm({
-        duration: 7,
-        support: 50,
-        proposalPermission: "owner",
+        duration: booth.defaults!.duration,
+        support: booth.defaults!.support,
+        proposalPermission: getSelectValueFromPermissions(booth.permissions),
       }),
     []
   );
 
   const onSubmit = () => {
-    console.log(form.actions.submit());
+    const formData = form.actions.submit();
+    const newSettings = {
+      defaults: {
+        duration: formData.duration,
+        support: formData.support,
+      },
+      permissions: permissionMap[formData["proposal-permission"]],
+    };
+    booth.updateSettings(booth.key, newSettings);
   };
 
   const customActions = [];
@@ -271,4 +303,4 @@ export const Settings: FC = () => {
       </Card>
     </CenteredPane>
   );
-};
+});

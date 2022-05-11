@@ -120,6 +120,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
           setChosenVote({
             chosenVote: {
               label: choice.label,
+              action: choice.action,
             },
             proposalId: proposalId,
           })

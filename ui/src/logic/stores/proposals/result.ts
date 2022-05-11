@@ -32,7 +32,17 @@ export const ResultModel = types
   })
   .views((self) => ({
     get voteCount() {
-      return self.votes.size;
+      const parent: ProposalModelType = getParent(self, 1);
+      return Array.from(self.votes.values()).reduce(
+        (count: number, voteRecord: any) => {
+          const votingPower = rootStore.store.booths
+            .get(parent.boothKey)!
+            .delegateStore.getVotingPower(voteRecord.voter);
+          count = count + votingPower;
+          return count;
+        },
+        0
+      );
     },
     get participantCount(): number {
       const parentBooth: BoothModelType = getParent(self, 4);
@@ -59,7 +69,10 @@ export const ResultModel = types
       const tallyMap: any = voteArray.reduce(
         (tallyObj: any, vote: VoteModelType) => {
           const choiceLabel = vote.choice.label;
-          tallyObj[choiceLabel] = tallyObj[choiceLabel] + 1;
+          const votingPower = rootStore.store.booths
+            .get(parent.boothKey)!
+            .delegateStore.getVotingPower(vote.voter);
+          tallyObj[choiceLabel] = tallyObj[choiceLabel] + votingPower;
           return tallyObj;
         },
         initialTally
