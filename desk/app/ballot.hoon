@@ -1653,6 +1653,9 @@
         ?~  delegate  (send-api-error req 'delegate element not found')
         =/  delegate  (so:dejs:format (need delegate))
 
+        =/  delegate-ship  `@p`(slav %p delegate)
+        ?:  =(delegate-ship our.bowl)  (send-api-error req 'cannot delegate to yourself')
+
         =/  delegation=json
         %-  pairs:enjs:format
         :~
