@@ -158,6 +158,7 @@ export const ProposalDetail: FC = observer((props: any) => {
           <Grid2.Row>
             <VoteCard
               style={{ width: "100%" }}
+              delegate={delegateStore.delegates.get(app.account.patp)}
               disabled={!isActive}
               choices={proposal.choices}
               title={proposal.title}

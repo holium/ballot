@@ -54,11 +54,16 @@ export const DelegationCard: FC<DelegationCardProps> = observer(
     const ourDelegate = delegateStore?.delegates.get(ship.patp)?.delegate;
     const ourVotingPower = delegateStore!.getVotingPower(ship.patp);
     const hasDelegated = ourVotingPower === 0;
+    const isDelegateLoading = delegateStore?.loader.isLoading;
     // console.log(totalVotingPower);
     const { form, delegate } = useMemo(
       () => createDelegateForm(ourDelegate),
       [ourDelegate]
     );
+
+    console.log("delegate card update", isDelegateLoading, ourVotingPower);
+
+    const error = !delegate.computed.isDirty || delegate.computed.error;
 
     return (
       <Card
@@ -129,60 +134,47 @@ export const DelegationCard: FC<DelegationCardProps> = observer(
           )}
 
           <FormControl.Field mt={2}>
-            <Observer>
-              {() => {
-                const error =
-                  !delegate.computed.isDirty || delegate.computed.error;
+            <Grid gridTemplateColumns="2fr 100px" gridColumnGap={2}>
+              <Grid gridTemplateRows="auto" gridRowGap={2}>
+                {ourDelegate ? (
+                  <OurDelegateInput>{ourDelegate}</OurDelegateInput>
+                ) : (
+                  <Input
+                    placeholder="e.g. ~zod"
+                    spellCheck={false}
+                    variant="body"
+                    onChange={(evt: any) => {
+                      delegate.actions.onChange(evt.target.value);
+                    }}
+                    onFocus={() => delegate.actions.onFocus()}
+                    onBlur={() => delegate.actions.onBlur()}
+                  />
+                )}
+              </Grid>
+              <Button
+                variant="minimal"
+                type="submit"
+                isLoading={isDelegateLoading}
+                disabled={ourDelegate ? false : error ? true : false}
+                onClick={() => {
+                  if (ourDelegate) {
+                    delegateStore.undelegate(ourDelegate);
+                  } else {
+                    const formData = form.actions.submit();
+                    delegateStore!.delegate(formData.delegate);
+                  }
+                  // onAdd(formData.delegate);
+                }}
+              >
+                {ourDelegate ? "Undelegate" : "Delegate"}
+              </Button>
+            </Grid>
 
-                // const ourDelegate = delegateStore?.delegates.get(
-                //   ship.patp
-                // )?.delegate;
-                return (
-                  <>
-                    <Grid gridTemplateColumns="2fr 100px" gridColumnGap={2}>
-                      <Grid gridTemplateRows="auto" gridRowGap={2}>
-                        {ourDelegate ? (
-                          <OurDelegateInput>{ourDelegate}</OurDelegateInput>
-                        ) : (
-                          <Input
-                            placeholder="e.g. ~zod"
-                            spellCheck={false}
-                            variant="body"
-                            onChange={(evt: any) => {
-                              delegate.actions.onChange(evt.target.value);
-                            }}
-                            onFocus={() => delegate.actions.onFocus()}
-                            onBlur={() => delegate.actions.onBlur()}
-                          />
-                        )}
-                      </Grid>
-                      <Button
-                        variant="minimal"
-                        type="submit"
-                        disabled={ourDelegate ? false : error ? true : false}
-                        onClick={() => {
-                          if (ourDelegate) {
-                            store.booth?.delegateStore.undelegate(ourDelegate);
-                          } else {
-                            const formData = form.actions.submit();
-                            store.booth?.delegateStore.delegate(
-                              formData.delegate
-                            );
-                          }
-                          // onAdd(formData.delegate);
-                        }}
-                      >
-                        {ourDelegate ? "Undelegate" : "Delegate"}
-                      </Button>
-                    </Grid>
-
-                    {/* <FormControl.Hint>
-                    You must enter a valid patp.
-                  </FormControl.Hint> */}
-                  </>
-                );
-              }}
-            </Observer>
+            {delegateStore?.loader.error && (
+              <FormControl.Error>
+                {delegateStore?.loader.errorMessage}
+              </FormControl.Error>
+            )}
           </FormControl.Field>
         </Flex>
       </Card>

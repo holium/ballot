@@ -16,9 +16,11 @@ import {
   Input,
   Select,
   Button,
+  GenericRow,
 } from "@holium/design-system";
 import { getKeyFromUrl, getNameFromUrl } from "../../logic/utils/path";
 import { useMst } from "../../logic/stores/root";
+import { toJS } from "mobx";
 
 const createSettingsForm = (defaults: any = {}) => {
   const form = createForm({
@@ -104,7 +106,9 @@ export const Settings: FC = observer(() => {
     booth.updateSettings(booth.key, newSettings);
   };
 
-  const customActions = [];
+  const customActions = booth.customActions;
+
+  console.log(toJS(customActions));
 
   return (
     <CenteredPane
@@ -299,6 +303,20 @@ export const Settings: FC = observer(() => {
               No custom actions
             </Text>
           )}
+          <Flex flexDirection="column" gap={8}>
+            {customActions.map((action: any, index: number) => {
+              return (
+                <GenericRow key={`${action.label}-${index}`}>
+                  <Flex flexDirection="column">
+                    {action.label}
+                    <Text mt="2px" opacity={0.7} fontSize="12px">
+                      {action.filename}
+                    </Text>
+                  </Flex>
+                </GenericRow>
+              );
+            })}
+          </Flex>
         </Flex>
       </Card>
     </CenteredPane>

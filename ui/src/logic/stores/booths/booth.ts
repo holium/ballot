@@ -24,6 +24,7 @@ import { ProposalModelType, ProposalStore } from "../proposals";
 import { rootStore } from "../root";
 import { toJS } from "mobx";
 import { DelegateStore } from "../delegates";
+import participants from "../../api/participants";
 
 const sortMap = {
   recent: (list: ProposalModelType[]) =>
@@ -65,7 +66,16 @@ export const BoothModel = types
       types.array(types.enumeration(["owner", "admin", "member"])),
       []
     ),
-    customActions: types.optional(types.array(types.string), []),
+    customActions: types.optional(
+      types.array(
+        types.model({
+          label: types.string,
+          filename: types.string,
+          form: types.map(types.string),
+        })
+      ),
+      []
+    ),
     defaults: types.maybeNull(
       types.model({ support: types.number, duration: types.number })
     ),
@@ -106,9 +116,43 @@ export const BoothModel = types
     get listParticipants() {
       return Array.from(self.participantStore.participants.values());
     },
-    get hasAdmin(): boolean {
-      // TODO use booth.permission (patrick fix)
+    get isOwner(): boolean {
       return self.owner === rootStore.app.ship.patp;
+    },
+    get hasCreatePermission(): boolean {
+      if (self.owner === rootStore.app.ship.patp) {
+        return true;
+      }
+
+      if (self.participantStore.isLoaded) {
+        const participant: ParticipantModelType =
+          self.participantStore.participants.get(rootStore.app.ship.patp);
+
+        if (self.permissions.includes(participant.role)) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    },
+    get hasAdmin(): boolean {
+      if (self.owner === rootStore.app.ship.patp) {
+        return true;
+      }
+      if (self.participantStore.isLoaded) {
+        const participant: ParticipantModelType =
+          self.participantStore.participants.get(rootStore.app.ship.patp);
+        if (
+          self.permissions.includes("admin") &&
+          participant.role === "admin"
+        ) {
+          return true;
+        }
+        return false;
+      }
+      return false;
     },
     get isLoading() {
       return self.loader.isLoading;
@@ -153,6 +197,11 @@ export const BoothModel = types
         const [response, error] = yield boothApi.getCustomActions(self.key);
         console.log(response);
         if (error) throw error;
+        self.customActions = Object.keys(response).map((actionKey: string) => ({
+          label: response[actionKey].label,
+          filename: `${actionKey}.hoon`,
+          form: response[actionKey].form,
+        }));
         return response;
       } catch (err: any) {
         self.loader.error(err);

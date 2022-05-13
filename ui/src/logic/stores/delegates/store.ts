@@ -9,6 +9,7 @@ import {
   applyPatch,
 } from "mobx-state-tree";
 import delegateApi from "../../api/delegates";
+import { timeout } from "../../utils/dev";
 import { ContextModelType, EffectModelType } from "../common/effects";
 import { LoaderModel } from "../common/loader";
 import { DelegateModel } from "./delegate";
@@ -33,7 +34,7 @@ export const DelegateStore = types
       return self.loader.isLoaded;
     },
     getVotingPower(ship: string): number {
-      let votingPower = 1;
+      let votingPower: number = 0;
       const memberDelegate = self.delegates.get(ship);
 
       if (memberDelegate) {
@@ -68,6 +69,9 @@ export const DelegateStore = types
       }
     }),
     delegate: flow(function* (delegateKey: string) {
+      self.loader.clearError();
+      self.loader.set("loading");
+      yield timeout(1000);
       try {
         const [response, error] = yield delegateApi.addDelegate(
           self.boothKey,
@@ -79,20 +83,24 @@ export const DelegateStore = types
           sig: null,
           created: 0,
         });
-        self.delegates.set(newParticipant.key, newParticipant);
+        self.loader.set("loaded");
+        // self.delegates.set(newParticipant.key, newParticipant);
       } catch (err: any) {
         self.loader.error(err);
       }
     }),
     undelegate: flow(function* (delegateKey: string) {
+      self.loader.clearError();
+      self.loader.set("loading");
+      yield timeout(1000);
       try {
         const [response, error] = yield delegateApi.deleteDelegate(
           self.boothKey,
           delegateKey
         );
         if (error) throw error;
-        const deleted = self.delegates.get(delegateKey)!;
-        self.delegates.delete(delegateKey);
+        self.loader.set("loaded");
+        // self.delegates.delete(delegateKey);
       } catch (err: any) {
         self.loader.error(err);
       }
@@ -107,7 +115,7 @@ export const DelegateStore = types
     ) {
       switch (payload.effect) {
         case "add":
-          this.addEffect(payload.data);
+          this.addEffect(context, payload.data);
           break;
         case "update":
           this.updateEffect(payload.key, payload.data);
@@ -131,9 +139,9 @@ export const DelegateStore = types
       });
     },
 
-    addEffect(delegate: any) {
-      // console.log("delegate addEffect ", delegate);
-      self.delegates.set(delegate.key, DelegateModel.create(delegate));
+    addEffect(context: any, delegate: any) {
+      console.log("delegate addEffect ", delegate);
+      self.delegates.set(context.participant, DelegateModel.create(delegate));
     },
     updateEffect(delegateKey: string, data: any) {
       // console.log("delegate updateEffect ", delegateKey, data);
@@ -141,7 +149,7 @@ export const DelegateStore = types
       oldBooth?.updateEffect(data);
     },
     deleteEffect(context: ContextModelType) {
-      console.log("delegate deleteEffect ", context.delegate);
-      self.delegates.delete(context.delegate!);
+      console.log("delegate deleteEffect ", context.participant);
+      self.delegates.delete(context.participant!);
     },
   }));

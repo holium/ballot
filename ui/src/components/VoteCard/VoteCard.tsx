@@ -11,6 +11,7 @@ import {
   Fill,
   Box,
   Spinner,
+  Notification,
 } from "@holium/design-system";
 import { ChoiceType, VoteType } from "../../logic/types/proposals";
 import { VoteBreakdownBar } from "../VoteBreakdownBar";
@@ -32,6 +33,7 @@ export type VoteCardProps = {
     patp: string;
     metadata: ContactModelType;
   };
+  delegate?: any;
   title: string;
   blurred?: boolean;
   loading?: boolean;
@@ -52,6 +54,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
     style,
     disabled,
     loading,
+    delegate,
     castingLoading,
     currentUser,
     choices,
@@ -111,7 +114,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
     middleSection = choices?.map((choice: ChoiceType) => (
       <VoteCardButton
         variant="custom"
-        disabled={disabled}
+        disabled={disabled || votingPower === 0}
         chosenOption={chosenVote?.chosenVote?.label === choice.label}
         additionalVariant="option"
         key={choice.label}
@@ -211,10 +214,39 @@ export const VoteCard: any = (props: VoteCardProps) => {
             {`${votingPower} ${pluralize("vote", votingPower!)}`}
           </Text>
         </Flex>
+        {delegate && (
+          <Flex
+            display="inline-flex"
+            alignItems="center"
+            justifyContent="center"
+            textAlign="center"
+            flexDirection="column"
+            mt={1}
+            pl={2}
+            pr={2}
+          >
+            <Notification hasBorder customColor="#EF9134">
+              <Flex
+                width="100%"
+                flex={1}
+                flexDirection="column"
+                alignItems="center"
+              >
+                <Text fontSize={2} fontWeight={400}>
+                  You've delegated to
+                </Text>
+                <Text fontSize={2} fontWeight={600}>
+                  {delegate.delegate}
+                </Text>
+              </Flex>
+            </Notification>
+          </Flex>
+        )}
         <Text mt={3} mb={3} variant="body">
           {title}
         </Text>
-        <Grid gridTemplateRows="auto" gridRowGap={1}>
+
+        <Grid position="relative" gridTemplateRows="auto" gridRowGap={1}>
           {middleSection}
         </Grid>
 

@@ -47,7 +47,8 @@ export const ProposalList: FC = observer(() => {
   const booth = store.booth;
   let proposalsList: any[] = booth?.listProposals!;
 
-  const hasAdmin = booth?.hasAdmin;
+  const hasCreatePermission = booth?.hasCreatePermission;
+  const isOwner = booth?.isOwner;
   const statusCounts = getProposalFilters(proposalsList);
   if (selectedOption === "All") {
     proposalsList = proposalsList;
@@ -100,7 +101,7 @@ export const ProposalList: FC = observer(() => {
         selectedOption={selectedOption}
         rightContent={
           // @ts-ignore
-          hasAdmin && (
+          hasCreatePermission && (
             <Button
               pt="6px"
               pb="6px"
@@ -202,12 +203,13 @@ export const ProposalList: FC = observer(() => {
                   //     console.log("add copy and pasted link");
                   //   },
                   // },
+                  // TODO do a check if the proposal is owned by the pariticpant
                   {
                     label: "Edit",
                     disabled:
                       proposal.status === "Active" ||
                       proposal.status === "Ended" ||
-                      !hasAdmin,
+                      !hasCreatePermission,
                     // TODO add disabled text
                     onClick: (event: React.MouseEvent<HTMLElement>) => {
                       event.stopPropagation();
@@ -225,7 +227,7 @@ export const ProposalList: FC = observer(() => {
                     label: "Delete",
                     intent: "alert",
                     disabled:
-                      !hasAdmin ||
+                      !hasCreatePermission ||
                       proposal.status === "Active" ||
                       proposal.status === "Ended",
                     section: 2,
