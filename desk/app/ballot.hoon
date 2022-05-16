@@ -51,37 +51,69 @@
   |^
   =/  old  !<(versioned-state old-state)
   ?-  -.old
-    %1  `this(state old)
+    %1
+      =/  new-state  (load-custom-actions old)
+      =/  upgrade-effects  (get-upgrade-effects new-state)
+
+      :_  this(state new-state)
+
+      upgrade-effects
+
     %0
       =/  upgraded-state  (upgrade-0-to-1 old)
-            :: leave all booths, force resubscribe to pick up any new data
-      =/  effects
-        %-  ~(rep by booths.old)
-          |=  [[key=@t jon=json] acc=(list card)]
-            ~&  >>  "{<dap.bowl>}: processing upgrade {<key>}, {<jon>}..."
-            =/  data  ?:(?=([%o *] jon) p.jon ~)
-            =/  owner  (~(get by data) 'owner')
-            ?~  owner
-              ~&  >>  "{<dap.bowl>}: warning. booth {<key>} owner not found"
-              acc
-            =/  booth-ship=@p  `@p`(slav %p (so:dejs:format (need owner)))
-            =/  context=json
-            %-  pairs:enjs:format
-            :~
-              ['booth' s+key]
-            ==
-            =/  action=json
-            %-  pairs:enjs:format
-            :~
-              ['action' s+'request-custom-actions']
-              ['context' context]
-              ['data' ~]
-            ==
-          (snoc acc [%pass /booths/(scot %tas key) %agent [booth-ship %ballot] %poke %json !>(action)])
+      =/  upgrade-effects  (get-upgrade-effects upgraded-state)
+
       :_  this(state upgraded-state)
 
-      effects
+      upgrade-effects
   ==
+  ++  get-upgrade-effects
+    |=  [old=state-1:ballot-store]
+    =/  effects
+      %-  ~(rep by booths.old)
+        |=  [[key=@t jon=json] acc=(list card)]
+          ~&  >>  "{<dap.bowl>}: processing upgrade {<key>}, {<jon>}..."
+          =/  data  ?:(?=([%o *] jon) p.jon ~)
+          =/  owner  (~(get by data) 'owner')
+          ?~  owner
+            ~&  >>  "{<dap.bowl>}: warning. booth {<key>} owner not found"
+            acc
+          =/  booth-ship=@p  `@p`(slav %p (so:dejs:format (need owner)))
+          =/  context=json
+          %-  pairs:enjs:format
+          :~
+            ['booth' s+key]
+          ==
+          =/  action=json
+          %-  pairs:enjs:format
+          :~
+            ['action' s+'request-custom-actions']
+            ['context' context]
+            ['data' ~]
+          ==
+        (snoc acc [%pass /booths/(scot %tas key) %agent [booth-ship %ballot] %poke %json !>(action)])
+    effects
+  ++  load-custom-actions
+    |=  [old=state-1:ballot-store]
+    =/  custom-actions
+    %-  ~(rep in booths.old)
+      |=  [[key=@t jon=json] acc=(map @t json)]
+        =/  booth  ?:(?=([%o *] jon) p.jon ~)
+        =/  owner  (~(get by booth) 'owner')
+        ?~  owner  acc
+        =/  owner  (so:dejs:format (need owner))
+        =/  booth-ship=@p  `@p`(slav %p owner)
+        ::  if we are the owner of the booth, add our custom-actions
+        ?:  =(booth-ship our.bowl)
+          =/  custom-actions=(map @t json)  ~
+          =/  lib-file  /(scot %p our.bowl)/(scot %tas dap.bowl)/(scot %da now.bowl)/lib/(scot %tas dap.bowl)/custom-actions/config/json
+          ?.  .^(? %cu lib-file)
+            ~&  >>  "{<dap.bowl>}: warning. custom actions file not found"
+            acc
+          =/  data  .^(json %cx lib-file)
+          (~(put by acc) key data)
+        acc
+    [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=booths.old proposals=proposals.old participants=participants.old invitations=invitations.old votes=votes.old delegates=delegates.old custom-actions=custom-actions]
   ::  ensure new delegates map is set to null ~
   ::  ensure all members with pariticipant role (or no role) are given member role
   ++  upgrade-0-to-1
