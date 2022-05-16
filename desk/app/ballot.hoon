@@ -204,30 +204,11 @@
 
         =/  req  !<((pair @ta inbound-request:eyre) vase)
 
-        ?:  ?&  =(authentication.state 'enable')
-                !authenticated.q.req
-            ==
-            %-  (log:core %error "ballot: authentication is enabled. request is not authenticated")
-            (send-api-error req 'not authenticated')
-
         =/  req-args
               (my q:(need `(unit (pair pork:eyre quay:eyre))`(rush url.request.q.req ;~(plug apat:de-purl:html yque:de-purl:html))))
 
-        %-  (log:core %info "ballot: [on-poke] => processing request at endpoint {<(stab url.request.q.req)>}")
+          (handle-resource-action req req-args)
 
-        =/  path  (stab url.request.q.req)
-
-        ?+    method.request.q.req  (send-api-error req 'unsupported')
-
-              %'POST'
-                ?+  path  (send-api-error req 'route not found')
-
-                  [%ballot %api %booths ~]
-                    (handle-resource-action req req-args)
-
-                ==
-
-        ==
         [cards this]
     ==
 
@@ -348,38 +329,61 @@
       ::  all POST payloads are action contracts (see ARM comments)
       =/  payload  (extract-payload req)
 
-      =/  context  ((om json):dejs:format (~(got by payload) 'context'))
-      =/  action  (so:dejs:format (~(got by payload) 'action'))
-      =/  resource  (so:dejs:format (~(got by payload) 'resource'))
+      ?:  ?&  =(authentication.state 'enable')
+              !authenticated.q.req
+          ==
+          %-  (log:core %error "ballot: authentication is enabled. request is not authenticated")
+          (send-api-error req payload 'not authenticated')
 
-      ?+  [resource action]  `state
+      :: =/  req-args
+            :: (my q:(need `(unit (pair pork:eyre quay:eyre))`(rush url.request.q.req ;~(plug apat:de-purl:html yque:de-purl:html))))
 
-            [%booth %invite]
-              (invite-api req payload)
+      %-  (log:core %info "ballot: [on-poke] => processing request at endpoint {<(stab url.request.q.req)>}")
 
-            [%booth %accept]
-              (accept-api req payload)
+      =/  path  (stab url.request.q.req)
 
-            [%booth %save]
-              (save-booth-api req payload)
+      ?+    method.request.q.req  (send-api-error req payload 'unsupported')
 
-            [%proposal %save-proposal]
-              (save-proposal-api req payload)
+            %'POST'
+              ?+  path   (send-api-error req payload 'route not found')
 
-            [%proposal %delete-proposal]
-              (delete-proposal-api req payload)
+                [%ballot %api %booths ~]
+                  =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+                  =/  action  (so:dejs:format (~(got by payload) 'action'))
+                  =/  resource  (so:dejs:format (~(got by payload) 'resource'))
 
-            [%proposal %cast-vote]
-              (cast-vote-api req payload)
+                  ?+  [resource action]  `state
 
-            [%participant %delete-participant]
-              (delete-participant-api req payload)
+                        [%booth %invite]
+                          (invite-api req payload)
 
-            [%delegate %delegate]
-              (delegate-api req payload)
+                        [%booth %accept]
+                          (accept-api req payload)
 
-            [%delegate %undelegate]
-              (undelegate-api req payload)
+                        [%booth %save]
+                          (save-booth-api req payload)
+
+                        [%proposal %save-proposal]
+                          (save-proposal-api req payload)
+
+                        [%proposal %delete-proposal]
+                          (delete-proposal-api req payload)
+
+                        [%proposal %cast-vote]
+                          (cast-vote-api req payload)
+
+                        [%participant %delete-participant]
+                          (delete-participant-api req payload)
+
+                        [%delegate %delegate]
+                          (delegate-api req payload)
+
+                        [%delegate %undelegate]
+                          (undelegate-api req payload)
+
+                  ==
+
+              ==
 
       ==
 
@@ -876,16 +880,40 @@
         ==
 
       ++  send-api-error
-        |=  [req=(pair @ta inbound-request:eyre) msg=@t]
+        |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json) msg=@t]
+
+        :: =/  payload  ?~(payload [%o ~] payload)
+        :: =/  payload  ?:(?=([%o *] payload) p.payload ~)
+        =/  res  (~(get by payload) 'resource')
+        =/  res  ?~(res '?' (so:dejs:format (need res)))
+        =/  action  (~(get by payload) 'action')
+        =/  action  ?~(action '?' (so:dejs:format (need action)))
+        =/  payload  (~(put by payload) 'action' s+(crip (weld (trip action) "-reaction")))
+
+        =/  error-data=json
+        %-  pairs:enjs:format
+        :~
+          ['error' s+msg]
+        ==
+
+        =/  error-effect=json
+        %-  pairs:enjs:format
+        :~
+          ['resource' s+res]
+          ['effect' s+'error']
+          ['data' error-data]
+        ==
+
+        =/  payload  (~(put by payload) 'effects' [%a [error-effect]~])
 
         =/  =response-header:http
           :-  500
-          :~  ['Content-Type' 'text/plain']
+          :~  ['Content-Type' 'application/json']
           ==
 
         ::  convert the string to a form that arvo will understand
         =/  data=octs
-              (as-octs:mimes:html msg)
+              (as-octs:mimes:html (crip (en-json:html [%o payload])))
 
         :_  state
         :~
@@ -899,16 +927,16 @@
         ^-  (quip card _state)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-api-error req 'missing context')
+        ?~  context  (send-api-error req payload 'missing context')
         =/  context  ((om json):dejs:format (need context))
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-api-error req 'missing context key. booth key')
+        ?~  booth-key  (send-api-error req payload 'missing context key. booth key')
         =/  booth-key  (so:dejs:format (need booth-key))
 
 
         =/  participant-key  (~(get by context) 'participant')
-        ?~  participant-key  (send-api-error req 'missing context key. participant key')
+        ?~  participant-key  (send-api-error req payload 'missing context key. participant key')
         =/  participant-key  (so:dejs:format (need participant-key))
 
         %-  (log:core %warn "deleting participant {<booth-key>}, {<participant-key>}")
@@ -916,7 +944,7 @@
         =/  booth-participants  (~(get by participants.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
         =/  participant  (~(get by booth-participants) participant-key)
-        ?~  participant  (send-api-error req 'participant not found')
+        ?~  participant  (send-api-error req payload 'participant not found')
         =/  participant  (need participant)
         =/  participant-ship  `@p`(slav %p participant-key)
         =/  booth-participants  (~(del by booth-participants) participant-key)
@@ -986,24 +1014,24 @@
         ^-  (quip card _state)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-api-error req 'missing context')
+        ?~  context  (send-api-error req payload 'missing context')
         =/  context  ((om json):dejs:format (need context))
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-api-error req 'missing context key. booth key')
+        ?~  booth-key  (send-api-error req payload 'missing context key. booth key')
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  proposal-key  (~(get by context) 'proposal')
-        ?~  proposal-key  (send-api-error req 'missing context key. proposal key')
+        ?~  proposal-key  (send-api-error req payload 'missing context key. proposal key')
         =/  proposal-key  (so:dejs:format (need proposal-key))
 
         =/  booth-proposals  (~(get by proposals.state) booth-key)
         =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
         =/  proposal  (~(get by booth-proposals) proposal-key)
-        ?~  proposal  (send-api-error req 'proposal not found')
+        ?~  proposal  (send-api-error req payload 'proposal not found')
         =/  proposal  ?:(?=([%o *] u.proposal) p.u.proposal ~)
         =/  proposal-owner  (~(get by proposal) 'owner')
-        ?~  proposal-owner  (send-api-error req 'proposal missing owner')
+        ?~  proposal-owner  (send-api-error req payload 'proposal missing owner')
         =/  proposal-owner  (so:dejs:format (need proposal-owner))
         =/  proposal-owner  `@p`(slav %p proposal-owner)
 
@@ -1013,16 +1041,16 @@
         =/  booth-members  (~(get by participants.state) booth-key)
         =/  booth-members  ?~(booth-members ~ (need booth-members))
         =/  member  (~(get by booth-members) member-key)
-        ?~  member  (send-api-error req 'member not found')
+        ?~  member  (send-api-error req payload 'member not found')
         =/  member  ?:(?=([%o *] u.member) p.u.member ~)
         =/  role  (~(get by member) 'role')
-        ?~  role  (send-api-error req 'member role not found')
+        ?~  role  (send-api-error req payload 'member role not found')
         =/  role  (so:dejs:format (need role))
         ?.  ?|  =(role 'owner')
                 =(role 'admin')
                 =(proposal-owner our.bowl)
             ==
-            (send-api-error req 'insufficient privileges')
+            (send-api-error req payload 'insufficient privileges')
 
         =/  booth-proposals  (~(del by booth-proposals) proposal-key)
 
@@ -1109,21 +1137,21 @@
         ^-  (quip card _state)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-api-error req 'missing context element')
+        ?~  context  (send-api-error req payload 'missing context element')
         =/  context  (need context)
         =/  context  ?:(?=([%o *] context) p.context ~)
 
         =/  data  (~(get by payload) 'data')
-        ?~  data  (send-api-error req 'missing data element')
+        ?~  data  (send-api-error req payload 'missing data element')
         =/  data  (need data)
         =/  data  ?:(?=([%o *] data) p.data ~)
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-api-error req 'context missing booth')
+        ?~  booth-key  (send-api-error req payload 'context missing booth')
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  (send-api-error req 'booth not found')
+        ?~  booth  (send-api-error req payload 'booth not found')
         =/  booth  (need booth)
         =/  booth  ?:(?=([%o *] booth) p.booth ~)
         =/  booth  (~(gas by booth) ~(tap by data))
@@ -1177,11 +1205,11 @@
         ^-  (quip card _state)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-api-error req 'missing context element')
+        ?~  context  (send-api-error req payload 'missing context element')
         =/  context  ((om json):dejs:format (need context))
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-api-error req 'context missing booth')
+        ?~  booth-key  (send-api-error req payload 'context missing booth')
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  booth  (~(get by booths.state) booth-key)
@@ -1237,7 +1265,7 @@
           [%.y 'no error']
         [%.y 'no error']
 
-        ?.  success.tst  (send-api-error req msg.tst)
+        ?.  success.tst  (send-api-error req payload msg.tst)
 
         =/  threshold  (~(get by data) 'support')
         ?~  threshold  !!
@@ -1310,15 +1338,15 @@
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-api-error req 'missing context')
+        ?~  context  (send-api-error req payload 'missing context')
         =/  context  ((om json):dejs:format (need context))
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-api-error req 'missing booth key')
+        ?~  booth-key  (send-api-error req payload 'missing booth key')
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  (send-api-error req 'booth not found in store')
+        ?~  booth  (send-api-error req payload 'booth not found in store')
 
         =/  booth  ((om json):dejs:format (need booth))
         =/  booth  (~(put by booth) 'status' s+'pending')
@@ -1406,13 +1434,13 @@
         =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-api-error req 'missing context')
+        ?~  context  (send-api-error req payload 'missing context')
         =/  context  ((om json):dejs:format (need context))
         =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
         =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
 
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  (send-api-error req 'booth not found in store')
+        ?~  booth  (send-api-error req payload 'booth not found in store')
 
         =/  booth  ((om json):dejs:format (need booth))
 
@@ -1434,15 +1462,15 @@
         =/  booth-delegates  (~(get by delegates.state) booth-key)
         =/  booth-delegates  ?~(booth-delegates ~ (need booth-delegates))
         ?:  (~(has by booth-delegates) participant-key)
-          (send-api-error req 'participant delegated vote')
+          (send-api-error req payload 'participant delegated vote')
 
         =/  participant-vote  (~(get by proposal-votes) participant-key)
         ?.  =(participant-vote ~)
-              (send-api-error req 'participant vote already cast')
+              (send-api-error req payload 'participant vote already cast')
 
         =/  payload-data  (~(get by payload) 'data')
         ?~  payload-data
-              (send-api-error req 'missing data')
+              (send-api-error req payload 'missing data')
 
         =/  payload-data  ((om json):dejs:format (need payload-data))
 
@@ -1553,11 +1581,11 @@
 
         =/  context  ?~(context ~ ((om json):dejs:format (need context)))
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-api-error req 'bad context. booth missing.')
+        ?~  booth-key  (send-api-error req payload 'bad context. booth missing.')
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  participant-key  (~(get by context) 'participant')
-        ?~  participant-key  (send-api-error req 'bad data. key missing')
+        ?~  participant-key  (send-api-error req payload 'bad data. key missing')
         =/  participant-key  (so:dejs:format (need participant-key))
 
         %-  (log:core %info "ballot: invite-api called. {<booth-key>}, {<participant-key>}...")
@@ -1660,33 +1688,33 @@
         %-  (slog leaf+"{<dap.bowl>}: delegate-api {<payload>}..." ~)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-api-error req 'missing context')
+        ?~  context  (send-api-error req payload 'missing context')
         =/  context  (need context)
         =/  context  ?:  ?=([%o *] context)  p.context  ~
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-api-error req 'missing context key. booth key')
+        ?~  booth-key  (send-api-error req payload 'missing context key. booth key')
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  (send-api-error req 'unexpected error. booth {<booth-key>} not found in store')
+        ?~  booth  (send-api-error req payload 'unexpected error. booth {<booth-key>} not found in store')
         =/  booth  (need booth)
 
         =/  booth  ?:  ?=([%o *] booth)  p.booth  ~
         =/  booth-owner  (~(get by booth) 'owner')
-        ?~  booth-owner  (send-api-error req 'booth owner not found')
+        ?~  booth-owner  (send-api-error req payload 'booth owner not found')
         =/  booth-owner  (need booth-owner)
         =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
 
         =/  data  (~(get by payload) 'data')
-        ?~  data  (send-api-error req 'payload data not found')
+        ?~  data  (send-api-error req payload 'payload data not found')
         =/  data  ?:(?=([%o *] u.data) p.u.data ~)
         =/  delegate  (~(get by data) 'delegate')
-        ?~  delegate  (send-api-error req 'delegate element not found')
+        ?~  delegate  (send-api-error req payload 'delegate element not found')
         =/  delegate  (so:dejs:format (need delegate))
 
         =/  delegate-ship  `@p`(slav %p delegate)
-        ?:  =(delegate-ship our.bowl)  (send-api-error req 'cannot delegate to yourself')
+        ?:  =(delegate-ship our.bowl)  (send-api-error req payload 'cannot delegate to yourself')
 
         =/  delegation=json
         %-  pairs:enjs:format
@@ -1882,29 +1910,29 @@
         %-  (slog leaf+"{<dap.bowl>}: undelegate-api {<payload>}..." ~)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-api-error req 'missing context')
+        ?~  context  (send-api-error req payload 'missing context')
         =/  context  (need context)
         =/  context  ?:  ?=([%o *] context)  p.context  ~
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-api-error req 'missing context key. booth key')
+        ?~  booth-key  (send-api-error req payload 'missing context key. booth key')
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  (send-api-error req 'unexpected error. booth {<booth-key>} not found in store')
+        ?~  booth  (send-api-error req payload 'unexpected error. booth {<booth-key>} not found in store')
         =/  booth  (need booth)
 
         =/  booth  ?:(?=([%o *] booth) p.booth ~)
         =/  booth-owner  (~(get by booth) 'owner')
-        ?~  booth-owner  (send-api-error req 'booth owner not found')
+        ?~  booth-owner  (send-api-error req payload 'booth owner not found')
         =/  booth-owner  (need booth-owner)
         =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
 
         =/  data  (~(get by payload) 'data')
-        ?~  data  (send-api-error req 'payload data not found')
+        ?~  data  (send-api-error req payload 'payload data not found')
         =/  data  ?:(?=([%o *] u.data) p.u.data ~)
         =/  delegate  (~(get by data) 'delegate')
-        ?~  delegate  (send-api-error req 'delegate element not found')
+        ?~  delegate  (send-api-error req payload 'delegate element not found')
         =/  delegate  (so:dejs:format (need delegate))
 
         =/  delegation=json
