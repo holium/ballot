@@ -50,6 +50,23 @@ export const BoothMetadataModel = types.union(
   GroupMetadataModel
 );
 
+const ActionForm = types.model({
+  label: types.string,
+  description: types.maybe(types.string),
+  filename: types.string,
+  key: types.string,
+  form: types.map(
+    types.union(
+      types.model({ type: types.string }),
+      types.model({ type: types.enumeration(["cord", "?"]) }),
+      types.model({
+        type: types.enumeration(["list"]),
+        options: types.array(types.string),
+      })
+    )
+  ),
+});
+
 export const BoothModel = types
   .model({
     key: types.identifier,
@@ -66,16 +83,7 @@ export const BoothModel = types
       types.array(types.enumeration(["owner", "admin", "member"])),
       []
     ),
-    customActions: types.optional(
-      types.array(
-        types.model({
-          label: types.string,
-          filename: types.string,
-          form: types.map(types.string),
-        })
-      ),
-      []
-    ),
+    customActions: types.optional(types.array(ActionForm), []),
     defaults: types.maybeNull(
       types.model({ support: types.number, duration: types.number })
     ),
@@ -195,11 +203,12 @@ export const BoothModel = types
     getCustomActions: flow(function* () {
       try {
         const [response, error] = yield boothApi.getCustomActions(self.key);
-        console.log(response);
         if (error) throw error;
         self.customActions = Object.keys(response).map((actionKey: string) => ({
           label: response[actionKey].label,
+          description: response[actionKey].description,
           filename: `${actionKey}.hoon`,
+          key: actionKey,
           form: response[actionKey].form,
         }));
         return response;

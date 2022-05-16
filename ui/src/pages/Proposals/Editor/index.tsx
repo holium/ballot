@@ -1,4 +1,4 @@
-import React, { FC, useMemo } from "react";
+import React, { FC, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Observer, observer } from "mobx-react";
 import MDEditor from "@uiw/react-md-editor";
@@ -35,9 +35,13 @@ export const ProposalEditor: FC = observer(() => {
   const navigate = useNavigate();
   const { store, app } = useMst();
   const urlParams = useParams();
+  // const [actionConfigs, setActionConfigs] = useState([]);
 
   let body = emptyState();
   const booth = store.booth!;
+  useEffect(() => {
+    booth.getCustomActions();
+  }, []);
   const proposalStore = store.booth?.proposalStore!;
   let proposal: any = store.booth?.proposalStore!.proposals.get(
     urlParams.proposalId!
@@ -93,7 +97,6 @@ export const ProposalEditor: FC = observer(() => {
       duration: booth.defaults?.duration,
     };
   }
-  console.log(initialForm);
 
   const {
     form,
@@ -107,7 +110,7 @@ export const ProposalEditor: FC = observer(() => {
     choices,
   } = useMemo(
     () => createProposalFormFields(initialForm),
-    [proposal, proposal && proposal.isLoaded]
+    [proposal, proposal && proposal.isLoaded, booth.customActions.length]
   );
 
   body =
@@ -186,7 +189,11 @@ export const ProposalEditor: FC = observer(() => {
               {() => {
                 return (
                   <ChoiceEditor
+                    actions={booth.customActions}
                     choices={choices.state.value}
+                    onActionUpdate={(activeActions: any) => {
+                      // setActionConfigs(activeActions);
+                    }}
                     onUpdate={(elements: ChoiceType[]) =>
                       choices.actions.onChange(elements)
                     }
@@ -386,6 +393,17 @@ export const ProposalEditor: FC = observer(() => {
               </Observer>
             </Grid>
           </Card>
+          {/* {actionConfigs.length ? (
+            <Text
+              fontSize={2}
+              mt={2}
+              opacity={0.7}
+              fontWeight={500}
+              variant="body"
+            >
+              CONFIGURE ACTIONS
+            </Text>
+          ) : null} */}
         </Grid2.Column>
       </Grid2.Row>
     ) : (

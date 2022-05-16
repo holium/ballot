@@ -1,10 +1,20 @@
 {
   "invite-member": {
     "label": "Invite member",
-    "form": {}
+    "description": "Invites a member to the associated group by poking %group-store",
+    "form": {
+      "member": {
+        "type": "cord"
+      }
+    }
   },
   "kick-member": {
     "label": "Kick member",
-    "form": {}
+    "description": "Removes a member from the associated group by poking %group-store",
+    "form": {
+      "member": {
+        "type": "cord"
+      }
+    }
   }
 }

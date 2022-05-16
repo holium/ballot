@@ -61,7 +61,7 @@ export const DelegationCard: FC<DelegationCardProps> = observer(
       [ourDelegate]
     );
 
-    console.log("delegate card update", isDelegateLoading, ourVotingPower);
+    // console.log("delegate card update", isDelegateLoading, ourVotingPower);
 
     const error = !delegate.computed.isDirty || delegate.computed.error;
 
