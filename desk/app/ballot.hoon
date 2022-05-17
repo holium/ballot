@@ -3999,6 +3999,10 @@
       ~&  >>>  "ballot: error. missing voter support value"
       :: %-  (log:core %error "ballot: missing voter support value")
       !!
+    =/  choices  (~(get by proposal) 'choices')
+    =/  choices  ?~(choices ~ (need choices))
+    =/  choices  ?:(?=([%a *] choices) p.choices ~)
+
     ::  value comes in from UI as a "whole" percentage (e.g. 50%); conver
     ::    to decimal representation (e.g. 0.5)
     =/  threshold  (div:rd (ne:dejs:format (need threshold)) (sun:rd 100))
@@ -4090,11 +4094,21 @@
               =/  label  (~(get by choice-1) 'label')
               =/  label  ?~(label '?' (so:dejs:format (need label)))
               =/  custom-action  (~(get by choice-1) 'action')
-              =/  custom-action  ?~(custom-action ~ (need custom-action))
-              =/  custom-action  ?~(custom-action ~ (some (so:dejs:format custom-action)))
-              =/  data  (~(get by choice-1) 'data')
-              =/  data  ?~(data ~ (need data))
-              [(some label) custom-action data ~]
+              =/  custom-action  ?~(custom-action ~ (so:dejs:format (need custom-action)))
+              ~&  >>  "{<dap.bowl>}: searching for {<custom-action>} in {<choices>}..."
+              =/  choice-data=(list json)
+              %-  skim
+              :-  choices
+              |=  [data=json]
+                =/  choice  ?:(?=([%o *] data) p.data ~)
+                =/  choice-action  (~(get by choice) 'action')
+                =/  choice-action  ?~(choice-action ~ (so:dejs:format (need choice-action)))
+                ~&  >>  "{<dap.bowl>}: comparing {<custom-action>} to {<choice-action>}..."
+                ?:  =(custom-action choice-action)  %.y  %.n
+              ::  grab the first match
+              =/  choice-data=json  (snag 0 choice-data)
+              =/  custom-action  ?~(custom-action ~ (some custom-action))
+              [(some label) custom-action choice-data ~]
             [~ ~ ~ (some 'support')]
 
     ::  after list is sorted, top choice will be first item in list
@@ -4119,7 +4133,7 @@
     =/  custom-action-effects=(list card)  ?:  ?&  !=(custom-action.result ~)
             !=(choice.result ~)
         ==
-      =/  car  (~(eca drv [bowl state]) [booth-key proposal-key] (need custom-action.result) results)
+      =/  car  (~(eca drv [bowl state]) [booth-key proposal-key] (need custom-action.result) data.result results)
       :: =/  custom-action-result  (execute-custom-action:drv [booth-key proposal-key] (need custom-action.result) results)
       ?:(success.car effects.car ~)
     ~

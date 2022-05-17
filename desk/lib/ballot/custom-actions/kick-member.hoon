@@ -5,7 +5,7 @@
   |=  [=bowl:gall store=state-1:ballot-store context=[booth-key=@t proposal-key=@t] data=json]
   |%
     ++  action
-      |=  [payload=json]
+      |=  [action-data=json poll-results=json]
       ^-  action-result
 
       ::  check the group is a group booth

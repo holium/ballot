@@ -1,7 +1,7 @@
 /-  ballot-store, plugin
 |_  [=bowl:gall store=state-1:ballot-store]
 ++  eca
-  |=  [[booth-key=@t proposal-key=@t] action=@t payload=json]
+  |=  [[booth-key=@t proposal-key=@t] action=@t action-data=json payload=json]
   :: ^-  [(list card) (map @t json)]
   ^-  action-result:plugin
 
@@ -12,7 +12,7 @@
 
   =/  action-lib  .^([p=type q=*] %ca lib-file)
   =/  on-func  (slam (slap action-lib [%limb %on]) !>([bowl store [booth-key proposal-key]]))
-  =/  result  !<(action-result:plugin (slam (slap on-func [%limb %action]) !>(payload)))
+  =/  result  !<(action-result:plugin (slam (slap on-func [%limb %action]) !>([action-data payload])))
 
   result
 --
