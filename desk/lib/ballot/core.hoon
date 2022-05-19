@@ -127,7 +127,7 @@
     |=  [t=@tas m=tape]
     ^+  same
 
-    ?:  =(1 1)  same
+    ?:  =(1 0)  same
 
     ?+  t  same
       %info

@@ -63,7 +63,16 @@
       ::   ['context' ctx]
       :: ==
 
-      =/  effects=(list card:agent:gall)
+  :: =/  =action:inv
+  ::   :^  %invites  %groups  (shaf %group-uid eny.bowl)
+  ::   ^-  multi-invite:inv
+  ::   [our.bowl %group-push-hook [booth-ship booth-name] (sy [member ~]) 'description here']
+  :: ;<  ~  bind:m  (poke-our %invite-hook invite-action+!>(action))
+
+      :: =/  effects=(list card:agent:gall)
+      :: :~  [%pass /invite %agent [our.bowl %invite-hook] %poke %invite-action !>(action)]
+      :: ==
+
       :~  [%pass /group %agent [our.bowl %group-store] %poke %group-action !>([%add-members [booth-ship booth-name] (sy [member ~])])]
       ==
 
