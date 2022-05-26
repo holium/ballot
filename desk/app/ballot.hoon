@@ -2,20 +2,20 @@
 ::
 ::  @author  : ~lodlev-migdev (p.james)
 ::  @purpose :
-::    Ball app agent for contexts, booths, proposals, and participants.
+::    Ballot app agent for contexts, booths, proposals, and participants.
 ::
 :: ***********************************************************
-/-  *group, group-store, ballot-store, ballot, plugin
-/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, core=ballot-core, reactor=ballot-booth-reactor, sig=ballot-signature, view=ballot-views, plugin=ballot-plugin, drv=ballot-driver
+/-  *group, group-store, ballot, plugin
+/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, sig=ballot-signature, view=ballot-views, drv=ballot-driver, perm=ballot-perm
 |%
 +$  card  card:agent:gall
 +$  versioned-state
-  $%  state-0:ballot-store
-      state-1:ballot-store
+  $%  state-0:ballot
+      state-1:ballot
   ==
 --
 %-  agent:dbug
-=|  state-1:ballot-store
+=|  state-1:ballot
 =*  state  -
 ^-  agent:gall
 |_  =bowl:gall
@@ -24,21 +24,15 @@
 ++  on-init
   ^-  (quip card _this)
 
-  %-  (log:core %info "ballot: on-init...")
+  %-  (log:util %info "ballot: on-init...")
 
   :_  this(authentication 'enable')
 
       ::  initialize agent booths (ship, groups, etc...)
   :~  [%pass /ballot %agent [our.bowl %ballot] %poke %initialize !>(~)]
-      ::  our ship can watch across all booths
-      :: [%pass /booths %agent [our.bowl %ballot] %watch /booths]
       ::   setup route for direct http request/response handling
       [%pass /bind-route %arvo %e %connect `/'ballot'/'api'/'booths' %ballot]
-  :: ==
   ==
-
-  :: `this
-
 ::
 ++  on-save
   ^-  vase
@@ -68,7 +62,7 @@
       upgrade-effects
   ==
   ++  get-upgrade-effects
-    |=  [old=state-1:ballot-store]
+    |=  [old=state-1:ballot]
     =/  effects
       %-  ~(rep by booths.old)
         |=  [[key=@t jon=json] acc=(list card)]
@@ -94,7 +88,7 @@
         (snoc acc [%pass /booths/(scot %tas key) %agent [booth-ship %ballot] %poke %json !>(action)])
     effects
   ++  load-custom-actions
-    |=  [old=state-1:ballot-store]
+    |=  [old=state-1:ballot]
     =/  custom-actions
     %-  ~(rep in booths.old)
       |=  [[key=@t jon=json] acc=(map @t json)]
@@ -129,7 +123,7 @@
               s+'create-proposal'
               s+'edit-proposal'
               s+'delete-proposal'
-              s+'add-member'
+              s+'invite-member'
               s+'remove-member'
               s+'change-settings'
           ==
@@ -146,8 +140,8 @@
   ::  ensure new delegates map is set to null ~
   ::  ensure all members with pariticipant role (or no role) are given member role
   ++  upgrade-0-to-1
-    |=  [old=state-0:ballot-store]
-    ^-  state-1:ballot-store
+    |=  [old=state-0:ballot]
+    ^-  state-1:ballot
     =/  upgraded-booths
       %-  ~(rep in booths.old)
         |=  [[key=@t jon=json] acc=(map @t json)]
@@ -164,7 +158,7 @@
               s+'create-proposal'
               s+'edit-proposal'
               s+'delete-proposal'
-              s+'add-member'
+              s+'invite-member'
               s+'remove-member'
               s+'change-settings'
           ==
@@ -210,13 +204,12 @@
           acc
     [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=upgraded-booths proposals=proposals.old participants=upgraded-participants invitations=invitations.old votes=votes.old delegates=~ custom-actions=custom-actions]
   --
-
 ::
 ++  on-poke
   |=  [=mark =vase]
   ^-  (quip card _this)
   |^
-  :: ~&  [mark vase]
+
   ?+    mark  (on-poke:def mark vase)
 
       %initialize
@@ -256,7 +249,7 @@
 
     ++  set-authentication-mode
       |=  [mode=@t]
-      %-  (log:core %info "ballot: setting authentication {<mode>}...")
+      %-  (log:util %info "ballot: setting authentication {<mode>}...")
       `state(authentication mode)
 
     ++  to-booth-sub
@@ -268,7 +261,7 @@
       =/  booth-ship=@p  `@p`(slav %p owner)
       ::  send out notifications to all subscribers of this booth
       =/  destpath=path  `path`/booths/(scot %tas booth-key)
-      %-  (log:core %warn "ballot: subscribing to {<destpath>}...")
+      %-  (log:util %warn "ballot: subscribing to {<destpath>}...")
       :: convert json to [%pass /booth/<booth-key> ... /booth/<booth-key>] subscription
       [%pass destpath %agent [booth-ship %ballot] %watch destpath]
 
@@ -282,24 +275,16 @@
     ++  initialize-booths
       |=  [jon=json]
 
-      %-  (log:core %warn "ballot: initializing ballot-store...")
+      %-  (log:util %warn "ballot: initializing ballot...")
 
       =/  owner  `@t`(scot %p our.bowl)
       =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
 
-      :: =/  booth-key  (spat /(scot %p our.bowl))
       =/  booth-key  (crip "{<our.bowl>}")
       =/  booth-name  (crip "{<our.bowl>}")
       =/  booth-slug  (spat /(scot %p our.bowl))
 
-      ::  ~lodlev-migdev
-      ::   steps:
-      ::
-      ::    1) create a folder for our ship and add a /booths sub-folder to it
-      ::    2) create a default booth for our ship (e.g. ~zod) and add it
-      ::          to this ship's booths folder
-      ::
-      =|  booths=booths:ballot-store
+      =|  booths=booths:ballot
 
       =/  defaults
       %-  pairs:enjs:format
@@ -353,11 +338,11 @@
         ~
       .^(json %cx lib-file)
 
-      %-  (log:core %good "ballot: context initialized!")
+      %-  (log:util %good "ballot: context initialized!")
 
       =/  effects  (booths-to-subscriptions booths)
 
-      %-  (log:core %info "subscribing to /groups...")
+      %-  (log:util %info "subscribing to /groups...")
       =/  effects  (snoc effects [%pass /group %agent [our.bowl %group-store] %watch /groups])
 
       :_  state(booths booths, participants (~(put by participants.state) booth-key booth-participants), custom-actions (~(put by custom-actions.state) booth-key custom-actions))
@@ -374,13 +359,13 @@
       ?:  ?&  =(authentication.state 'enable')
               !authenticated.q.req
           ==
-          %-  (log:core %error "ballot: authentication is enabled. request is not authenticated")
+          %-  (log:util %error "ballot: authentication is enabled. request is not authenticated")
           (send-api-error req payload 'not authenticated')
 
       :: =/  req-args
             :: (my q:(need `(unit (pair pork:eyre quay:eyre))`(rush url.request.q.req ;~(plug apat:de-purl:html yque:de-purl:html))))
 
-      %-  (log:core %info "ballot: [on-poke] => processing request at endpoint {<(stab url.request.q.req)>}")
+      %-  (log:util %info "ballot: [on-poke] => processing request at endpoint {<(stab url.request.q.req)>}")
 
       =/  path  (stab url.request.q.req)
 
@@ -456,55 +441,55 @@
         ::  distributed as gifts. here we simply pass the errors to the UI of the ship
         ::  where the api call (http request from UI) originated
         %save-booth-reaction
-          %-  (log:core %info "ballot: %save-proposal-reaction from {<src.bowl>}...")
+          %-  (log:util %info "ballot: %save-proposal-reaction from {<src.bowl>}...")
           :_  state
           :~  [%give %fact [/booths]~ %json !>([%o contract])]
           ==
 
         %invite
-          %-  (log:core %info "ballot: %invite action received...")
+          %-  (log:util %info "ballot: %invite action received...")
           (invite-wire contract)
 
         %invite-reaction
-          %-  (log:core %info "ballot: %invite-reaction action received...")
+          %-  (log:util %info "ballot: %invite-reaction action received...")
           (invite-reaction-wire contract)
 
         %accept
-          %-  (log:core %info "ballot: %accept from {<src.bowl>}...")
+          %-  (log:util %info "ballot: %accept from {<src.bowl>}...")
           (accept-wire contract)
 
         %save-proposal
-          %-  (log:core %info "ballot: %save-proposal from {<src.bowl>}...")
+          %-  (log:util %info "ballot: %save-proposal from {<src.bowl>}...")
           (save-proposal-wire contract)
 
         ::  errors come via poke as reactions. successfully handled pokes are
         ::  distributed as gifts. here we simply pass the errors to the UI of the ship
         ::  where the api call (http request from UI) originated
         %save-proposal-reaction
-          %-  (log:core %info "ballot: %save-proposal-reaction from {<src.bowl>}...")
+          %-  (log:util %info "ballot: %save-proposal-reaction from {<src.bowl>}...")
           :_  state
           :~  [%give %fact [/booths]~ %json !>([%o contract])]
           ==
 
         %delete-proposal
-          %-  (log:core %info "ballot: %delete-proposal from {<src.bowl>}...")
+          %-  (log:util %info "ballot: %delete-proposal from {<src.bowl>}...")
           (delete-proposal-wire contract)
 
         ::  errors come via poke as reactions. successfully handled pokes are
         ::  distributed as gifts. here we simply pass the errors to the UI of the ship
         ::  where the api call (http request from UI) originated
         %delete-proposal-reaction
-          %-  (log:core %info "ballot: %delete-proposal-reaction from {<src.bowl>}...")
+          %-  (log:util %info "ballot: %delete-proposal-reaction from {<src.bowl>}...")
           :_  state
           :~  [%give %fact [/booths]~ %json !>([%o contract])]
           ==
 
         %delete-participant
-          %-  (log:core %info "ballot: %delete-participant from {<src.bowl>}...")
+          %-  (log:util %info "ballot: %delete-participant from {<src.bowl>}...")
           (delete-participant-wire contract)
 
         %cast-vote
-          %-  (log:core %info "ballot: %cast-vote from {<src.bowl>}...")
+          %-  (log:util %info "ballot: %cast-vote from {<src.bowl>}...")
           (cast-vote-wire contract)
 
         %delegate
@@ -633,7 +618,7 @@
       ++  delete-participant-wire
         |=  [payload=(map @t json)]
 
-        %-  (log:core %info "ballot: delete-participant-wire received from {<src.bowl>}...")
+        %-  (log:util %info "ballot: delete-participant-wire received from {<src.bowl>}...")
 
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
 
@@ -647,8 +632,7 @@
 
         :: this should never happen. we shouldn't get poke if participant-key is not our ship
         ?.  =(participant-key (crip "{<our.bowl>}"))
-          :: %-  (log:core %error "ballot: delete-participant-wire received unexpectedly. {<participant-key>}...")
-          !!
+          (mean leaf+"ballot: delete-participant-wire received unexpectedly. {<participant-key>}..." ~)
 
         =/  booth-participants  (~(get by participants.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
@@ -694,8 +678,8 @@
         ==
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (log:core %warn "sending delete-participant effect to subscribers...")
-        %-  (log:core %warn "sending %leave to {<remote-agent-wire>}...")
+        %-  (log:util %warn "sending delete-participant effect to subscribers...")
+        %-  (log:util %warn "sending %leave to {<remote-agent-wire>}...")
 
         ::  no changes to state. state will change when poke ack'd
         :_  state(booths new-booths, proposals booth-proposals, participants booth-participants, votes booth-votes, polls booth-polls, invitations booth-invitations)
@@ -709,7 +693,7 @@
       ++  cast-vote-wire
         |=  [contract=(map @t json)]
 
-        %-  (log:core %warn "{<(en-json:html [%o contract])>}")
+        %-  (log:util %warn "{<(en-json:html [%o contract])>}")
 
         =/  context  ((om json):dejs:format (~(got by contract) 'context'))
 
@@ -723,21 +707,21 @@
         =/  j-sig  (~(get by vote) 'sig')
         =/  j-sig  ?~(j-sig ~ ((om json):dejs:format (need j-sig)))
         =/  hash  (~(get by j-sig) 'hash')
-        ?~  hash  !!  :: %-  (log:core %error "ballot: invalid vote signature. hash not found.")  !!
+        ?~  hash  !!  :: %-  (log:util %error "ballot: invalid vote signature. hash not found.")  !!
         =/  hash  `@ux`((se %ux):dejs:format (need hash))
         =/  voter-ship  (~(get by j-sig) 'voter')
-        ?~  voter-ship  !! :: %-  (log:core %error "ballot: invalid vote signature. voter not found.")  !!
+        ?~  voter-ship  !! :: %-  (log:util %error "ballot: invalid vote signature. voter not found.")  !!
         =/  voter-ship  ((se %p):dejs:format (need voter-ship))
         =/  life  (~(get by j-sig) 'life')
-        ?~  life  !! :: %-  (log:core %error "ballot: invalid vote signature. life not found.")  !!
+        ?~  life  !! :: %-  (log:util %error "ballot: invalid vote signature. life not found.")  !!
         =/  life  (ni:dejs:format (need life))
         =/  sign=signature:ballot  [p=hash q=voter-ship r=life]
-        %-  (log:core %warn "{<[sign]>}")
-        %-  (log:core %info "ballot: verifying vote signature {<sign>}...")
+        %-  (log:util %warn "{<[sign]>}")
+        %-  (log:util %info "ballot: verifying vote signature {<sign>}...")
         =/  verified  (verify:sig our.bowl now.bowl sign)
         ?~  verified  !!
-              :: %-  (log:core %error "ballot: vote could not be verified")  !!
-        %-  (log:core %info "ballot: signature verified")
+              :: %-  (log:util %error "ballot: vote could not be verified")  !!
+        %-  (log:util %info "ballot: signature verified")
 
         =/  booth-proposals  (~(get by votes.state) booth-key)
         =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
@@ -746,7 +730,7 @@
 
         =/  participant-vote  (~(get by proposal-votes) participant-key)
         ?.  =(participant-vote ~)
-              %-  (log:core %error "participant vote already cast")
+              %-  (log:util %error "participant vote already cast")
               `state
 
         =|  participant-vote=(map @t json)
@@ -773,7 +757,7 @@
           ['effects' [%a [vote-effect]~]]
         ==
 
-        %-  (log:core %warn "cast-vote-wire: {<our.bowl>} {<src.bowl>}")
+        %-  (log:util %warn "cast-vote-wire: {<our.bowl>} {<src.bowl>}")
 
         =/  booth-path  /booths/(scot %tas booth-key)
 
@@ -841,7 +825,7 @@
           ['effects' [%a [participant-effect]~]]
         ==
 
-        %-  (log:core %warn "invite-accepted-wire: {<our.bowl>} {<src.bowl>}")
+        %-  (log:util %warn "invite-accepted-wire: {<our.bowl>} {<src.bowl>}")
 
         ::  add the participant that accepted the invite/enlistment to the
         ::   payload sent out to subscribers
@@ -853,49 +837,10 @@
             [%give %fact [/booths/(scot %tas booth-key)]~ %json !>([%o payload])]
         ==
 
-      ++  invite-wire-response
-        |=  [contract=(map @t json)]
-
-        =/  context  ((om json):dejs:format (~(got by contract) 'context'))
-        =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
-        =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
-
-        =/  booth-participants  (~(got by participants.state) booth-key)
-        =/  booth-participant  ((om json):dejs:format (~(got by booth-participants) participant-key))
-        =/  booth-participant  (~(put by booth-participant) 'status' s+'invited')
-        =/  booth-participants  (~(put by booth-participants) participant-key [%o booth-participant])
-
-        =/  effect-data=json
-        %-  pairs:enjs:format
-        :~
-          ['status' s+'invited']
-        ==
-
-        =/  participant-effect=json
-        %-  pairs:enjs:format
-        :~
-          ['resource' s+'participant']
-          ['effect' s+'update']
-          ['key' s+participant-key]
-          ['data' effect-data]
-        ==
-
-        =/  effects=json
-        %-  pairs:enjs:format
-        :~
-          ['action' s+'invite-reaction']
-          ['context' [%o context]]
-          ['effects' [%a [participant-effect]~]]
-        ==
-
-        %-  (log:core %warn "invite-wire-response: {<our.bowl>} {<src.bowl>}")
-
-        :_  state(participants (~(put by participants.state) booth-key booth-participants))
-        :~  [%give %fact [/booths]~ %json !>(effects)]
-        ==
-
       ++  invite-wire
         |=  [payload=(map @t json)]
+
+        %-  (log:util %info "{<dap.bowl>}: invite-wire called. {<payload>}...")
 
         =/  timestamp  (en-json:html (time:enjs:format now.bowl))
 
@@ -903,15 +848,45 @@
         =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
 
         =/  participant-key  (crip "{<our.bowl>}")
-        =/  data  ((om json):dejs:format (~(got by payload) 'data'))
-        =/  booth  ((om json):dejs:format (~(got by data) 'booth'))
+        =/  booth  ((om json):dejs:format (~(got by payload) 'data'))
+
+        =/  booth-owner  (~(get by context) 'booth')
+        ?~  booth-owner  (send-error payload 'bad context. booth missing.')
+        =/  booth-owner  (so:dejs:format (need booth-owner))
+        =/  booth-owner  `@p`(slav %p booth-owner)
 
         ::  update booth status because on receiving ship (this ship), the booth
         ::    is being added; therefore status is 'invited'
         =/  booth  (~(put by booth) 'status' s+'invited')
 
-        =/  response-payload  (~(put by payload) 'action' s+'invite-response')
-        =/  response-payload  (~(put by response-payload) 'reaction' s+'ack')
+        =/  booth-participants  (~(get by participants.state) booth-key)
+        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+
+        =/  participant  (~(get by booth-participants) participant-key)
+
+        =/  participant
+              ?~  participant
+                 ~
+              ((om json):dejs:format (need participant))
+
+        ::  update participant record to indicated invited
+        =/  participant-updates=json
+        %-  pairs:enjs:format
+        :~
+          ['key' s+participant-key]
+          ['name' s+participant-key]
+          ['status' s+'invited']
+          ['role' s+'member']
+          ['created' (time:enjs:format now.bowl)]
+        ==
+        ::  convert to (map @t json)
+        =/  participant-updates  ?:(?=([%o *] participant-updates) p.participant-updates ~)
+
+        ::  apply updates to participant by overlaying updates map
+        =/  participant  (~(gas by participant) ~(tap by participant-updates))
+
+        ::  save the updated partcipant to the participants map
+        =/  booth-participants  (~(put by booth-participants) participant-key [%o participant])
 
         =/  booth-effect=json
         %-  pairs:enjs:format
@@ -922,20 +897,29 @@
           ['data' [%o booth]]
         ==
 
-        =/  effect=json
+        =/  participant-effect=json
+        %-  pairs:enjs:format
+        :~
+          ['resource' s+'participant']
+          ['effect' s+'add']
+          ['key' s+participant-key]
+          ['data' [%o participant-updates]]
+        ==
+
+        =/  effects=json
         %-  pairs:enjs:format
         :~
           ['action' s+'invite-reaction']
           ['context' [%o context]]
-          ['effects' [%a [booth-effect]~]]
+          ['effects' [%a :~(booth-effect participant-effect)]]
         ==
 
-        %-  (log:core %warn "invite-wire: {<our.bowl>} poking {<src.bowl>}")
+        %-  (log:util %warn "invite-wire: sending {<booth-owner>} effects {<effects>}...")
 
-        :_  state(booths (~(put by booths.state) booth-key [%o booth]))
+        :_  state(booths (~(put by booths.state) booth-key [%o booth]), participants (~(put by participants.state) booth-key booth-participants))
 
-        :~  [%give %fact [/booths]~ %json !>(effect)]
-            [%pass /booths/(scot %tas booth-key) %agent [src.bowl %ballot] %poke %json !>([%o response-payload])]
+        :~  [%give %fact [/booths]~ %json !>(effects)]
+            [%pass /booths/(scot %tas booth-key) %agent [booth-owner %ballot] %poke %json !>(effects)]
         ==
 
       ++  send-error
@@ -1039,12 +1023,19 @@
         ?~  booth-key  (send-api-error req payload 'missing context key. booth key')
         =/  booth-key  (so:dejs:format (need booth-key))
 
-
         =/  participant-key  (~(get by context) 'participant')
         ?~  participant-key  (send-api-error req payload 'missing context key. participant key')
         =/  participant-key  (so:dejs:format (need participant-key))
 
-        %-  (log:core %warn "deleting participant {<booth-key>}, {<participant-key>}")
+        %-  (log:util %warn "deleting participant {<booth-key>}, {<participant-key>}")
+
+        ::  check the permissions of this ship..the one trying to invite
+        =/  member-key  (crip "{<our.bowl>}")
+
+        ::  is this ship allowed to remove members
+        =/  tst=[success=? msg=@t]  (check-permission booth-key member-key 'remove-member')
+
+        ?.  success.tst  (send-api-error req payload 'insufficient privileges. missing remove-member permission')
 
         =/  booth-participants  (~(get by participants.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
@@ -1063,7 +1054,7 @@
                 |=  [[p=@t q=json] rslt=(map @t json)]
                   =/  votes  ((om json):dejs:format q)
                   =/  votes  [%o (~(del by votes) participant-key)]
-                  %-  (log:core %info "removing vote by {<participant-key>} from {<p>}...")
+                  %-  (log:util %info "removing vote by {<participant-key>} from {<p>}...")
                   (~(put by rslt) p votes)
 
         =/  participant-effect=json
@@ -1084,7 +1075,7 @@
         ==
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (log:core %warn "sending delete-participant to {<remote-agent-wire>}...")
+        %-  (log:util %warn "sending delete-participant to {<remote-agent-wire>}...")
 
         =/  =response-header:http
           :-  200
@@ -1120,7 +1111,7 @@
 
         :: =/  payload  ?:(=([%o *] payload) p.payload ~)
 
-        %-  (slog leaf+"{<dap.bowl>}: delete-proposal-api {<payload>}..." ~)
+        %-  (log:util %info leaf+"{<dap.bowl>}: delete-proposal-api {<payload>}...")
 
         =/  context  (~(get by payload) 'context')
         ?~  context  (send-api-error req payload 'missing context')
@@ -1142,7 +1133,7 @@
         =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (log:core %warn "sending {<booth-owner>} delete-proposal action to {<remote-agent-wire>}...")
+        %-  (log:util %warn "sending {<booth-owner>} delete-proposal action to {<remote-agent-wire>}...")
 
         =/  =response-header:http
           :-  200
@@ -1234,7 +1225,7 @@
         ==
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (log:core %warn "sending delete-proposal to {<remote-agent-wire>}...")
+        %-  (log:util %warn "sending delete-proposal to {<remote-agent-wire>}...")
 
         ::  delete any timers that have been created to handle start/end actions
         =/  booth-polls  (~(get by polls.state) booth-key)
@@ -1256,13 +1247,13 @@
           =/  poll-start-date  (~(get by poll) 'start')
           =/  poll-start-date  ?~(poll-start-date ~ (du:dejs:format (need poll-start-date)))
           =/  effects  ?.  =(~ poll-start-date)
-            %-  (slog leaf+"ballot: killing start timer {<poll-start-date>}..." ~)
+            %-  (log:util %info leaf+"ballot: killing start timer {<poll-start-date>}...")
             (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/start %arvo %b %rest `@da`poll-start-date])
           effects
           =/  poll-end-date  (~(get by poll) 'end')
           =/  poll-end-date  ?~(poll-end-date ~ (du:dejs:format (need poll-end-date)))
           =/  effects  ?.  =(~ poll-end-date)
-              %-  (slog leaf+"ballot: killing end timer {<poll-end-date>}..." ~)
+              %-  (log:util %info leaf+"ballot: killing end timer {<poll-end-date>}...")
               (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/end %arvo %b %rest `@da`poll-end-date])
             effects
           effects
@@ -1324,7 +1315,7 @@
         |=  [payload=(map @t json)]
         ^-  (quip card _state)
 
-        %-  (log:core %warn "save-booth-wire {<payload>}...")
+        %-  (log:util %warn "save-booth-wire {<payload>}...")
 
         =/  data  (~(get by payload) 'data')
         ?~  data  (send-error payload (crip "{<dap.bowl>}: missing data element"))
@@ -1332,16 +1323,16 @@
         =/  data  ?:(?=([%o *] data) p.data ~)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context  (send-error payload (crip "{<dap.bowl>}: missing context element")
+        ?~  context  (send-error payload (crip "{<dap.bowl>}: missing context element"))
         =/  context  (need context)
         =/  context  ?:(?=([%o *] context) p.context ~)
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key  (send-error payload (crip "{<dap.bowl>}: context missing booth")
+        ?~  booth-key  (send-error payload (crip "{<dap.bowl>}: context missing booth"))
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  (send-error payload (crip "{<dap.bowl>}: booth not found")
+        ?~  booth  (send-error payload (crip "{<dap.bowl>}: booth not found"))
         =/  booth  (need booth)
         =/  booth  ?:(?=([%o *] booth) p.booth ~)
 
@@ -1371,7 +1362,7 @@
           ['effects' [%a [booth-effect]~]]
         ==
 
-        :_  state(booths (~(put by booths.state) booth-key [%o booth])))
+        :_  state(booths (~(put by booths.state) booth-key [%o booth]))
 
         :~
           ::  for clients (e.g. UI) and "our" agent, send to generic /booths path
@@ -1386,7 +1377,7 @@
 
         :: =/  payload  ?:(=([%o *] payload) p.payload ~)
 
-        %-  (slog leaf+"{<dap.bowl>}: save-proposal-api {<payload>}..." ~)
+        %-  (log:util %info leaf+"{<dap.bowl>}: save-proposal-api {<payload>}...")
 
         =/  context  (~(get by payload) 'context')
         ?~  context  (send-api-error req payload 'missing context')
@@ -1408,7 +1399,7 @@
         =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (log:core %warn "sending {<booth-owner>} save-proposal action to {<remote-agent-wire>}...")
+        %-  (log:util %warn "sending {<booth-owner>} save-proposal action to {<remote-agent-wire>}...")
 
         =/  =response-header:http
           :-  200
@@ -1435,7 +1426,7 @@
         |=  [payload=(map @t json)]
         ^-  (quip card _state)
 
-        %-  (log:core %warn "save-proposal-wire {<payload>}...")
+        %-  (log:util %warn "save-proposal-wire {<payload>}...")
 
         =/  context  (~(get by payload) 'context')
         ::  this is a massive failure. not sure how to gracefully handle if can't
@@ -1496,7 +1487,7 @@
         =/  threshold  (~(get by data) 'support')
         ?~  threshold  (send-error payload (crip "{<dap.bowl>}: missing voter support value"))
         =/  threshold  (ne:dejs:format (need threshold))
-        %-  (log:core %info "{<dap.bowl>}: {<threshold>}")
+        %-  (log:util %info "{<dap.bowl>}: {<threshold>}")
         =/  proposal  (~(gas by proposal) ~(tap by data))
         =/  proposal  (~(put by proposal) 'key' s+proposal-key)
         =/  proposal  (~(put by proposal) 'owner' s+member-key)
@@ -1524,7 +1515,7 @@
         ==
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (log:core %warn "sending proposal update to {<remote-agent-wire>}...")
+        %-  (log:util %warn "sending proposal update to {<remote-agent-wire>}...")
 
         :_  state(proposals (~(put by proposals.state) booth-key booth-proposals))
 
@@ -1617,7 +1608,7 @@
 
         =/  msg-id  (crip (weld "msg-" timestamp))
 
-        %-  (log:core %warn "accept-api: {<our.bowl>} poking {<hostship>}, {<msg-id>}...")
+        %-  (log:util %warn "accept-api: {<our.bowl>} poking {<hostship>}, {<msg-id>}...")
 
         ::  no changes to state. state will change when poke ack'd
         :_  state(mq (~(put by mq) msg-id [%o wire-payload]), booths (~(put by booths.state) booth-key [%o booth]))
@@ -1690,10 +1681,10 @@
         =/  payload-data  (~(put by payload-data) 'created' (time:enjs:format now.bowl))
 
         ::  TODO sign the vote here
-        %-  (log:core %info "ballot: signing vote payload...")
+        %-  (log:util %info "ballot: signing vote payload...")
         =/  signature  (sign:sig our.bowl now.bowl [%o payload-data])
-        %-  (log:core %warn "{<[signature]>}")
-        %-  (log:core %info "ballot: {<signature>}")
+        %-  (log:util %warn "{<[signature]>}")
+        %-  (log:util %info "ballot: {<signature>}")
 
         =/  j-sig=json
         %-  pairs:enjs:format
@@ -1752,7 +1743,7 @@
         ==
 
         =/  sub-wire  /booths/(scot %tas booth-key)
-        %-  (log:core %info "sending cast-vote updates on {<sub-wire>}...")
+        %-  (log:util %info "sending cast-vote updates on {<sub-wire>}...")
 
         =/  effects=(list card)
           :~  [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
@@ -1767,7 +1758,7 @@
         ::  no need for poke if casting ballot from our own ship. this method has already
         ::  updated its store
         =/  effects  ?.  =(our.bowl hostship)
-              %-  (log:core %info "poking remote ship on wire `path`/booths/{<(scot %tas booth-key)>}...")
+              %-  (log:util %info "poking remote ship on wire `path`/booths/{<(scot %tas booth-key)>}...")
               (snoc effects [%pass /booths/(scot %tas booth-key) %agent [hostship %ballot] %poke %json !>(wire-payload)])
             effects
 
@@ -1780,17 +1771,41 @@
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
         ^-  (quip card _state)
 
+        %-  (log:util %info "{<dap.bowl>}: invite-api called. {<payload>}...")
+
         =/  context  (~(get by payload) 'context')
-        =/  context  ?~(context ~ ?:(?=([%o *] u.context) p.u.context ~))
+        =/  context  ?~(context ~ (need context))
+        =/  context  ?:(?=([%o *] context) p.context ~)
 
         =/  booth-key  (~(get by context) 'booth')
         ?~  booth-key  (send-api-error req payload 'bad context. booth missing.')
         =/  booth-key  (so:dejs:format (need booth-key))
 
-        =/  booth-owner  (~(get by context) 'booth')
-        ?~  booth-owner  (send-api-error req payload 'bad context. booth missing.')
-        =/  booth-owner  (so:dejs:format (need booth-owner))
-        =/  booth-owner  `(unit @p)`((slat %p) booth-owner)
+        =/  participant-key  (~(get by context) 'participant')
+        ?~  participant-key  (send-api-error req payload 'bad context. participant missing.')
+        =/  participant-key  (so:dejs:format (need participant-key))
+        =/  invitee  `@p`(slav %p participant-key)
+
+        ::  are we even a member of this booth?
+        =/  booth-participants  (~(get by participants.state) booth-key)
+        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+        :: =/  booth-participants  ?:(?=([%o *] booth-participants) p.booth-participants ~)
+        ?.  (~(has by booth-participants) participant-key)
+          (send-api-error req payload (crip "error. {<participant-key>} is not a member of {<booth-key>}"))
+
+        ::  check the permissions of this ship..the one trying to invite
+        =/  member-key  (crip "{<our.bowl>}")
+
+        ::  is this ship allowed to invite members
+        =/  tst=[success=? msg=@t]  (check-permission booth-key member-key 'invite-member')
+
+        ?.  success.tst  (send-api-error req payload 'insufficient privileges. missing invite-member permission')
+
+        ::  stuff the booth information into the payload. the invitee will need this to
+        ::  add the booth to its local store
+        =/  booth  (~(get by booths.state) booth-key)
+        =/  booth  ?~(booth ~ (need booth))
+        =/  invitee-payload  (~(put by payload) 'data' booth)
 
         ::  create the response
         =/  =response-header:http
@@ -1806,98 +1821,80 @@
               (as-octs:mimes:html body)
 
         ::  commit the changes to the store
-        :_  state(mq (~(put by mq) msg-id [%o wire-payload]), participants (~(put by participants.state) booth-key booth-participants))
+        %-  (log:util %info "{<dap.bowl>}: invite-api - sending {<invitee>} {<[%o invitee-payload]>}...")
+
+        :_  state
 
         :~
           [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
           [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
           [%give %kick [/http-response/[p.req]]~ ~]
-          [%pass /booths/(scot %tas booth-key) %agent [booth-owner %ballot] %poke %json !>([%o payload])]
+          [%pass /booths/(scot %tas booth-key) %agent [invitee %ballot] %poke %json !>([%o invitee-payload])]
         ==
 
-      ++  invite-wire
+      ::
+      ++  invite-reaction-wire
         |=  [payload=(map @t json)]
         ^-  (quip card _state)
 
-        %-  (slog leaf+"{<dap.bowl>}: invite-wire {<payload>}..." ~)
+        %-  (log:util %info leaf+"{<dap.bowl>}: invite-reaction-wire {<payload>}...")
 
         =/  context  (~(get by payload) 'context')
-        =/  context  ?:(?=([%o *] u.context) p.u.context ~)
+        =/  context  ?~(context ~ (need context))
+        =/  context  ?:(?=([%o *] context) p.context ~)
 
         =/  booth-key  (~(get by context) 'booth')
         ?~  booth-key  (send-error payload 'bad context. booth missing')
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  participant-key  (~(get by context) 'participant')
-        ?~  participant-key  (send-error payload 'bad data. key missing')
+        ?~  participant-key  (send-error payload 'bad context. participant missing.')
         =/  participant-key  (so:dejs:format (need participant-key))
 
-        ::  only support ship invites currently
-        =/  participant-ship  `(unit @p)`((slat %p) participant-key)
-        ?~  participant-ship  (send-error payload 'participant key must be ship')
-        =/  participant-ship  (need participant-ship)
+        =/  effects  (~(get by payload) 'effects')
+        =/  effects  ?~(effects ~ (need effects))
+        =/  effects  ?:(?=([%a *] effects) p.effects ~)
 
-        =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth  (send-error payload 'booth not found')
-        =/  booth  (need booth)
+        ::  extract the participant effect. the booth effect goes out to UI and agents,
+        ::  but agents should ignore the booth effect
+        =/  effects
+        %-  skim
+        :-  effects
+          |=  [effect=json]
+          =/  jon  ?:(?=([%o *] effect) p.effect ~)
+          =/  res  (~(get by jon) 'resource')
+          ?~  res  %.n
+          =/  res  (so:dejs:format (need res))
+          ?:  =(res 'participant')  %.y  %.n
+
+        =/  effect  (snag 0 effects)
+        =/  effect  ?:(?=([%o *] effect) p.effect ~)
+        =/  participant-data  (~(get by effect) 'data')
+        =/  participant-data  ?~(participant-data ~ (need participant-data))
+        =/  participant-data  ?:(?=([%o *] participant-data) p.participant-data ~)
 
         =/  booth-participants  (~(get by participants.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+        :: =/  booth-participants  ?:(?=([%o *] booth-participants) p.booth-participants ~)
 
         =/  participant  (~(get by booth-participants) participant-key)
+        =/  participant  ?~(participant ~ (need participant))
+        =/  participant  ?:(?=([%o *] participant) p.participant ~)
 
-        =/  participant
-              ?~  participant
-                 ~
-              ((om json):dejs:format (need participant))
+        =/  participant  (~(gas by participant) ~(tap by participant-data))
 
-        ::  update participant record to indicated invited
-        =/  participant-updates=json
-        %-  pairs:enjs:format
-        :~
-          ['key' s+participant-key]
-          ['name' s+participant-key]
-          ['status' s+'pending']
-          ['role' s+'member']
-          ['created' (time:enjs:format now.bowl)]
-        ==
-        ::  convert to (map @t json)
-        =/  participant-updates  ?:(?=([%o *] participant-updates) p.participant-updates ~)
-
-        ::  apply updates to participant by overlaying updates map
-        =/  participant  (~(gas by participant) ~(tap by participant-updates))
-
-        ::  save the updated partcipant to the participants map
         =/  booth-participants  (~(put by booth-participants) participant-key [%o participant])
 
-        =/  participant-effect=json
-        %-  pairs:enjs:format
-        :~
-          ['resource' s+'participant']
-          ['effect' s+'add']
-          ['key' s+participant-key]
-          ['data' [%o participant-updates]]
-        ==
-
-        =/  effects=json
-        %-  pairs:enjs:format
-        :~
-          ['action' s+'invite-reaction']
-          ['context' [%o context]]
-          ['effects' [%a [participant-effect]~]]
-        ==
+        %-  (log:util %warn "invite-reaction-wire: giving effects {<[%o payload]>}...")
 
         :_  state(participants (~(put by participants.state) booth-key booth-participants))
 
-        :~
-          [%pass /booths/(scot %tas booth-key) %agent [participant-ship %ballot] %poke %json !>(effects)]
+        :~  ::  send effects to UI
+            [%give %fact [/booths]~ %json !>([%o payload])]
+            ::  send effects to all booth subscribers
+            [%give %fact [/booths/(scot %tas booth-key)]~ %json !>([%o payload])]
         ==
 
-      ++  invite-reaction-wire
-        |=  [payload=(map @t json)]
-        ^-  (quip card _state)
-
-        %-  (slog leaf+"{<dap.bowl>}: invite-wire {<payload>}..." ~)
 
       ++  delegate-api
         |=  [req=(pair @ta inbound-request:eyre) payload=(map @t json)]
@@ -1905,7 +1902,7 @@
 
         :: =/  payload  ?:(=([%o *] payload) p.payload ~)
 
-        %-  (slog leaf+"{<dap.bowl>}: delegate-api {<payload>}..." ~)
+        %-  (log:util %info leaf+"{<dap.bowl>}: delegate-api {<payload>}...")
 
         =/  context  (~(get by payload) 'context')
         ?~  context  (send-api-error req payload 'missing context')
@@ -1961,7 +1958,7 @@
         =/  payload-data  (~(put by payload) 'data' sig-payload)
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (log:core %warn "sending {<booth-owner>} delegate to {<remote-agent-wire>}...")
+        %-  (log:util %warn "sending {<booth-owner>} delegate to {<remote-agent-wire>}...")
 
         =/  =response-header:http
           :-  200
@@ -1988,78 +1985,57 @@
         |=  [payload=(map @t json)]
         ^-  (quip card _state)
 
-        %-  (slog leaf+"{<dap.bowl>}: delegate-wire {<payload>}..." ~)
+        %-  (log:util %info leaf+"{<dap.bowl>}: delegate-wire {<payload>}...")
         :: =/  payload  ?:(=([%o *] payload) p.payload ~)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload missing context"
-          !!
+        ?~  context  (mean leaf+"{<dap.bowl>}: delegate wire error. payload missing context" ~)
         =/  context  (need context)
         =/  context  ?:  ?=([%o *] context)  p.context  ~
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. context missing booth"
-          !!
+        ?~  booth-key  (mean leaf+"{<dap.bowl>}: delegate wire error. context missing booth" ~)
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<booth-key>} not found in booth store"
-          !!
+        ?~  booth  (mean leaf+"{<dap.bowl>}: delegate wire error. {<booth-key>} not found in booth store" ~)
         =/  booth  (need booth)
 
         =/  booth  ?:  ?=([%o *] booth)  p.booth  ~
         =/  booth-owner  (~(get by booth) 'owner')
-        ?~  booth-owner
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<booth-key>} missing owner"
-          !!
+        ?~  booth-owner  (mean leaf+"{<dap.bowl>}: delegate wire error. {<booth-key>} missing owner" ~)
         =/  booth-owner  (need booth-owner)
         =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
 
         =/  data  (~(get by payload) 'data')
-        ?~  data
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload missing data"
-          !!
+        ?~  data  (mean leaf+"{<dap.bowl>}: delegate wire error. payload missing data" ~)
         =/  data  (need data)
         =/  data  ?:  ?=([%o *] data)  p.data  ~
 
         =/  delegate-key  (~(get by data) 'delegate')
-        ?~  delegate-key
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload data missing delegate"
-          !!
+        ?~  delegate-key  (mean leaf+"{<dap.bowl>}: delegate wire error. payload data missing delegate" ~)
         =/  delegate-key  (so:dejs:format (need delegate-key))
 
         ::  is the delegate actually a member of the group?
         =/  booth-members  (~(get by participants.state) booth-key)
-        ?~  booth-members
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. booth member store not found"
-          !!
+        ?~  booth-members  (mean leaf+"{<dap.bowl>}: delegate wire error. booth member store not found" ~)
         =/  booth-members  (need booth-members)
         =/  member  (~(get by booth-members) delegate-key)
-        ?~  member
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<delegate-key>} is not a booth participant"
-          !!
+        ?~  member  (mean leaf+"{<dap.bowl>}: delegate wire error. {<delegate-key>} is not a booth participant" ~)
 
         =/  sgn  (~(get by data) 'sig')
-        ?~  sgn
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload data missing sig"
-          !!
+        ?~  sgn  (mean leaf+"{<dap.bowl>}: delegate wire error. payload data missing sig" ~)
         =/  sgn  (need sgn)
 
         =/  verified  (ver:sig bowl sgn ~)
-        ?~  verified
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. unable to validate signature"
-          !!
+        ?~  verified  (mean leaf+"{<dap.bowl>}: delegate wire error. unable to validate signature" ~)
 
         =/  participant-key  (crip "{<src.bowl>}")
         =/  booth-participants  (~(get by delegates.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
         =/  participant  (~(get by booth-participants) participant-key)
-        ?.  =(~ participant)
-          ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} already delegated vote"
-          !!
+        ?.  =(~ participant)  (mean leaf+"{<dap.bowl>}: delegate wire error. {<participant-key>} already delegated vote" ~)
+
         ::  check to see if the one attempting to delegate is themselves a delegate. do not allow this.
         =/  values  ~(val by booth-participants)
         =/  matches
@@ -2074,16 +2050,14 @@
             %.n
         ::  is the member attempting to delegate already a delegate?
         ?:  (gth 0 (lent matches))
-          ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} is a delegate and therefore cannot delegate"
-          !!
+          (mean leaf+"{<dap.bowl>}: delegate wire error. {<participant-key>} is a delegate and therefore cannot delegate" ~)
+
         =/  context  (~(put by context) 'participant' s+participant-key)
 
         =/  booth-votes  (~(get by votes.state) booth-key)
         =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
         =/  participant  (~(get by booth-votes) participant-key)
-        ?.  =(~ participant)
-          ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} already voted"
-          !!
+        ?.  =(~ participant)  (mean leaf+"{<dap.bowl>}: delegate wire error. {<participant-key>} already voted" ~)
 
         =/  delegation=json
         %-  pairs:enjs:format
@@ -2112,7 +2086,7 @@
         ==
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (slog leaf+"sending {<booth-owner>} delegate to {<remote-agent-wire>}..." ~)
+        %-  (log:util %info leaf+"sending {<booth-owner>} delegate to {<remote-agent-wire>}...")
 
         :_  state(delegates (~(put by delegates.state) booth-key booth-participants))
 
@@ -2127,7 +2101,7 @@
 
         :: =/  payload  ?:(=([%o *] payload) p.payload ~)
 
-        %-  (slog leaf+"{<dap.bowl>}: undelegate-api {<payload>}..." ~)
+        %-  (log:util %info leaf+"{<dap.bowl>}: undelegate-api {<payload>}...")
 
         =/  context  (~(get by payload) 'context')
         ?~  context  (send-api-error req payload 'missing context')
@@ -2180,7 +2154,7 @@
         =/  payload-data  (~(put by payload) 'data' sig-payload)
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (log:core %warn "sending {<booth-owner>} delegate to {<remote-agent-wire>}...")
+        %-  (log:util %warn "sending {<booth-owner>} delegate to {<remote-agent-wire>}...")
 
         =/  =response-header:http
           :-  200
@@ -2207,86 +2181,63 @@
         |=  [payload=(map @t json)]
         ^-  (quip card _state)
 
-        %-  (slog leaf+"{<dap.bowl>}: delegate-wire {<payload>}..." ~)
+        %-  (log:util %info leaf+"{<dap.bowl>}: delegate-wire {<payload>}...")
         :: =/  payload  ?:(=([%o *] payload) p.payload ~)
 
         =/  context  (~(get by payload) 'context')
-        ?~  context
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload missing context"
-          !!
+        ?~  context  (mean leaf+"{<dap.bowl>}: delegate wire error. payload missing context" ~)
         =/  context  (need context)
         =/  context  ?:  ?=([%o *] context)  p.context  ~
 
         =/  booth-key  (~(get by context) 'booth')
-        ?~  booth-key
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. context missing booth"
-          !!
+        ?~  booth-key  (mean leaf+"{<dap.bowl>}: delegate wire error. context missing booth" ~)
         =/  booth-key  (so:dejs:format (need booth-key))
 
         =/  booth  (~(get by booths.state) booth-key)
-        ?~  booth
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<booth-key>} not found in booth store"
-          !!
+        ?~  booth  (mean leaf+"{<dap.bowl>}: delegate wire error. {<booth-key>} not found in booth store" ~)
         =/  booth  (need booth)
 
         =/  booth  ?:  ?=([%o *] booth)  p.booth  ~
         =/  booth-owner  (~(get by booth) 'owner')
-        ?~  booth-owner
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<booth-key>} missing owner"
-          !!
+        ?~  booth-owner  (mean leaf+"{<dap.bowl>}: delegate wire error. {<booth-key>} missing owner" ~)
         =/  booth-owner  (need booth-owner)
         =/  booth-owner  `@p`(slav %p (so:dejs:format booth-owner))
 
         =/  data  (~(get by payload) 'data')
-        ?~  data
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload missing data"
-          !!
+        ?~  data  (mean leaf+"{<dap.bowl>}: delegate wire error. payload missing data" ~)
         =/  data  (need data)
         =/  data  ?:  ?=([%o *] data)  p.data  ~
 
         =/  delegate-key  (~(get by data) 'delegate')
-        ?~  delegate-key
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload data missing delegate"
-          !!
+        ?~  delegate-key  (mean leaf+"{<dap.bowl>}: delegate wire error. payload data missing delegate" ~)
         =/  delegate-key  (so:dejs:format (need delegate-key))
 
         ::  is the delegate actually a member of the group?
         =/  booth-members  (~(get by participants.state) booth-key)
-        ?~  booth-members
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. booth member store not found"
-          !!
+        ?~  booth-members  (mean leaf+"{<dap.bowl>}: delegate wire error. booth member store not found" ~)
         =/  booth-members  (need booth-members)
         =/  member  (~(get by booth-members) delegate-key)
-        ?~  member
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. {<delegate-key>} is not a booth participant"
-          !!
+        ?~  member  (mean leaf+"{<dap.bowl>}: delegate wire error. {<delegate-key>} is not a booth participant" ~)
 
         =/  sgn  (~(get by data) 'sig')
-        ?~  sgn
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. payload data missing sig"
-          !!
+        ?~  sgn  (mean leaf+"{<dap.bowl>}: delegate wire error. payload data missing sig" ~)
         =/  sgn  (need sgn)
 
         =/  verified  (ver:sig bowl sgn ~)
-        ?~  verified
-          ~&  >>>  "{<dap.bowl>}: delegate wire error. unable to validate signature"
-          !!
+        ?~  verified  (mean leaf+"{<dap.bowl>}: delegate wire error. unable to validate signature" ~)
 
         =/  participant-key  (crip "{<src.bowl>}")
         =/  booth-participants  (~(get by delegates.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
         =/  participant  (~(get by booth-participants) participant-key)
-        ?:  =(~ participant)
-          ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} has not delegated"
-          !!
+        ?:  =(~ participant)  (mean leaf+"{<dap.bowl>}: delegate wire error. {<participant-key>} has not delegated" ~)
+
         =/  context  (~(put by context) 'participant' s+participant-key)
 
         =/  booth-votes  (~(get by votes.state) booth-key)
         =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
         =/  participant  (~(get by booth-votes) participant-key)
-        ?.  =(~ participant)
-          ~&  >>  "{<dap.bowl>}: delegate wire error. {<participant-key>} already voted"
-          !!
+        ?.  =(~ participant)  (mean leaf+"{<dap.bowl>}: delegate wire error. {<participant-key>} already voted" ~)
 
         =/  booth-participants  (~(del by booth-participants) participant-key)
         =/  participant-effect=json
@@ -2307,7 +2258,7 @@
         ==
 
         =/  remote-agent-wire=path  `path`/booths/(scot %tas booth-key)
-        %-  (slog leaf+"sending {<booth-owner>} undelegate to {<remote-agent-wire>}..." ~)
+        %-  (log:util %info leaf+"sending {<booth-owner>} undelegate to {<remote-agent-wire>}...")
 
         :_  state(delegates (~(put by delegates.state) booth-key booth-participants))
 
@@ -2330,12 +2281,12 @@
       ::  ~lodlev-migdev - allow external agents (including UI clients) to subscribe
       ::    to the /contexts channel.
       [%updates *]
-        :: %-  (log:core %good "ballot: client subscribed to {(spud path)}.")
+        :: %-  (log:util %good "ballot: client subscribed to {(spud path)}.")
         `this
 
       [%booths ~]
         ?:  =(our.bowl src.bowl)
-          :: %-  (log:core %warn "remote ships not allowed to watch /booths")
+          :: %-  (log:util %warn "remote ships not allowed to watch /booths")
           `this
         !!
 
@@ -2348,10 +2299,10 @@
       ::       and non-null if it crashed, with a stack trace in the tang."
       ::  see:  https://urbit.org/docs/userspace/gall-guide/8-subscriptions
       [%booths *]
-        :: %-  (log:core %good "ballot: client subscribed to {(spud path)}.")
+        :: %-  (log:util %good "ballot: client subscribed to {(spud path)}.")
         =/  booth-key  (spud (oust [0 1] `(list @ta)`path))
         =/  booth-key  (crip `tape`(oust [0 1] `(list @)`booth-key))
-        %-  (log:core %info "ballot: extracted booth key => {<booth-key>}...")
+        %-  (log:util %info "ballot: extracted booth key => {<booth-key>}...")
 
         =/  booth  (~(get by booths.state) booth-key)
         =/  booth  ?~(booth ~ (need booth))
@@ -2359,9 +2310,7 @@
         =/  booth-participants  (~(get by participants.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
         =/  participant  (~(get by booth-participants) (crip "{<src.bowl>}"))
-        ?~  participant
-              :: %-  (log:core %error "subscription request rejected. {<src.bowl>} not a participant of the booth.")
-              !!
+        ?~  participant  (mean leaf+"subscription request rejected. {<src.bowl>} not a participant of the booth." ~)
 
         =/  booth-proposals  (~(get by proposals.state) booth-key)
         =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
@@ -2414,13 +2363,13 @@
       ::  ~lodlev-migdev - allow external agents (including UI clients) to subscribe
       ::    to the /notifications channel.
       [%notifications *]
-        %-  (log:core %good "ballot: client subscribed to {(spud path)}.")
+        %-  (log:util %good "ballot: client subscribed to {(spud path)}.")
         `this
 
       ::  ~lodlev-migdev - print message when eyre subscribes to our http-response path
       ::  TODO: Do not allow anything other than Eyre to suscribe to this path.
       [%http-response *]
-        %-  (log:core %good "ballot: client subscribed to {(spud path)}.")
+        %-  (log:util %good "ballot: client subscribed to {(spud path)}.")
         `this
   ==
 
@@ -2434,7 +2383,7 @@
   |=  =path
   ^-  (unit (unit cage))
 
-  %-  (log:core %info "ballot: scry called with {<path>}...")
+  :: %-  (log:util %info "ballot: scry called with {<path>}...")
 
   ?+    path  (on-peek:def path)
       [%x %ship ~]
@@ -2459,7 +2408,35 @@
       [%x %booths @ %proposals ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
-        %-  (log:core %warn "ballot: extracting proposals for booth {<key>}...")
+        %-  (log:util %warn leaf+"ballot: extracting proposals for booth {<key>}...")
+        =/  member-key  (crip "{<our.bowl>}")
+        =/  tst  (~(chk perm [bowl booths.state participants.state]) key member-key 'read-proposal')
+        ?.  -.tst
+            =/  context
+            %-  pairs:enjs:format
+            :~
+              ['booth' s+key]
+            ==
+            =/  error-data
+            %-  pairs:enjs:format
+            :~
+              ['error' s+'insufficient privileges. member role does not have read-proposal permission']
+            ==
+            =/  error-effect
+            %-  pairs:enjs:format
+            :~
+              ['resource' s+'proposal']
+              ['effect' s+'error']
+              ['data' error-data]
+            ==
+            =/  response
+            %-  pairs:enjs:format
+            :~
+              ['action' s+'read-proposal-reaction']
+              ['context' context]
+              ['effects' [%a :~(error-effect)]]
+            ==
+            ``json+!>(response)
         =/  booth-proposals  (~(get by proposals.state) key)
         ?~  booth-proposals  ``json+!>(~)
         ``json+!>([%o (need booth-proposals)])
@@ -2468,16 +2445,44 @@
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
         ::=/  key  (crip (oust [0 1] (spud /(snag 2 `(list @)`path)/(snag 3 `(list @)`path)/(snag 4 `(list @)`path))))
-        %-  (log:core %warn "ballot: extracting proposals for booth {<key>}...")
-        =/  booth-proposals  (~(get by proposals.state) key)
-        ?~  booth-proposals  ``json+!>(~)
-        ``json+!>([%o (need booth-proposals)])
+        %-  (log:util %warn "ballot: extracting proposals for booth {<key>}...")
+        =/  member-key  (crip "{<our.bowl>}")
+        =/  tst  (~(chk perm [bowl booths.state participants.state]) key member-key 'read-proposal')
+        ?.  -.tst
+            =/  context
+            %-  pairs:enjs:format
+            :~
+              ['booth' s+key]
+            ==
+            =/  error-data
+            %-  pairs:enjs:format
+            :~
+              ['error' s+'insufficient privileges. member role does not have read-proposal permission']
+            ==
+            =/  error-effect
+            %-  pairs:enjs:format
+            :~
+              ['resource' s+'proposal']
+              ['effect' s+'error']
+              ['data' error-data]
+            ==
+            =/  response
+            %-  pairs:enjs:format
+            :~
+              ['action' s+'read-proposal-reaction']
+              ['context' context]
+              ['effects' [%a :~(error-effect)]]
+            ==
+            ``json+!>(response)
+          =/  booth-proposals  (~(get by proposals.state) key)
+          ?~  booth-proposals  ``json+!>(~)
+          ``json+!>([%o (need booth-proposals)])
 
       [%x %booths @ %proposals @ %votes ~]
         =/  segments  `(list @ta)`path
         =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments))))
         =/  proposal-key  (key-from-path:util i.t.t.t.t.path)
-        %-  (log:core %warn "ballot: extracting votes for booth {<booth-key>}, proposal {<proposal-key>}...")
+        %-  (log:util %warn "ballot: extracting votes for booth {<booth-key>}, proposal {<proposal-key>}...")
         =/  booth-proposals  (~(get by votes.state) booth-key)
         ?~  booth-proposals  ``json+!>(~)
         =/  booth-proposals  (need booth-proposals)
@@ -2489,7 +2494,7 @@
         =/  segments  `(list @ta)`path
         =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
         =/  proposal-key  (crip (oust [0 1] (spud /(snag 6 segments))))
-        %-  (log:core %warn "ballot: extracting votes for booth {<booth-key>}, proposal {<proposal-key>}...")
+        %-  (log:util %warn "ballot: extracting votes for booth {<booth-key>}, proposal {<proposal-key>}...")
         =/  booth-proposals  (~(get by votes.state) booth-key)
         ?~  booth-proposals  ``json+!>(~)
         =/  booth-proposals  (need booth-proposals)
@@ -2500,7 +2505,7 @@
       [%x %booths @ %votes ~]
         =/  segments  `(list @ta)`path
         =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments))))
-        %-  (log:core %warn "ballot: extracting votes for booth {<booth-key>}...")
+        %-  (log:util %warn "ballot: extracting votes for booth {<booth-key>}...")
         =/  booth-proposals  (~(get by votes.state) booth-key)
         ?~  booth-proposals  ``json+!>(~)
         ``json+!>([%o (need booth-proposals)])
@@ -2508,7 +2513,7 @@
       [%x %booths @ @ @ %votes ~]
         =/  segments  `(list @ta)`path
         =/  booth-key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
-        %-  (log:core %warn "ballot: extracting votes for booth {<booth-key>}...")
+        %-  (log:util %warn "ballot: extracting votes for booth {<booth-key>}...")
         =/  booth-proposals  (~(get by votes.state) booth-key)
         ?~  booth-proposals  ``json+!>(~)
         ``json+!>([%o (need booth-proposals)])
@@ -2523,7 +2528,7 @@
       [%x %booths @ %participants ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
-        %-  (log:core %warn "ballot: extracting participants for booth {<key>}...")
+        %-  (log:util %warn "ballot: extracting participants for booth {<key>}...")
         =/  participants  (~(get by participants.state) key)
         ?~  participants  ``json+!>(~)
         ``json+!>([%o (need participants)])
@@ -2531,7 +2536,7 @@
       [%x %booths @ @ @ %participants ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
-        %-  (log:core %warn "ballot: extracting participants for booth {<key>}...")
+        %-  (log:util %warn "ballot: extracting participants for booth {<key>}...")
         =/  participants  (~(get by participants.state) key)
         ?~  participants  ``json+!>(~)
         ``json+!>([%o (need participants)])
@@ -2539,21 +2544,21 @@
       [%x %booths @ %delegates ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
-        %-  (slog leaf+"ballot: extracting participants for booth {<key>}..." ~)
+        %-  (log:util %info leaf+"ballot: extracting participants for booth {<key>}...")
         =/  delegate-view  (~(dlg view [bowl delegates.state]) key)
         ``json+!>(delegate-view)
 
       [%x %booths @ @ @ %delegates ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
-        %-  (log:core %warn "ballot: extracting participants for booth {<key>}...")
+        %-  (log:util %warn "ballot: extracting participants for booth {<key>}...")
         =/  delegate-view  (~(dlg view [bowl delegates.state]) key)
         ``json+!>(delegate-view)
 
       [%x %booths @ %custom-actions ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments))))
-        %-  (slog leaf+"ballot: extracting custom-actions for booth {<key>}..." ~)
+        %-  (log:util %info leaf+"ballot: extracting custom-actions for booth {<key>}...")
         =/  custom-actions  (~(get by custom-actions.state) key)
         =/  custom-actions  ?~(custom-actions ~ (need custom-actions))
         ``json+!>(custom-actions)
@@ -2561,7 +2566,7 @@
       [%x %booths @ @ @ %custom-actions ~]
         =/  segments  `(list @ta)`path
         =/  key  (crip (oust [0 1] (spud /(snag 2 segments)/(snag 3 segments)/(snag 4 segments))))
-        %-  (log:core %warn "ballot: extracting custom-actions for booth {<key>}...")
+        %-  (log:util %warn "ballot: extracting custom-actions for booth {<key>}...")
         =/  custom-actions  (~(get by custom-actions.state) key)
         =/  custom-actions  ?~(custom-actions ~ (need custom-actions))
         ``json+!>(custom-actions)
@@ -2575,7 +2580,7 @@
 
   |^
   =/  wirepath  `path`wire
-  %-  (log:core %info "ballot: {<wirepath>} data received...")
+  %-  (log:util %info "ballot: {<wirepath>} data received...")
 
   ?+    wire  (on-agent:def wire sign)
 
@@ -2584,19 +2589,19 @@
       ?+    -.sign  (on-agent:def wire sign)
         %watch-ack
           ?~  p.sign
-            %-  (log:core %info "ballot: group subscription succeeded")
+            %-  (log:util %info "ballot: group subscription succeeded")
             `this
-          %-  (log:core %info "ballot: group subscription failed")
+          %-  (log:util %info "ballot: group subscription failed")
           `this
     ::
         %kick
-          %-  (log:core %info "ballot: group kicked us, resubscribing...")
+          %-  (log:util %info "ballot: group kicked us, resubscribing...")
           :_  this
           :~  [%pass /group %agent [our.bowl %group-store] %watch /groups]
           ==
     ::
         %fact
-          %-  (log:core %info "ballot: received fact from group => {<p.cage.sign>}")
+          %-  (log:util %info "ballot: received fact from group => {<p.cage.sign>}")
           ?+    p.cage.sign  (on-agent:def wire sign)
               %group-update-0
                 =/  action  !<(=update:group-store q.cage.sign)
@@ -2631,66 +2636,10 @@
             =/  msg-id  (snag 3 segments)
             =/  msg  (~(get by mq.state) msg-id)
             ?~  msg
-              %-  (log:core %error "ballot: %poke-ack msg {<msg-id>} not found")
+              %-  (log:util %error "ballot: %poke-ack msg {<msg-id>} not found")
               `this
             (handle-message-ack msg-id ack (need msg))
         ==
-
-    :: [%timer @ @ %start ~]
-    ::   ?+    -.sign  (on-agent:def wire sign)
-    ::       %poke-ack
-    ::         ?~  p.sign
-    ::               %-  (log:core %info "start-poll timer started successfully")
-    ::               `this
-    ::             %-  (log:core %info "start-poll timer failed to start" u.p.sign)
-    ::             `this
-    ::   ==
-
-    :: [%booths @ @ @ %start-poll ~]
-    ::   =/  segments  `(list @ta)`wirepath
-    ::   =/  booth-key  (snag 1 segments)
-    ::   =/  proposal-key  (snag 2 segments)
-    ::   ?+    -.sign  (on-agent:def wire sign)
-    ::       %poke-ack
-    ::         ?~  p.sign
-    ::               %-  (log:core %info "start-poll thread started successfully")
-    ::               `this
-    ::             %-  (log:core %info "start-poll failed to start" u.p.sign)
-    ::             `this
-
-    ::       %fact
-    ::         ?+  p.cage.sign  (on-agent:def wire sign)
-    ::               %thread-fail
-    ::                 =/  err  !<  (pair term tang)  q.cage.sign
-    ::                 %-  (log:core %info "start-poll thread failed: {(trip p.err)}" q.err)
-    ::                 `this
-    ::               %thread-done
-    ::                 (on-start-poll booth-key proposal-key)
-    ::         ==
-    ::   ==
-
-    :: [%booths @ @ @ %end-poll ~]
-    ::   =/  segments  `(list @ta)`wirepath
-    ::   =/  booth-key  (snag 1 segments)
-    ::   =/  proposal-key  (snag 2 segments)
-    ::   ?+    -.sign  (on-agent:def wire sign)
-    ::       %poke-ack
-    ::         ?~  p.sign
-    ::           %-  (log:core %info "end-poll thread started successfully")
-    ::           `this
-    ::         %-  (log:core %info "end-poll failed to start" u.p.sign)
-    ::         `this
-
-    ::       %fact
-    ::         ?+  p.cage.sign  (on-agent:def wire sign)
-    ::               %thread-fail
-    ::                 =/  err  !<  (pair term tang)  q.cage.sign
-    ::                 %-  (log:core %info "end-poll thread failed: {(trip p.err)}" q.err)
-    ::                 `this
-    ::               %thread-done
-    ::                 (on-end-poll booth-key proposal-key)
-    ::         ==
-    ::   ==
 
     [%booths *]
       =/  segments  `(list @ta)`wirepath
@@ -2698,16 +2647,16 @@
       ?-    -.sign
         %poke-ack
           ?~  p.sign
-            ((log:core %info "ballot: {<wirepath>} poke succeeded") `this)
-          ((log:core %info "ballot: {<wirepath>} poke failed") `this)
+            ((log:util %info "ballot: {<wirepath>} poke succeeded") `this)
+          ((log:util %info "ballot: {<wirepath>} poke failed") `this)
 
         %watch-ack
           ?~  p.sign
-            ((log:core %info "ballot: subscribed to {<wirepath>}") `this)
-          ((log:core %info "ballot: {<wirepath>} subscription failed") `this)
+            ((log:util %info "ballot: subscribed to {<wirepath>}") `this)
+          ((log:util %info "ballot: {<wirepath>} subscription failed") `this)
 
         %kick
-          %-  (log:core %info "ballot: {<wirepath>} got kick, resubscribing...")
+          %-  (log:util %info "ballot: {<wirepath>} got kick, resubscribing...")
           :_  this
           :~  [%pass /booths/(scot %tas booth-key) %agent [src.bowl %ballot] %watch /booths/(scot %tas booth-key)]
           ==
@@ -2717,13 +2666,13 @@
 
             %json
               =/  jon  !<(json q.cage.sign)
-              %-  (log:core %good "{<jon>}")
+              %-  (log:util %good "{<jon>}")
 
               =/  payload  ?:(?=([%o *] jon) p.jon ~)
 
               =/  action  (~(get by payload) 'action')
               ?~  action
-                    %-  (log:core %error "null action in on-agent handler => {<payload>}")
+                    %-  (log:util %error "null action in on-agent handler => {<payload>}")
                     `this
 
               =/  action  (so:dejs:format (need action))
@@ -2742,10 +2691,10 @@
               ::  no need to gift ourselves. if this ship generated the gift, the action
               ::    has already occurred
               ?:  =(our.bowl src.bowl)
-                :: %-  (log:core %warn "skipping gift to ourselves..."  `this
-                ?+  action  %-  (log:core %warn "skipping gift to ourselves {<jon>}...")  `this
+                :: %-  (log:util %warn "skipping gift to ourselves..."  `this
+                ?+  action  %-  (log:util %warn "skipping gift to ourselves {<jon>}...")  `this
                    %save-proposal-reaction
-                    %-  (log:core %info "ballot: [set-booth-timer] => proposal updates. setting timers...")
+                    %-  (log:util %info "ballot: [set-booth-timer] => proposal updates. setting timers...")
                     (handle-save-proposal-reaction booth-key payload)
                 ==
 
@@ -2793,7 +2742,7 @@
   ++  handle-booth-reaction
     |=  [payload=(map @t json)]
 
-    %-  (log:core %info "ballot: poll-started-reaction received...")
+    %-  (log:util %info "ballot: poll-started-reaction received...")
 
     =/  context  ((om json):dejs:format (~(got by payload) 'context'))
     =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
@@ -2811,7 +2760,7 @@
 
     =/  effect-name  (so:dejs:format (~(got by effect) 'effect'))
 
-    ?+  effect-name  !!  :: %-  (log:core %error "ballot: unknown effect type")  !!
+    ?+  effect-name  !!  :: %-  (log:util %error "ballot: unknown effect type")  !!
 
       %delete
         :_  this(booths (~(del by booths.state) booth-key))
@@ -2833,7 +2782,7 @@
   ++  handle-delegate-reaction
     |=  [payload=(map @t json)]
 
-    %-  (slog leaf+"{<dap.bowl>}: handle-delegate-reaction received. {<payload>}..." ~)
+    %-  (log:util %info leaf+"{<dap.bowl>}: handle-delegate-reaction received. {<payload>}...")
 
     =/  context  (~(get by payload) 'context')
     =/  context  ?~(context ~ (need context))
@@ -2876,7 +2825,7 @@
   ++  handle-poll-started-reaction
     |=  [payload=(map @t json)]
 
-    %-  (log:core %info "ballot: poll-started-reaction received...")
+    %-  (log:util %info "ballot: poll-started-reaction received...")
 
     =/  context  ((om json):dejs:format (~(got by payload) 'context'))
     =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
@@ -2884,7 +2833,7 @@
     =/  poll-key  (so:dejs:format (~(got by context) 'poll'))
 
     :: =/  effects  (~(get by payload) 'effects')
-    :: ?~  effects  %-  (log:core %error "ballot: effects not found"  !!
+    :: ?~  effects  %-  (log:util %error "ballot: effects not found"  !!
     :: =/  effects=(list json)  ((as json):dejs:format (need effects))
     :: %-  run
     :: :-  effects
@@ -2892,14 +2841,14 @@
     ::   (dispatch-effect payload jon)
 
     =/  effects  (~(get by payload) 'effects')
-    ?~  effects  !!  ::  %-  (log:core %error "ballot: effects not found" ~)  !!
-    %-  (log:core %info "ballot: extracting effects data...")
+    ?~  effects  !!  ::  %-  (log:util %error "ballot: effects not found" ~)  !!
+    %-  (log:util %info "ballot: extracting effects data...")
     =/  effects=(list json)  ~(tap in ((as json):dejs:format (need effects)))
-    %-  (log:core %info "ballot: extracting effect data...")
+    %-  (log:util %info "ballot: extracting effect data...")
     =/  effect  ((om json):dejs:format (snag 0 effects))
-    %-  (log:core %info "ballot: extracting poll data...")
+    %-  (log:util %info "ballot: extracting poll data...")
     =/  data  ((om json):dejs:format (~(got by effect) 'data'))
-    %-  (log:core %info "ballot: done")
+    %-  (log:util %info "ballot: done")
 
     =/  poll-proposals  (~(get by polls.state) booth-key)
     =/  poll-proposals  ?~(poll-proposals ~ (need poll-proposals))
@@ -2908,9 +2857,9 @@
     =/  poll-proposal  (~(gas by poll-proposal) ~(tap by data))
     =/  poll-proposals  (~(put by poll-proposals) proposal-key [%o poll-proposal])
 
-    %-  (log:core %info "ballot: committing poll changes...")
-    %-  (log:core %warn "{<(crip (en-json:html [%o data]))>}")
-    %-  (log:core %warn "{<(crip (en-json:html [%o poll-proposal]))>}")
+    %-  (log:util %info "ballot: committing poll changes...")
+    %-  (log:util %warn "{<(crip (en-json:html [%o data]))>}")
+    %-  (log:util %warn "{<(crip (en-json:html [%o poll-proposal]))>}")
 
     :_  this(polls (~(put by polls.state) booth-key poll-proposals))
 
@@ -2920,8 +2869,8 @@
   ++  handle-poll-ended-reaction
     |=  [payload=(map @t json)]
 
-    %-  (log:core %info "ballot: poll-ended-reaction received...")
-    %-  (log:core %warn "{<(crip (en-json:html [%o payload]))>}")
+    %-  (log:util %info "ballot: poll-ended-reaction received...")
+    %-  (log:util %warn "{<(crip (en-json:html [%o payload]))>}")
 
     =/  context  ((om json):dejs:format (~(got by payload) 'context'))
     =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
@@ -2929,7 +2878,7 @@
     =/  poll-key  (so:dejs:format (~(got by context) 'poll'))
 
     =/  effects  (~(get by payload) 'effects')
-    ?~  effects  !! ::  %-  (log:core %error "ballot: effects not found")  !!
+    ?~  effects  !! ::  %-  (log:util %error "ballot: effects not found")  !!
     =/  effects=(list json)  ~(tap in ((as json):dejs:format (need effects)))
     =/  effect  ((om json):dejs:format (snag 0 effects))
     =/  data  ((om json):dejs:format (~(got by effect) 'data'))
@@ -2956,7 +2905,7 @@
   ++  handle-message-ack
     |=  [msg-id=@t ack=@t msg=json]
 
-    %-  (log:core %info "ballot: received ack ({<ack>}) {<msg-id>}...")
+    %-  (log:util %info "ballot: received ack ({<ack>}) {<msg-id>}...")
 
     =/  msg  ((om json):dejs:format msg)
 
@@ -2983,7 +2932,7 @@
         ~
       (~(put by custom-actions) key.booth .^(json %cx lib-file))
 
-    %-  (log:core %info "ballot: on-group-added. adding group booth {<key.booth>}...")
+    %-  (log:util %info "ballot: on-group-added. adding group booth {<key.booth>}...")
 
     ::  generate a participant from the resource
     =/  participant-key  (crip "{<our.bowl>}")
@@ -3103,10 +3052,10 @@
     |=  =action:group-store
     ?>  ?=(%add-members -.action)
     =/  booth-key  (crip (weld (weld "{<entity.resource.action>}" "-groups-") (trip `@t`name.resource.action)))
-    %-  (log:core %info "on-group-member-added {<booth-key>}")
+    %-  (log:util %info "on-group-member-added {<booth-key>}")
     =/  booth-participants  (~(get by participants.state) booth-key)
     ?~  booth-participants
-          %-  (log:core %info "booth {<booth-key>} participants not found...")
+          %-  (log:util %info "booth {<booth-key>} participants not found...")
           `this
     =/  booth-participants  (need booth-participants)
 
@@ -3170,10 +3119,10 @@
     :: =/  booth-ship  (~(got by booth) 'owner')
     :: =/  hostship=@p  `@p`(slav %p booth-ship)
 
-    %-  (log:core %info "on-group-member-removed {<booth-key>}")
+    %-  (log:util %info "on-group-member-removed {<booth-key>}")
     =/  booth-participants  (~(get by participants.state) booth-key)
     ?~  booth-participants
-          %-  (log:core %info "booth {<booth-key>} participants not found...")
+          %-  (log:util %info "booth {<booth-key>} participants not found...")
           `this
     =/  booth-participants  (need booth-participants)
 
@@ -3292,11 +3241,11 @@
         ^-  [effects=(list card) booths=(map @t json) participants=(map @t (map @t json)) custom-actions=(map @t json)] :: participants=(map @t (map @t json))]
         =/  booth  (booth-from-resource resource)
         ?:  (~(has by booths.state) key.booth)
-              %-  (log:core %warn "cannot add booth {<key.booth>} to store. already exists...")
+              %-  (log:util %warn "cannot add booth {<key.booth>} to store. already exists...")
               [effects.acc booths.acc participants.acc custom-actions.acc]
         =/  effects
               ?:  =(status.booth 'active')
-                %-  (log:core %info "activating booth {<key.booth>} on {<our.bowl>}...")
+                %-  (log:util %info "activating booth {<key.booth>} on {<our.bowl>}...")
                 (snoc effects.acc [%pass /booths/(scot %tas key.booth) %agent [our.bowl %ballot] %watch /booths/(scot %tas key.booth)])
               [effects.acc]
         =/  participants
@@ -3331,7 +3280,7 @@
 
     =/  booth  (~(get by booths.state) key.new-booth)
     ?.  =(booth ~)
-        %-  (log:core %warn "cannot add booth {<key.new-booth>} to store. already exists...")
+        %-  (log:util %warn "cannot add booth {<key.new-booth>} to store. already exists...")
         `this
 
     =/  booth-participants  (~(get by participants.state) key.new-booth)
@@ -3513,20 +3462,20 @@
       =/  proposal-start-date=@da  (du:dejs:format (need proposal-start-date))
       =.  result
             ?.  =(proposal-start-date poll-start-date)
-                  %-  (log:core %info "ballot: proposal {<proposal-key>} start date changed. rescheduling...")
+                  %-  (log:util %info "ballot: proposal {<proposal-key>} start date changed. rescheduling...")
                   =/  effects
                     ?.  =(~ poll-start-date)
-                      %-  (log:core %warn "ballot: poll-start-date {<poll-start-date>}. %rest.")
+                      %-  (log:util %warn "ballot: poll-start-date {<poll-start-date>}. %rest.")
                       (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/start %arvo %b %rest `@da`poll-start-date])
                     effects
-                  %-  (log:core %info "ballot: proposal-start-date {<proposal-start-date>}. %wait.")
+                  %-  (log:util %info "ballot: proposal-start-date {<proposal-start-date>}. %wait.")
                   =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/start %arvo %b %wait `@da`proposal-start-date])
                   =/  poll  (~(put by poll) 'start' (sect:enjs:format proposal-start-date))
                   [effects poll]
-                %-  (log:core %info "ballot: proposal {<proposal-key>} start date unchanged. no need to reschedule.")
+                %-  (log:util %info "ballot: proposal {<proposal-key>} start date unchanged. no need to reschedule.")
                 [effects poll]
           [effects.result poll.result]
-        %-  (log:core %info "ballot: start date not found in payload. no need to reschedule poll start.")
+        %-  (log:util %info "ballot: start date not found in payload. no need to reschedule poll start.")
         [effects poll]
 
     =/  effects  effects.result
@@ -3541,20 +3490,20 @@
       =/  proposal-end-date=@da  (du:dejs:format (need proposal-end-date))
       =.  result
           ?.  =(proposal-end-date poll-end-date)
-                %-  (log:core %info "ballot: proposal {<proposal-key>} end date changed. rescheduling...")
+                %-  (log:util %info "ballot: proposal {<proposal-key>} end date changed. rescheduling...")
                   =/  effects
                     ?.  =(~ poll-end-date)
-                      %-  (log:core %warn "ballot: poll-end-date {<poll-end-date>}. %rest.")
+                      %-  (log:util %warn "ballot: poll-end-date {<poll-end-date>}. %rest.")
                       (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/end %arvo %b %rest `@da`poll-end-date])
                     effects
-                  %-  (log:core %info "ballot: proposal-end-date {<proposal-end-date>}. %wait.")
+                  %-  (log:util %info "ballot: proposal-end-date {<proposal-end-date>}. %wait.")
                   =/  effects  (snoc effects [%pass /timer/(scot %tas booth-key)/(scot %tas proposal-key)/end %arvo %b %wait `@da`proposal-end-date])
                 =/  poll  (~(put by poll) 'end' (sect:enjs:format proposal-end-date))
                 [effects poll]
-              %-  (log:core %info "ballot: proposal {<proposal-key>} end date unchanged. no need to reschedule.")
+              %-  (log:util %info "ballot: proposal {<proposal-key>} end date unchanged. no need to reschedule.")
               [effects poll]
           [effects.result poll.result]
-        %-  (log:core %info "ballot: end date not found in payload. no need to reschedule poll end.")
+        %-  (log:util %info "ballot: end date not found in payload. no need to reschedule poll end.")
         [effects poll]
 
     =/  poll-key  (crip (weld "poll-" (trip timestamp)))
@@ -3592,14 +3541,14 @@
     =/  proposal-key  (so:dejs:format (~(got by context) 'proposal'))
     =/  participant-key  (so:dejs:format (~(got by context) 'participant'))
 
-    %-  (log:core %info "on-agent:handling-cast-vote => {<participant-key>} voted...")
+    %-  (log:util %info "on-agent:handling-cast-vote => {<participant-key>} voted...")
 
     ::  does proposal exist?
     =/  booth-proposals  (~(get by proposals.state) booth-key)
     =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
     =/  proposal  (~(get by booth-proposals) proposal-key)
     ?~  proposal
-          %-  (log:core %error "cast-vote error: proposal {<proposal-key>} not found")
+          %-  (log:util %error "cast-vote error: proposal {<proposal-key>} not found")
           `this
 
     =/  booth-proposals  (~(get by votes.state) booth-key)
@@ -3763,7 +3712,7 @@
 
     =/  data  (~(get by payload) 'data')
     ?~  data
-          %-  (log:core %error "handle-initial missing data")
+          %-  (log:util %error "handle-initial missing data")
           `this
 
     =/  data=(map @t json)  ((om json):dejs:format (need data))
@@ -3888,7 +3837,7 @@
 
     =/  custom-actions  (~(get by initial-effect) 'data')
     ?~  custom-actions
-          %-  (log:core %error "handle-initial missing data")
+          %-  (log:util %error "handle-initial missing data")
           `this
     =/  custom-actions  (need custom-actions)
 
@@ -3897,7 +3846,7 @@
   :: ++  handle-save-proposal-reaction
   ::   |=  [payload=(map @t json)]
 
-  ::   %-  (log:core %info "ballot: handle-save-proposal-reaction {<payload>}...")
+  ::   %-  (log:util %info "ballot: handle-save-proposal-reaction {<payload>}...")
 
   ::   =/  context  ((om json):dejs:format (~(got by payload) 'context'))
   ::   =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
@@ -4014,7 +3963,7 @@
   |=  [=wire =sign-arvo]
   ^-  (quip card _this)
 
-  %-  (log:core %warn "ballot: on-arvo called {<wire>}, {<sign-arvo>}...")
+  %-  (log:util %warn "ballot: on-arvo called {<wire>}, {<sign-arvo>}...")
 
   |^
 
@@ -4023,29 +3972,29 @@
     [%bind-route ~]
       ?>  ?=([%eyre %bound *] sign-arvo)
       ?:  accepted.sign-arvo
-        %-  (log:core %good "{<[wire sign-arvo]>}")
+        %-  (log:util %good "{<[wire sign-arvo]>}")
         `this
-        %-  (log:core %error "ballot: binding route failed")
+        %-  (log:util %error "ballot: binding route failed")
       `this
 
     [%timer @ @ %start ~]
-      %-  (log:core %info "ballot: poll started...")
+      %-  (log:util %info "ballot: poll started...")
       ?.  ?=([%behn %wake *] sign-arvo)  (on-arvo:def wire sign-arvo)
       ?^  error.sign-arvo                (on-arvo:def wire sign-arvo)
       =/  segments  `(list @ta)`wire
       =/  booth-key  (snag 1 segments)
       =/  proposal-key  (snag 2 segments)
-      %-  (log:core %info "ballot: on-start-poll {<booth-key>}, {<proposal-key>}...")
+      %-  (log:util %info "ballot: on-start-poll {<booth-key>}, {<proposal-key>}...")
       (on-start-poll booth-key proposal-key)
 
     [%timer @ @ %end ~]
-      %-  (log:core %info "ballot: poll ended.")
+      %-  (log:util %info "ballot: poll ended.")
       ?.  ?=([%behn %wake *] sign-arvo)  (on-arvo:def wire sign-arvo)
       ?^  error.sign-arvo                (on-arvo:def wire sign-arvo)
       =/  segments  `(list @ta)`wire
       =/  booth-key  (snag 1 segments)
       =/  proposal-key  (snag 2 segments)
-      %-  (log:core %info "ballot: on-end-poll {<booth-key>}, {<proposal-key>}...")
+      %-  (log:util %info "ballot: on-end-poll {<booth-key>}, {<proposal-key>}...")
       (on-end-poll booth-key proposal-key)
 
   ==
@@ -4067,16 +4016,15 @@
     =/  poll  ?~(poll ~ ((om json):dejs:format (need poll)))
 
     =/  poll-key  (~(get by poll) 'key')
-    =/  poll-key  ?~  poll-key
-      ~&  >>>  "ballot: error. poll key not found."
-      !!
-      :: %-  (log:core %error "poll not found")  !!
+    =/  poll-key  ?~  poll-key  (mean leaf+"ballot: error. poll key not found." ~)
+
+      :: %-  (log:util %error "poll not found")  !!
     (so:dejs:format (need poll-key))
 
     =/  poll  (~(put by poll) 'status' s+'opened')
     =/  booth-polls  (~(put by booth-polls) proposal-key [%o poll])
 
-    %-  (slog leaf+"on-start-poll called {<poll>}..." ~)
+    %-  (log:util %info leaf+"on-start-poll called {<poll>}...")
 
     =/  context=json
     %-  pairs:enjs:format
@@ -4110,7 +4058,7 @@
       ['effects' [%a [status-effect]~]]
     ==
 
-    %-  (log:core %info "sending poll started effect to subcribers => {<effects>}...")
+    %-  (log:util %info "sending poll started effect to subcribers => {<effects>}...")
 
     :_  this(proposals (~(put by proposals.state) booth-key booth-proposals), polls (~(put by polls.state) booth-key booth-polls))
     :~  [%give %fact [/booths]~ %json !>(effects)]
@@ -4121,17 +4069,16 @@
     |=  [booth-key=@t proposal-key=@t]
     ^-  (quip card _this)
 
-    %-  (slog leaf+"on-end-poll called" ~)
+    %-  (log:util %info leaf+"on-end-poll called")
     =/  booth-polls  (~(get by polls.state) booth-key)
     =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
     =/  poll  (~(get by booth-polls) proposal-key)
     =/  poll  ?~(poll ~ ((om json):dejs:format (need poll)))
 
     =/  poll-key  (~(get by poll) 'key')
-    =/  poll-key  ?~  poll-key
-      ~&  >>>  "ballot: error. poll key not found"
-      !!
-      :: %-  (log:core %error "poll not found")  !!
+    =/  poll-key  ?~  poll-key  (mean leaf+"ballot: error. poll key not found" ~)
+
+      :: %-  (log:util %error "poll not found")  !!
     (so:dejs:format (need poll-key))
 
     =/  poll-results=[data=json effects=(list card)]  (tally-results booth-key proposal-key)
@@ -4148,7 +4095,7 @@
     =/  proposal  (~(put by proposal) 'tally' data.poll-results)
     =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal])
 
-    %-  (log:core %info "poll results are in!!! => {<poll-results>}")
+    %-  (log:util %info "poll results are in!!! => {<poll-results>}")
 
     =/  context=json
     %-  pairs:enjs:format
@@ -4182,7 +4129,7 @@
       ['effects' [%a [results-effect]~]]
     ==
 
-    %-  (log:core %info "sending poll results to subcribers => {<effects>}...")
+    %-  (log:util %info "sending poll results to subcribers => {<effects>}...")
 
     =/  effects=(list card)
     :~  [%give %fact [/booths]~ %json !>(effects)]
@@ -4197,7 +4144,7 @@
     |=  [booth-key=@t proposal-key=@t]
     ^-  [json (list card)]
 
-    %-  (log:core %info "tally-results called. [booth-key={<booth-key>}, proposal-key={<proposal-key>}]")
+    %-  (log:util %info "tally-results called. [booth-key={<booth-key>}, proposal-key={<proposal-key>}]")
 
     =/  booth-proposals  (~(get by proposals.state) booth-key)
     =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
@@ -4206,7 +4153,7 @@
     =/  threshold  (~(get by proposal) 'support')
     ?~  threshold
       ~&  >>>  "ballot: error. missing voter support value"
-      :: %-  (log:core %error "ballot: missing voter support value")
+      :: %-  (log:util %error "ballot: missing voter support value")
       !!
     =/  choices  (~(get by proposal) 'choices')
     =/  choices  ?~(choices ~ (need choices))
@@ -4235,7 +4182,7 @@
     =/  vote-count  ?~(proposal-votes 0 (lent votes))
 
     =/  turnout  (div:rd (sun:rd vote-count) (sun:rd participant-count))
-    %-  (log:core %info "ballot: {<turnout>}, {<threshold>}")
+    %-  (log:util %info "ballot: {<turnout>}, {<threshold>}")
     =/  tallies=(map @t json)
           :: ?:  (gte turnout threshold)
           ?:  (gte:ma:rd turnout threshold)
@@ -4243,28 +4190,28 @@
             :-  votes
             |:  [vote=`[@t json]`[%null ~] results=`(map @t json)`~]
             ::  has this voter delegated? if so skip...
-            %-  (slog leaf+"{<dap.bowl>}: processing {<-.vote>}..." ~)
+            %-  (log:util %info leaf+"{<dap.bowl>}: processing {<-.vote>}...")
             =/  delegate  (~(get by booth-delegates) -.vote)
             ?.  =(~ delegate)
-              %-  (slog leaf+"{<dap.bowl>}: voter {<-.vote>} delegated. skipping..." ~)
+              %-  (log:util %info leaf+"{<dap.bowl>}: voter {<-.vote>} delegated. skipping...")
               results
             =/  num-votes
               %-  roll
               :-  ~(tap by booth-delegates)
               |=  [[voter=@t d=json] total=@ud]
-                %-  (slog leaf+"{<dap.bowl>}: calc vote count {<[-.vote voter d]>}" ~)
+                %-  (log:util %info leaf+"{<dap.bowl>}: calc vote count {<[-.vote voter d]>}")
                 =/  d  ?:  ?=([%o *] d)  p.d  ~
                 =/  deleg  (so:dejs:format (~(got by d) 'delegate'))
                 ?:  =(-.vote deleg)  (add total 1)  total
             ::  1 + num of times delegated to
             =/  num-votes  (add 1 num-votes)
-            %-  (slog leaf+"{<dap.bowl>}: {<-.vote>} choice counted {<num-votes>} times..." ~)
+            %-  (log:util %info leaf+"{<dap.bowl>}: {<-.vote>} choice counted {<num-votes>} times...")
             (count-vote participant-count num-votes vote results)
 
-          %-  (log:core %info "ballot: voter turnout not sufficient. not enough voter support.")
+          %-  (log:util %info "ballot: voter turnout not sufficient. not enough voter support.")
           ~
 
-    %-  (log:core %warn "ballot: tally => {<tallies>}")
+    %-  (log:util %warn "ballot: tally => {<tallies>}")
 
     ::  sort list by choice/vote count
     =/  tallies  ~(val by tallies)
@@ -4304,7 +4251,7 @@
               =/  label  ?~(label '?' (so:dejs:format (need label)))
               =/  custom-action  (~(get by choice-1) 'action')
               =/  custom-action  ?~(custom-action ~ (so:dejs:format (need custom-action)))
-              ~&  >>  "{<dap.bowl>}: searching for {<custom-action>} in {<choices>}..."
+              %-  (log:util %info "{<dap.bowl>}: searching for {<custom-action>} in {<choices>}...")
               =/  choice-data=(list json)
               %-  skim
               :-  choices
@@ -4312,7 +4259,7 @@
                 =/  choice  ?:(?=([%o *] data) p.data ~)
                 =/  choice-action  (~(get by choice) 'action')
                 =/  choice-action  ?~(choice-action ~ (so:dejs:format (need choice-action)))
-                ~&  >>  "{<dap.bowl>}: comparing {<custom-action>} to {<choice-action>}..."
+                %-  (log:util %info "{<dap.bowl>}: comparing {<custom-action>} to {<choice-action>}...")
                 ?:  =(custom-action choice-action)  %.y  %.n
               ::  grab the first match
               =/  choice-data=json  (snag 0 choice-data)
@@ -4384,31 +4331,5 @@
     =.  results  (~(put by results) label [%o result])
     results
   --
-
-  :: ?.  ?=([%bind-route ~] wire)
-  ::   (on-arvo:def [wire sign-arvo])
-  :: ?>  ?=([%eyre %bound *] sign-arvo)
-  :: ?:  accepted.sign-arvo
-  ::   %-  (log:core %good [wire sign-arvo]
-  ::   `this
-  ::   %-  (log:core %error "ballot: binding route failed"
-  :: `this
-
-  :: ?.  ?=([@ @ %timer ~] wire)          (on-arvo:def wire sign-arvo)
-  :: ?.  ?=([%behn %wake *] sign-arvo)  (on-arvo:def wire sign-arvo)
-  :: ?^  error.sign-arvo                (on-arvo:def wire sign-arvo)
-  :: ::
-
-  :: ?~  poll=(~(get by peck) (slav %uv i.wire))  `this
-  :: ?+  wire  (on-arvo:def wire sign-arvo)
-
-  ::   [@ @ %timer ~]
-  ::     =/  segments  `(list @ta)`wirepath
-  ::     =/  booth-key  (snag 1 segments)
-  ::     =/  proposal-key  (snag 2 segments)
-  ::     (on-end-poll booth-key proposal-key)
-
-  :: ==
-
 ++  on-fail   on-fail:def
 --
