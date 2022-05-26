@@ -297,6 +297,22 @@
           s+'admin'
       ==
 
+      =/  admin-permissions
+      :~  s+'read-proposal'
+          s+'vote-proposal'
+          s+'create-proposal'
+          s+'edit-proposal'
+          s+'delete-proposal'
+          s+'invite-member'
+          s+'remove-member'
+          s+'change-settings'
+      ==
+      =/  member-permissions
+      :~  s+'read-proposal'
+          s+'vote-proposal'
+          s+'create-proposal'
+      ==
+
       =/  booth=json
       %-  pairs:enjs:format
       :~
@@ -311,6 +327,8 @@
         ['status' s+'active']
         ['defaults' defaults]
         ['permissions' [%a permissions]]
+        ['adminPermissions' [%a admin-permissions]]
+        ['memberPermissions' [%a member-permissions]]
       ==
 
       =.  booths  (~(put by booths) booth-key booth)
@@ -379,7 +397,7 @@
                   =/  action  (so:dejs:format (~(got by payload) 'action'))
                   =/  resource  (so:dejs:format (~(got by payload) 'resource'))
 
-                  ?+  [resource action]  `state
+                  ?+  [resource action]  (send-api-error req payload 'resource/action not found')
 
                         [%booth %invite]
                           (invite-api req payload)
@@ -387,7 +405,7 @@
                         [%booth %accept]
                           (accept-api req payload)
 
-                        [%booth %save]
+                        [%booth %save-booth]
                           (save-booth-api req payload)
 
                         [%proposal %save-proposal]
@@ -431,11 +449,15 @@
 
       =/  act  (~(got by contract) 'action')
 
-      ?+    p.+.act  (send-error contract (crip "{<dap.bowl>}: error. unrecognized action. {<jon>}"))
+      ?+    p.+.act  (mean leaf+"{<dap.bowl>}: error. unrecognized action. {<jon>}" ~)
 
         %ping
           ::  this one comes in from the initial poke that sets up the channel in the UI
           `state
+
+        %save-booth
+          %-  (log:util %info "{<dap.bowl>}: save-booth received...")
+          (save-booth-wire contract)
 
         ::  errors come via poke as reactions. successfully handled pokes are
         ::  distributed as gifts. here we simply pass the errors to the UI of the ship
@@ -835,91 +857,6 @@
         :~  [%give %fact [/booths]~ %json !>(effects)]
         ::  for remote subscribers, indicate over booth specific wire
             [%give %fact [/booths/(scot %tas booth-key)]~ %json !>([%o payload])]
-        ==
-
-      ++  invite-wire
-        |=  [payload=(map @t json)]
-
-        %-  (log:util %info "{<dap.bowl>}: invite-wire called. {<payload>}...")
-
-        =/  timestamp  (en-json:html (time:enjs:format now.bowl))
-
-        =/  context  ((om json):dejs:format (~(got by payload) 'context'))
-        =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
-
-        =/  participant-key  (crip "{<our.bowl>}")
-        =/  booth  ((om json):dejs:format (~(got by payload) 'data'))
-
-        =/  booth-owner  (~(get by context) 'booth')
-        ?~  booth-owner  (send-error payload 'bad context. booth missing.')
-        =/  booth-owner  (so:dejs:format (need booth-owner))
-        =/  booth-owner  `@p`(slav %p booth-owner)
-
-        ::  update booth status because on receiving ship (this ship), the booth
-        ::    is being added; therefore status is 'invited'
-        =/  booth  (~(put by booth) 'status' s+'invited')
-
-        =/  booth-participants  (~(get by participants.state) booth-key)
-        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
-
-        =/  participant  (~(get by booth-participants) participant-key)
-
-        =/  participant
-              ?~  participant
-                 ~
-              ((om json):dejs:format (need participant))
-
-        ::  update participant record to indicated invited
-        =/  participant-updates=json
-        %-  pairs:enjs:format
-        :~
-          ['key' s+participant-key]
-          ['name' s+participant-key]
-          ['status' s+'invited']
-          ['role' s+'member']
-          ['created' (time:enjs:format now.bowl)]
-        ==
-        ::  convert to (map @t json)
-        =/  participant-updates  ?:(?=([%o *] participant-updates) p.participant-updates ~)
-
-        ::  apply updates to participant by overlaying updates map
-        =/  participant  (~(gas by participant) ~(tap by participant-updates))
-
-        ::  save the updated partcipant to the participants map
-        =/  booth-participants  (~(put by booth-participants) participant-key [%o participant])
-
-        =/  booth-effect=json
-        %-  pairs:enjs:format
-        :~
-          ['resource' s+'booth']
-          ['effect' s+'add']
-          ['key' s+booth-key]
-          ['data' [%o booth]]
-        ==
-
-        =/  participant-effect=json
-        %-  pairs:enjs:format
-        :~
-          ['resource' s+'participant']
-          ['effect' s+'add']
-          ['key' s+participant-key]
-          ['data' [%o participant-updates]]
-        ==
-
-        =/  effects=json
-        %-  pairs:enjs:format
-        :~
-          ['action' s+'invite-reaction']
-          ['context' [%o context]]
-          ['effects' [%a :~(booth-effect participant-effect)]]
-        ==
-
-        %-  (log:util %warn "invite-wire: sending {<booth-owner>} effects {<effects>}...")
-
-        :_  state(booths (~(put by booths.state) booth-key [%o booth]), participants (~(put by participants.state) booth-key booth-participants))
-
-        :~  [%give %fact [/booths]~ %json !>(effects)]
-            [%pass /booths/(scot %tas booth-key) %agent [booth-owner %ballot] %poke %json !>(effects)]
         ==
 
       ++  send-error
@@ -1786,26 +1723,60 @@
         =/  participant-key  (so:dejs:format (need participant-key))
         =/  invitee  `@p`(slav %p participant-key)
 
+        ::  check the permissions of this ship..the one trying to invite
+        =/  member-key  (crip "{<our.bowl>}")
+
         ::  are we even a member of this booth?
         =/  booth-participants  (~(get by participants.state) booth-key)
         =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
         :: =/  booth-participants  ?:(?=([%o *] booth-participants) p.booth-participants ~)
-        ?.  (~(has by booth-participants) participant-key)
-          (send-api-error req payload (crip "error. {<participant-key>} is not a member of {<booth-key>}"))
-
-        ::  check the permissions of this ship..the one trying to invite
-        =/  member-key  (crip "{<our.bowl>}")
+        ?.  (~(has by booth-participants) member-key)
+          (send-api-error req payload (crip "error. {<member-key>} is not a member of {<booth-key>}"))
 
         ::  is this ship allowed to invite members
         =/  tst=[success=? msg=@t]  (check-permission booth-key member-key 'invite-member')
 
         ?.  success.tst  (send-api-error req payload 'insufficient privileges. missing invite-member permission')
 
+        =/  participant  (~(get by booth-participants) participant-key)
+
+        =/  participant
+              ?~  participant
+                 ~
+              ((om json):dejs:format (need participant))
+
+        ::  update participant record to indicated invited
+        =/  participant-data=json
+        %-  pairs:enjs:format
+        :~
+          ['key' s+participant-key]
+          ['name' s+participant-key]
+          ['status' s+'pending']
+          ['role' s+'member']
+          ['created' (time:enjs:format now.bowl)]
+        ==
+        ::  convert to (map @t json)
+        =/  participant-data  ?:(?=([%o *] participant-data) p.participant-data ~)
+
+        ::  apply updates to participant by overlaying updates map
+        =/  participant  (~(gas by participant) ~(tap by participant-data))
+
+        ::  save the updated partcipant to the participants map
+        =/  booth-participants  (~(put by booth-participants) participant-key [%o participant])
+
         ::  stuff the booth information into the payload. the invitee will need this to
         ::  add the booth to its local store
         =/  booth  (~(get by booths.state) booth-key)
         =/  booth  ?~(booth ~ (need booth))
-        =/  invitee-payload  (~(put by payload) 'data' booth)
+
+        =/  payload-data=json
+        %-  pairs:enjs:format
+        :~
+          ['booth' booth]
+          ['participant' [%o participant]]
+        ==
+
+        =/  invitee-payload  (~(put by payload) 'data' payload-data)
 
         ::  create the response
         =/  =response-header:http
@@ -1814,7 +1785,7 @@
           ==
 
         ::  encode the proposal as a json string
-        =/  body  (crip (en-json:html [%o payload]))
+        =/  body  (crip (en-json:html [%o (~(put by payload) 'data' [%o participant])]))
 
         ::  convert the string to a form that arvo will understand
         =/  data=octs
@@ -1823,13 +1794,90 @@
         ::  commit the changes to the store
         %-  (log:util %info "{<dap.bowl>}: invite-api - sending {<invitee>} {<[%o invitee-payload]>}...")
 
-        :_  state
+        :_  state(participants (~(put by participants.state) booth-key booth-participants))
 
         :~
           [%give %fact [/http-response/[p.req]]~ %http-response-header !>(response-header)]
           [%give %fact [/http-response/[p.req]]~ %http-response-data !>(`data)]
           [%give %kick [/http-response/[p.req]]~ ~]
           [%pass /booths/(scot %tas booth-key) %agent [invitee %ballot] %poke %json !>([%o invitee-payload])]
+        ==
+
+      ++  invite-wire
+        |=  [payload=(map @t json)]
+
+        %-  (log:util %info "{<dap.bowl>}: invite-wire called. {<payload>}...")
+
+        =/  timestamp  (en-json:html (time:enjs:format now.bowl))
+
+        =/  context  ((om json):dejs:format (~(got by payload) 'context'))
+        =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
+
+        =/  participant-key  (crip "{<our.bowl>}")
+
+        =/  data  (~(get by payload) 'data')
+        =/  data  ?~(data ~ (need data))
+        =/  data  ?:(?=([%o *] data) p.data ~)
+
+        =/  booth  (~(get by data) 'booth')
+        =/  booth  ?~(booth ~ (need booth))
+        =/  booth  ?:(?=([%o *] booth) p.booth ~)
+
+        =/  participant-data  (~(get by data) 'participant')
+        =/  participant-data  ?~(participant-data ~ (need participant-data))
+        =/  participant-data  ?:(?=([%o *] participant-data) p.participant-data ~)
+
+        =/  booth-owner  (~(get by booth) 'owner')
+        ?~  booth-owner  (send-error payload 'booth data missing owner')
+        =/  booth-owner  (so:dejs:format (need booth-owner))
+        =/  booth-owner  `@p`(slav %p booth-owner)
+
+        ::  update booth status because on receiving ship (this ship), the booth
+        ::    is being added; therefore status is 'invited'
+        =/  booth  (~(put by booth) 'status' s+'invited')
+
+        =/  booth-participants  (~(get by participants.state) booth-key)
+        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+
+        =/  participant  (~(get by booth-participants) participant-key)
+        =/  participant  ?~(participant ~ (need participant))
+        =/  participant  ?:(?=([%o *] participant) p.participant ~)
+
+        =/  participant  (~(gas by participant) ~(tap by participant-data))
+        =/  participant  (~(put by participant) 'status' s+'invited')
+
+        =/  booth-effect=json
+        %-  pairs:enjs:format
+        :~
+          ['resource' s+'booth']
+          ['effect' s+'add']
+          ['key' s+booth-key]
+          ['data' [%o booth]]
+        ==
+
+        =/  participant-effect=json
+        %-  pairs:enjs:format
+        :~
+          ['resource' s+'participant']
+          ['effect' s+'add']
+          ['key' s+participant-key]
+          ['data' [%o participant]]
+        ==
+
+        =/  effects=json
+        %-  pairs:enjs:format
+        :~
+          ['action' s+'invite-reaction']
+          ['context' [%o context]]
+          ['effects' [%a :~(booth-effect participant-effect)]]
+        ==
+
+        %-  (log:util %warn "invite-wire: sending {<booth-owner>} effects {<effects>}...")
+
+        :_  state(booths (~(put by booths.state) booth-key [%o booth]), participants (~(put by participants.state) booth-key booth-participants))
+
+        :~  [%give %fact [/booths]~ %json !>(effects)]
+            [%pass /booths/(scot %tas booth-key) %agent [booth-owner %ballot] %poke %json !>(effects)]
         ==
 
       ::
@@ -1886,6 +1934,8 @@
         =/  booth-participants  (~(put by booth-participants) participant-key [%o participant])
 
         %-  (log:util %warn "invite-reaction-wire: giving effects {<[%o payload]>}...")
+
+        =/  payload  (~(put by payload) 'effects' [%a effects])
 
         :_  state(participants (~(put by participants.state) booth-key booth-participants))
 

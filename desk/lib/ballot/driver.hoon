@@ -1,5 +1,5 @@
-/-  ballot-store, plugin
-|_  [=bowl:gall store=state-1:ballot-store]
+/-  ballot, plugin
+|_  [=bowl:gall store=state-1:ballot]
 ++  eca
   |=  [[booth-key=@t proposal-key=@t] action=@t action-data=json payload=json]
   :: ^-  [(list card) (map @t json)]
