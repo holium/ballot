@@ -1633,6 +1633,24 @@
 
         =/  payload-data  (~(put by payload-data) 'sig' j-sig)
 
+        ::  get the list of participants that have delegated to this voter
+        =/  delegators=(map @t json)
+        %-  ~(rep by booth-delegates)
+        |=  [[key=@t jon=json] acc=(map @t json)]
+          =/  voter  ?:(?=([%o *] jon) p.jon ~)
+          =/  delg  (~(get by voter) 'delegate')
+          ?~  delg  acc
+          =/  delg  (so:dejs:format (need delg))
+          ?:  =(delg participant-key)
+            (~(put by acc) key [%o voter])
+          acc
+
+        %-  (log:util %info "{<dap.bowl>}: voter delegators {<delegators>}")
+        =/  payload-data
+        ?.  =(~ delegators)
+          (~(put by payload-data) 'delegators' [%o delegators])
+        payload-data
+
         =/  proposal-votes  (~(put by proposal-votes) participant-key [%o payload-data])
         =/  booth-votes  (~(put by booth-proposals) proposal-key [%o proposal-votes])
 
@@ -4229,13 +4247,13 @@
     =/  participant-count  ?~(participants 0 (lent participants))
 
     =/  votes  `(list [@t json])`~(tap by proposal-votes)
-    =/  vote-count  ?~(proposal-votes 0 (lent votes))
+    :: =/  vote-count  ?~(proposal-votes 0 (lent votes))
 
-    =/  turnout  (div:rd (sun:rd vote-count) (sun:rd participant-count))
-    %-  (log:util %info "ballot: {<turnout>}, {<threshold>}")
+    :: =/  turnout  (div:rd (sun:rd vote-count) (sun:rd participant-count))
+    :: %-  (log:util %info "ballot: {<turnout>}, {<threshold>}")
     =/  tallies=(map @t json)
           :: ?:  (gte turnout threshold)
-          ?:  (gte:ma:rd turnout threshold)
+          :: ?:  (gte:ma:rd turnout threshold)
             %-  roll
             :-  votes
             |:  [vote=`[@t json]`[%null ~] results=`(map @t json)`~]
@@ -4245,21 +4263,50 @@
             ?.  =(~ delegate)
               %-  (log:util %info leaf+"{<dap.bowl>}: voter {<-.vote>} delegated. skipping...")
               results
+            =/  vote-data  ?:(?=([%o *] +.vote) p.+.vote ~)
+            ::  if this member's vote has no delegators data, assume vote weight of 1
             =/  num-votes
-              %-  roll
-              :-  ~(tap by booth-delegates)
-              |=  [[voter=@t d=json] total=@ud]
-                %-  (log:util %info leaf+"{<dap.bowl>}: calc vote count {<[-.vote voter d]>}")
-                =/  d  ?:  ?=([%o *] d)  p.d  ~
-                =/  deleg  (so:dejs:format (~(got by d) 'delegate'))
-                ?:  =(-.vote deleg)  (add total 1)  total
+            ?.  (~(has by vote-data) 'delegators')  1
+              ::  otherwise get a count of delegator entries
+              =/  delegators  (~(got by vote-data) 'delegators')
+              =/  delegators  ?:(?=([%o *] delegators) p.delegators ~)
+              (add 1 (lent ~(val by delegators)))
+            :: =/  num-votes
+            ::   %-  roll
+            ::   :-  ~(tap by booth-delegates)
+            ::   |=  [[voter=@t d=json] total=@ud]
+            ::     %-  (log:util %info leaf+"{<dap.bowl>}: calc vote count {<[-.vote voter d]>}")
+            ::     =/  d  ?:  ?=([%o *] d)  p.d  ~
+            ::     =/  deleg  (so:dejs:format (~(got by d) 'delegate'))
+            ::     ?:  =(-.vote deleg)  (add total 1)  total
             ::  1 + num of times delegated to
-            =/  num-votes  (add 1 num-votes)
+            :: =/  num-votes  (add 1 num-votes)
             %-  (log:util %info leaf+"{<dap.bowl>}: {<-.vote>} choice counted {<num-votes>} times...")
             (count-vote participant-count num-votes vote results)
 
-          %-  (log:util %info "ballot: voter turnout not sufficient. not enough voter support.")
-          ~
+          :: %-  (log:util %info "ballot: voter turnout not sufficient. not enough voter support.")
+          :: ~
+
+    =/  vote-count
+      %-  ~(rep by tallies)
+        |=  [[key=@t jon=json] acc=@ud]
+        =/  data  ?:(?=([%o *] jon) p.jon ~)
+        =/  count  (~(get by data) 'count')
+        =/  count  ?~(count 0 (ni:dejs:format (need count)))
+        (add acc count)
+    =/  turnout  (div:rd (sun:rd vote-count) (sun:rd participant-count))
+    %-  (log:util %info "ballot: {<turnout>}, {<threshold>}")
+    ?.  (gte:ma:rd turnout threshold)
+      %-  (log:util %info "ballot: voter turnout not sufficient. not enough voter support.")
+      =/  results
+      %-  pairs:enjs:format
+      :~
+        ['status' s+'failed']
+        ['reason' s+'voter turnout not sufficient. not enough voter support.']
+        ['voteCount' (numb:enjs:format `@ud`vote-count)]
+        ['participantCount' (numb:enjs:format `@ud`participant-count)]
+      ==
+      [results ~]
 
     %-  (log:util %warn "ballot: tally => {<tallies>}")
 
