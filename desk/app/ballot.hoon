@@ -2673,6 +2673,7 @@
           ?+    p.cage.sign  (on-agent:def wire sign)
               %group-update-0
                 =/  action  !<(=update:group-store q.cage.sign)
+                %-  (log:util %info "ballot: group action => {<action>}")
                 ?+  -.action  (on-agent:def wire sign)
                   %initial
                     (on-group-initial action)
