@@ -1,8 +1,7 @@
-/-  *plugin, ballot-store, res=resource
-/+  *ballot-plugin
+/-  *plugin, ballot, res=resource
 |%
 ++  on
-  |=  [=bowl:gall store=state-1:ballot-store context=[booth-key=@t proposal-key=@t]]
+  |=  [=bowl:gall store=state-1:ballot context=[booth-key=@t proposal-key=@t]]
   |%
     ++  action
       |=  [action-data=json poll-results=json]

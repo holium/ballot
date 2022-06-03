@@ -6,7 +6,7 @@
 ::
 :: ***********************************************************
 /-  *group, group-store, ballot, plugin
-/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, sig=ballot-signature, view=ballot-views, drv=ballot-driver, perm=ballot-perm
+/+  store=group-store, default-agent, dbug, resource, pill, util=ballot-util, sig=ballot-signature, view=ballot-views, drv=ballot-driver, perm=ballot-perm, lib1=ballot-custom-actions-invite-member
 |%
 +$  card  card:agent:gall
 +$  versioned-state

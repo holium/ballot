@@ -1,8 +1,7 @@
-/-  *plugin, ballot-store, res=resource
-/+  *ballot-plugin
+/-  *plugin, ballot, res=resource
 |%
 ++  on
-  |=  [=bowl:gall store=state-1:ballot-store context=[booth-key=@t proposal-key=@t]]
+  |=  [=bowl:gall store=state-1:ballot context=[booth-key=@t proposal-key=@t]]
   |%
     ++  action
       |=  [action-data=json payload=json]
@@ -73,6 +72,7 @@
       :: :~  [%pass /invite %agent [our.bowl %invite-hook] %poke %invite-action !>(action)]
       :: ==
 
+      =/  effects=(list card:agent:gall)
       :~  [%pass /group %agent [our.bowl %group-store] %poke %group-action !>([%add-members [booth-ship booth-name] (sy [member ~])])]
       ==
 
