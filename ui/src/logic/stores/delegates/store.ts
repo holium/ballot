@@ -18,6 +18,7 @@ export const DelegateStore = types
   .model({
     boothKey: types.string,
     loader: types.optional(LoaderModel, { state: "initial" }),
+    delegateLoader: types.optional(LoaderModel, { state: "initial" }),
     delegates: types.map(DelegateModel),
   })
   .views((self) => ({
@@ -69,8 +70,8 @@ export const DelegateStore = types
       }
     }),
     delegate: flow(function* (delegateKey: string) {
-      self.loader.clearError();
-      self.loader.set("loading");
+      self.delegateLoader.clearError();
+      self.delegateLoader.set("loading");
       yield timeout(1000);
       try {
         const [response, error] = yield delegateApi.addDelegate(
@@ -83,15 +84,15 @@ export const DelegateStore = types
           sig: null,
           created: 0,
         });
-        self.loader.set("loaded");
+        self.delegateLoader.set("loaded");
         // self.delegates.set(newParticipant.key, newParticipant);
       } catch (err: any) {
-        self.loader.error(err);
+        self.delegateLoader.error(err);
       }
     }),
     undelegate: flow(function* (delegateKey: string) {
-      self.loader.clearError();
-      self.loader.set("loading");
+      self.delegateLoader.clearError();
+      self.delegateLoader.set("loading");
       yield timeout(1000);
       try {
         const [response, error] = yield delegateApi.deleteDelegate(
@@ -99,10 +100,10 @@ export const DelegateStore = types
           delegateKey
         );
         if (error) throw error;
-        self.loader.set("loaded");
+        self.delegateLoader.set("loaded");
         // self.delegates.delete(delegateKey);
       } catch (err: any) {
-        self.loader.error(err);
+        self.delegateLoader.error(err);
       }
     }),
     //

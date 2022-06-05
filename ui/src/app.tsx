@@ -32,7 +32,7 @@ export const App: FC = observer(() => {
   const { isShowing, toggle } = useDialog();
   const isMobile = useMobile();
   const { store, app, metadata } = useMst();
-
+  console.log("rerendering app level");
   // Runs on initial load
   useEffect(() => {
     app.setCurrentUrl(location.pathname);
@@ -101,7 +101,7 @@ export const App: FC = observer(() => {
       <Helmet defer={false}>
         <title>{`${app.title} | ${app.ship.patp}`}</title>
       </Helmet>
-      <OSViewPort bg="primary" blur={isShowing}>
+      <OSViewPort blur={isShowing}>
         <Dialog
           variant="simple"
           hasCloseButton
@@ -111,7 +111,7 @@ export const App: FC = observer(() => {
           isShowing={isShowing}
           onHide={toggle}
         >
-          <NewBoothDialog toggle={toggle} onJoin={store.joinBooth} />
+          {/* <NewBoothDialog toggle={toggle} onJoin={store.joinBooth} /> */}
         </Dialog>
         <AppWindow
           isStandalone

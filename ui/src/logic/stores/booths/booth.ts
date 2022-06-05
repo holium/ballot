@@ -96,6 +96,7 @@ export const BoothModel = types
       "active", // joined
     ]),
     loader: LoaderModel,
+    settingsLoader: types.optional(LoaderModel, { state: "initial" }),
     proposalStore: ProposalStore,
     participantStore: ParticipantStore,
     delegateStore: DelegateStore,
@@ -179,17 +180,22 @@ export const BoothModel = types
     setSortBy(sortBy: "recent" | "ending" | "starting") {
       self.sortBy = sortBy;
     },
+    /**
+     * Note: an action should set a loader and post to the ship. The reaction
+     *       effect will update the loader to state="loaded" and perform the
+     *       operation that the effect defined.
+     */
     updateSettings: flow(function* (boothKey: string, updatedSettings: any) {
       try {
-        self.loader.set("loading");
+        self.settingsLoader.set("loading");
         const [response, error] = yield boothApi.saveBooth(
           boothKey,
           updatedSettings
         );
         if (error) throw error;
-        self.loader.set("loaded");
+        // self.settingsLoader.set("loaded");
       } catch (err: any) {
-        self.loader.error(err);
+        self.settingsLoader.error(err);
       }
     }),
     acceptInvite: flow(function* (boothKey: string) {
@@ -204,6 +210,7 @@ export const BoothModel = types
       try {
         const [response, error] = yield boothApi.getCustomActions(self.key);
         if (error) throw error;
+        // @ts-expect-error TODO look into this type issue
         self.customActions = Object.keys(response).map((actionKey: string) => ({
           label: response[actionKey].label,
           description: response[actionKey].description,
@@ -217,8 +224,6 @@ export const BoothModel = types
       }
     }),
     updateEffect(update: any) {
-      // console.log("updateEffect in booth ", update);
-
       const validKeys = Object.keys(update).filter((key: string) =>
         self.hasOwnProperty(key)
       );
@@ -228,6 +233,15 @@ export const BoothModel = types
         value: update[key],
       }));
       applyPatch(self, patches);
+      if (self.loader.isLoading) {
+        self.loader.set("loaded");
+      }
+      if (self.settingsLoader.isLoading) {
+        self.settingsLoader.set("loaded");
+      }
+    },
+    errorEffect(error: any) {
+      console.log("error effect in booth: ", error);
     },
     remove(item: SnapshotIn<typeof self>) {
       destroy(item);

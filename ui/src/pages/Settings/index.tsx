@@ -108,8 +108,6 @@ export const Settings: FC = observer(() => {
 
   const customActions = booth.customActions;
 
-  console.log(toJS(customActions));
-
   return (
     <CenteredPane
       style={{ height: "100%", marginTop: 16 }}
@@ -253,6 +251,7 @@ export const Settings: FC = observer(() => {
                 return (
                   <Button
                     ref={saveButton}
+                    isLoading={booth.settingsLoader.isLoading}
                     // isLoading={
                     //   (isNew && proposalStore.isAdding) ||
                     //   (!isNew && proposal.isLoading)

@@ -17,7 +17,7 @@ import {
 } from "@holium/design-system";
 import { pluralize } from "../../logic/utils/text";
 import { ShipModelType } from "../../logic/stores/app";
-import { getNameFromUrl } from "../../logic/utils/path";
+import { getKeyFromUrl, getNameFromUrl } from "../../logic/utils/path";
 import { useMst } from "../../logic/stores/root";
 import { toJS } from "mobx";
 import styled from "styled-components";
@@ -49,12 +49,12 @@ export const DelegationCard: FC<DelegationCardProps> = observer(
     const urlParams = useParams();
     const isLoading = store.booth?.isLoading;
     // const currentBooth = getKeyFromUrl(urlParams);
-    const currentBooth = getNameFromUrl(urlParams);
+    const currentBooth = getKeyFromUrl(urlParams);
     const delegateStore = store.booths.get(currentBooth)?.delegateStore;
     const ourDelegate = delegateStore?.delegates.get(ship.patp)?.delegate;
     const ourVotingPower = delegateStore!.getVotingPower(ship.patp);
     const hasDelegated = ourVotingPower === 0;
-    const isDelegateLoading = delegateStore?.loader.isLoading;
+    const isDelegateLoading = delegateStore?.delegateLoader.isLoading;
     // console.log(totalVotingPower);
     const { form, delegate } = useMemo(
       () => createDelegateForm(ourDelegate),
@@ -170,9 +170,9 @@ export const DelegationCard: FC<DelegationCardProps> = observer(
               </Button>
             </Grid>
 
-            {delegateStore?.loader.error && (
+            {delegateStore?.delegateLoader.error && (
               <FormControl.Error>
-                {delegateStore?.loader.errorMessage}
+                {delegateStore?.delegateLoader.errorMessage}
               </FormControl.Error>
             )}
           </FormControl.Field>

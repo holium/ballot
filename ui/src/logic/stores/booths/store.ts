@@ -113,9 +113,6 @@ export const BoothStore = types
     setBooth(boothKey: string) {
       self.activeBooth = boothKey;
     },
-    joinBooth(booth: SnapshotIn<typeof BoothModel>) {
-      console.log("will join ", booth.name);
-    },
     remove(item: SnapshotIn<typeof BoothModel>) {
       destroy(item);
     },
