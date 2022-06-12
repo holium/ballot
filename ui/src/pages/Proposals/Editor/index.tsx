@@ -1,7 +1,7 @@
-import React, { FC, useEffect, useMemo, useState } from "react";
+import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Observer, observer } from "mobx-react";
-import MDEditor from "@uiw/react-md-editor";
+import MDEditor, { ICommand } from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
 import {
   ListHeader,
@@ -29,10 +29,12 @@ import { createPath, getKeyFromUrl } from "../../../logic/utils/path";
 import { toJS } from "mobx";
 import { emptyState } from "./empty";
 import { useMst } from "../../../logic/stores/root";
+import { useMobile } from "../../../logic/utils/useMobile";
 
 export const ProposalEditor: FC = observer(() => {
   const saveButton = React.createRef<HTMLButtonElement>();
   const navigate = useNavigate();
+  const isMobile = useMobile();
   const { store, app } = useMst();
   const urlParams = useParams();
   // const [actionConfigs, setActionConfigs] = useState([]);
@@ -90,6 +92,17 @@ export const ProposalEditor: FC = observer(() => {
     }
   };
 
+  // Filters commands out of the toolbar when in mobile
+  const filterCommands = useCallback(
+    (command: ICommand<string>, isExtra: boolean) => {
+      if (isMobile && isExtra) {
+        return false;
+      }
+      return command;
+    },
+    [isMobile]
+  );
+
   if (isNew) {
     initialForm = {
       ...initialForm,
@@ -146,6 +159,7 @@ export const ProposalEditor: FC = observer(() => {
           <FormControl.FieldSet pl={3} pr={3}>
             <Observer>
               {() => {
+                const isMobileMode = isMobile;
                 return (
                   <FormControl.Field>
                     <MarkdownEditor>
@@ -155,6 +169,7 @@ export const ProposalEditor: FC = observer(() => {
                         preview="edit"
                         value={content.state.value}
                         defaultTabEnable={true}
+                        commandsFilter={filterCommands}
                         textareaProps={{
                           tabIndex: 2,
                           placeholder: "Explain more about your proposal",
@@ -412,8 +427,13 @@ export const ProposalEditor: FC = observer(() => {
 
   return (
     <Grid2.Box fluid scroll>
-      <Grid2.Box>
-        <Grid2.Column mb="16px" lg={12} xl={12}>
+      <Grid2.Box {...(isMobile && { p: 0 })}>
+        <Grid2.Column
+          {...(isMobile && { noGutter: true })}
+          mb="16px"
+          lg={12}
+          xl={12}
+        >
           <Grid2.Row>
             <Grid2.Column>
               <BreadcrumbNav

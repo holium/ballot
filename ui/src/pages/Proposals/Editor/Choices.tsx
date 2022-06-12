@@ -14,6 +14,7 @@ import {
 } from "@holium/design-system";
 import { action, runInAction, toJS } from "mobx";
 import { getSnapshot } from "mobx-state-tree";
+import { useMobile } from "../../../logic/utils/useMobile";
 
 export type ChoiceType = {
   label: string;
@@ -31,6 +32,7 @@ type ChoiceEditorProps = {
 export const ChoiceEditor: FC<ChoiceEditorProps> = (
   props: ChoiceEditorProps
 ) => {
+  const isMobile = useMobile();
   const { actions, choices, onUpdate, onActionUpdate } = props;
 
   const buttonRef = React.createRef();
@@ -116,8 +118,65 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
   return (
     <Grid gridGap={2} pl={12} pr={12} pb={12}>
       {choices.map((choice: ChoiceType, index: number) => {
+        const RemoveButton = (
+          <IconButton
+            onClick={() => {
+              runInAction(() => {
+                choices.splice(index, 1);
+                delete actionMap[index];
+              });
+              onUpdate([...choices]);
+              handleActionUpdate(actionMap, index);
+            }}
+          >
+            <Icons.Close />
+          </IconButton>
+        );
+        const ActionDropdown = (
+          <Box alignItems="center">
+            {/* TODO style select much better */}
+            <Select
+              id={`action-${choice.label}-${index}`}
+              small
+              style={{
+                marginLeft: isMobile && 6,
+                marginRight: 12,
+              }}
+              menuWidth={200}
+              minWidth={120}
+              pt={isMobile ? 2 : 1}
+              pb={isMobile ? 2 : 1}
+              bg="transparent"
+              borderColor={!isMobile && "transparent"}
+              placeholder="Set an action"
+              flex={1}
+              leftInteractive={false}
+              leftIcon={
+                <Text variant="body" opacity={0.7} mr={2} fontWeight="bold">
+                  Action
+                </Text>
+              }
+              selectionOption={actionMap[index]}
+              options={customActionOptions}
+              onSelected={(selected: any) => {
+                const newActionMap = {
+                  ...actionMap,
+                  [index]: selected.value,
+                };
+                handleActionUpdate(newActionMap, index);
+              }}
+            />
+            {/* <Text font mr={2}>Action goes here</Text> */}
+
+            {!isMobile && RemoveButton}
+          </Box>
+        );
         return (
-          <Flex flexDirection="column" key={`index-${choice.label}-${index}`}>
+          <Flex
+            mt={isMobile && 2}
+            flexDirection="column"
+            key={`index-${choice.label}-${index}`}
+          >
             <Input
               tabIndex={index + 7} // 6 was the support % input tabIndex
               leftIcon={
@@ -126,60 +185,7 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
                 </Text>
               }
               rightInteractive
-              rightIcon={
-                <Box alignItems="center">
-                  {/* TODO style select much better */}
-                  <Select
-                    id={`action-${choice.label}-${index}`}
-                    small
-                    style={{
-                      marginRight: 12,
-                    }}
-                    menuWidth={200}
-                    minWidth={120}
-                    pt={1}
-                    pb={1}
-                    bg="transparent"
-                    borderColor="transparent"
-                    placeholder="Set an action"
-                    flex={1}
-                    leftInteractive={false}
-                    leftIcon={
-                      <Text
-                        variant="body"
-                        opacity={0.7}
-                        mr={2}
-                        fontWeight="bold"
-                      >
-                        Action
-                      </Text>
-                    }
-                    selectionOption={actionMap[index]}
-                    options={customActionOptions}
-                    onSelected={(selected: any) => {
-                      const newActionMap = {
-                        ...actionMap,
-                        [index]: selected.value,
-                      };
-                      handleActionUpdate(newActionMap, index);
-                    }}
-                  />
-                  {/* <Text font mr={2}>Action goes here</Text> */}
-
-                  <IconButton
-                    onClick={() => {
-                      runInAction(() => {
-                        choices.splice(index, 1);
-                        delete actionMap[index];
-                      });
-                      onUpdate([...choices]);
-                      handleActionUpdate(actionMap, index);
-                    }}
-                  >
-                    <Icons.Close />
-                  </IconButton>
-                </Box>
-              }
+              rightIcon={!isMobile ? ActionDropdown : RemoveButton}
               bg="ui.tertiary"
               placeholder="Choice text"
               defaultValue={choice.label}
@@ -204,9 +210,16 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
                 onUpdate(choices);
               }}
             />
+
+            {isMobile && (
+              <Flex width={"100%"} style={{ marginTop: 8 }} position="relative">
+                {ActionDropdown}
+              </Flex>
+            )}
             {actionConfigs[index] && (
               <ActionConfigRow
                 index={index}
+                isMobile={isMobile}
                 actionConfig={actionConfigs[index]}
                 onChange={(evt: any) => onActionFormChange(evt, index)}
               />
@@ -242,6 +255,7 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
 
 type ActionConfigRowProps = {
   index: number;
+  isMobile?: boolean;
   actionConfig: any;
   onChange: (form: any) => void;
 };
@@ -249,7 +263,7 @@ type ActionConfigRowProps = {
 const ActionConfigRow: FC<ActionConfigRowProps> = (
   props: ActionConfigRowProps
 ) => {
-  const { actionConfig, index, onChange } = props;
+  const { actionConfig, index, isMobile, onChange } = props;
   return (
     <Flex
       mt={2}
@@ -260,7 +274,7 @@ const ActionConfigRow: FC<ActionConfigRowProps> = (
       borderColor="ui.borderColor"
       flexDirection="column"
       // backgroundColor="ui.tertiary"
-      ml={8}
+      ml={isMobile ? 4 : 8}
       p={12}
     >
       <Flex

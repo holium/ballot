@@ -23,10 +23,12 @@ import { Status } from "../../../components/Status";
 import { useMst } from "../../../logic/stores/root";
 import { ProposalModelType } from "../../../logic/stores/proposals";
 import { ProposalResult } from "./ProposalResults";
+import { useMobile } from "../../../logic/utils/useMobile";
 
 export const ProposalDetail: FC = observer((props: any) => {
   const navigate = useNavigate();
   const urlParams = useParams();
+  const isMobile = useMobile();
   const { store, app, metadata } = useMst();
 
   const currentBoothKey = getKeyFromUrl(urlParams);
@@ -101,7 +103,13 @@ export const ProposalDetail: FC = observer((props: any) => {
 
     content = (
       <Grid2.Row reverse={["xs"]} justify="center">
-        <Grid2.Column mb="16px" md={6} lg={9} xl={9}>
+        <Grid2.Column
+          {...(isMobile && { noGutter: true })}
+          mb="16px"
+          md={6}
+          lg={9}
+          xl={9}
+        >
           <Card
             padding={0}
             style={{
@@ -246,8 +254,13 @@ export const ProposalDetail: FC = observer((props: any) => {
 
   return (
     <Grid2.Box offset={40} fluid scroll ref={div}>
-      <Grid2.Box>
-        <Grid2.Column mb="16px" lg={12} xl={12}>
+      <Grid2.Box {...(isMobile && { p: 0 })}>
+        <Grid2.Column
+          {...(isMobile && { noGutter: true })}
+          mb="16px"
+          lg={12}
+          xl={12}
+        >
           <Grid2.Row>
             <Grid2.Column>
               <BreadcrumbNav

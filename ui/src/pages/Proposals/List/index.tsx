@@ -31,11 +31,13 @@ import { ProposalModelType } from "../../../logic/stores/proposals";
 import { getProposalFilters } from "../../../logic/stores/proposals/utils";
 import { getBoothName } from "../../../logic/utils/metadata";
 import { toJS } from "mobx";
+import { useMobile } from "../../../logic/utils/useMobile";
 
 export const ProposalList: FC = observer(() => {
   const [selectedOption, setSelectedOption] = useState("All");
   const navigate = useNavigate();
   const urlParams = useParams();
+  const isMobile = useMobile();
   const { store, metadata } = useMst();
   const [page, setPage] = useState(0);
 
@@ -297,8 +299,13 @@ export const ProposalList: FC = observer(() => {
   const participantLoading = booth ? booth.participantStore.isLoading : false;
   return (
     <Grid2.Box offset={40} fluid scroll>
-      <Grid2.Box>
-        <Grid2.Column mt="16px" lg={12} xl={12}>
+      <Grid2.Box {...(isMobile && { p: 0 })}>
+        <Grid2.Column
+          {...(isMobile && { noGutter: true })}
+          mt="16px"
+          lg={12}
+          xl={12}
+        >
           <Grid2.Row justify="center">
             <Grid2.Column xs={4} sm={5} md={5} lg={9} xl={9}>
               {leftPane}

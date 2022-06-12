@@ -20,6 +20,7 @@ import { useMst } from "../../logic/stores/root";
 import { ProposalModelType } from "../../logic/stores/proposals";
 import { ContactModelType } from "../../logic/stores/metadata";
 import { failedReason } from "../../logic/utils/poll-failed";
+import { useMobile } from "../../logic/utils/useMobile";
 
 export type ProposalCardType = {
   proposal: ProposalModelType;
@@ -71,6 +72,7 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
   const { proposal, onClick, clickable, status, authorMetadata, contextMenu } =
     props;
   const parentRef = React.useRef();
+  const isMobile = useMobile();
   const { store } = useMst();
   //
   // Set the timer and get timeString
@@ -129,13 +131,15 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
                   <ProposalTitle fontWeight="semiBold" variant="h6">
                     {proposal.title}
                   </ProposalTitle>
-                  <Status status={status} />
+                  <Flex style={{ ...(isMobile && { marginTop: 6 }) }}>
+                    <Status status={status} />
+                  </Flex>
                 </>
               )}
             </Observer>
           </Flex>
           <Flex
-            flexDirection={["column", "row", "row"]}
+            // flexDirection={["column", "row", "row"]}
             justifyContent="space-between"
           >
             <Observer>

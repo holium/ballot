@@ -21,6 +21,7 @@ import {
 import { getKeyFromUrl, getNameFromUrl } from "../../logic/utils/path";
 import { useMst } from "../../logic/stores/root";
 import { toJS } from "mobx";
+import { useMobile } from "../../logic/utils/useMobile";
 
 const createSettingsForm = (defaults: any = {}) => {
   const form = createForm({
@@ -76,6 +77,7 @@ const getSelectValueFromPermissions = (permissions: string[]) => {
 export const Settings: FC = observer(() => {
   const { store } = useMst();
   const urlParams = useParams();
+  const isMobile = useMobile();
   const saveButton = React.createRef<HTMLButtonElement>();
 
   const booth = store.booths.get(getKeyFromUrl(urlParams))!;
@@ -110,8 +112,11 @@ export const Settings: FC = observer(() => {
 
   return (
     <CenteredPane
-      style={{ height: "100%", marginTop: 16 }}
-      width={500}
+      style={{
+        height: "100%",
+        marginTop: 16,
+      }}
+      width={isMobile ? "calc(100% - 24px)" : 500}
       bordered={false}
     >
       <Header

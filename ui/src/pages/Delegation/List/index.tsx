@@ -17,9 +17,11 @@ import { useMst } from "../../../logic/stores/root";
 import { ParticipantModelType } from "../../../logic/stores/participants";
 import { observer } from "mobx-react";
 import { getKeyFromUrl, getNameFromUrl } from "../../../logic/utils/path";
+import { useMobile } from "../../../logic/utils/useMobile";
 
 export const DelegationList: FC = observer(() => {
   const { app, metadata, store } = useMst();
+  const isMobile = useMobile();
   const urlParams = useParams();
   const currentBooth = store.booths.get(getKeyFromUrl(urlParams))!;
   const delegateStore = currentBooth.delegateStore;
@@ -30,7 +32,7 @@ export const DelegationList: FC = observer(() => {
   return (
     <CenteredPane
       style={{ height: "100%", marginTop: 16 }}
-      width={500}
+      width={isMobile ? "calc(100% - 24px)" : 500}
       bordered={false}
     >
       <Header
