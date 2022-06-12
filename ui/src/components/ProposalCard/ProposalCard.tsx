@@ -209,7 +209,7 @@ const TallyStatus: FC<TallyProps> = (props: TallyProps) => {
   proposal.tally?.status === "failed";
   const tally = proposal.tally!;
 
-  return tally.status === "failed" ? (
+  return tally && tally.status === "failed" ? (
     <Flex flexDirection="row" alignItems="center">
       <Text
         fontSize={2}
@@ -238,7 +238,7 @@ const TallyStatus: FC<TallyProps> = (props: TallyProps) => {
         Winning option:
       </Text>
       <Text ml={1} fontSize={2} fontWeight="500" color="brand.primary">
-        {tally.topChoice}
+        {tally && tally.topChoice}
       </Text>
     </Flex>
   );

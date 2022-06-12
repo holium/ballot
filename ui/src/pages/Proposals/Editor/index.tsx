@@ -408,17 +408,6 @@ export const ProposalEditor: FC = observer(() => {
               </Observer>
             </Grid>
           </Card>
-          {/* {actionConfigs.length ? (
-            <Text
-              fontSize={2}
-              mt={2}
-              opacity={0.7}
-              fontWeight={500}
-              variant="body"
-            >
-              CONFIGURE ACTIONS
-            </Text>
-          ) : null} */}
         </Grid2.Column>
       </Grid2.Row>
     ) : (
