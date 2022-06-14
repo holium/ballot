@@ -166,6 +166,14 @@ export const ProposalModel = types
           if (newVote.voter === rootStore.app.ship.patp) {
             self.results!.didVote = true;
           }
+          if (
+            newVote.delegators &&
+            Object.keys(
+              Object.fromEntries(newVote.delegators.entries())
+            ).includes(rootStore.app.ship.patp)
+          ) {
+            self.results!.didVote = true;
+          }
           self.results!.votes.set(vote.voter, newVote);
         });
         self.results!.generateResultSummary();
@@ -190,9 +198,12 @@ export const ProposalModel = types
         if (newVote.voter === rootStore.app.ship.patp) {
           self.results!.didVote = true;
         }
+
         if (
           newVote.delegators &&
-          Object.keys(newVote.delegators).includes(rootStore.app.ship.patp)
+          Object.keys(
+            Object.fromEntries(newVote.delegators.entries())
+          ).includes(rootStore.app.ship.patp)
         ) {
           self.results!.didVote = true;
         }
