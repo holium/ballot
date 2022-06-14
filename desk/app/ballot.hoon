@@ -117,6 +117,10 @@
             ['support' n+'50']
             ['duration' n+'7']
           ==
+          =/  permissions
+          :~  s+'member'
+              s+'admin'
+          ==
           =/  admin-permissions
           :~  s+'read-proposal'
               s+'vote-proposal'
@@ -133,6 +137,7 @@
               s+'create-proposal'
           ==
           =/  booth  (~(put by booth) 'defaults' defaults)
+          =/  booth  (~(put by booth) 'permissions' [%a permissions])
           =/  booth  (~(put by booth) 'adminPermissions' [%a admin-permissions])
           =/  booth  (~(put by booth) 'memberPermissions' [%a member-permissions])
           (~(put by acc) key [%o booth])
@@ -296,7 +301,6 @@
       :~  s+'member'
           s+'admin'
       ==
-
       =/  admin-permissions
       :~  s+'read-proposal'
           s+'vote-proposal'
@@ -463,7 +467,7 @@
         ::  distributed as gifts. here we simply pass the errors to the UI of the ship
         ::  where the api call (http request from UI) originated
         %save-booth-reaction
-          %-  (log:util %info "ballot: %save-proposal-reaction from {<src.bowl>}...")
+          %-  (log:util %info "ballot: %save-booth-reaction from {<src.bowl>}...")
           :_  state
           :~  [%give %fact [/booths]~ %json !>([%o contract])]
           ==
@@ -2386,8 +2390,9 @@
         =/  booth-votes  (~(get by votes.state) booth-key)
         =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
 
-        =/  booth-polls  (~(get by polls.state) booth-key)
-        =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
+        ::  only booth owner should be concerned with polls
+        :: =/  booth-polls  (~(get by polls.state) booth-key)
+        :: =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
 
         =/  booth-delegates  (~(get by delegates.state) booth-key)
         =/  booth-delegates  ?~(booth-delegates ~ (need booth-delegates))
@@ -2408,7 +2413,7 @@
             ['proposals' [%o booth-proposals]]
             ['participants' [%o booth-participants]]
             ['votes' [%o booth-votes]]
-            ['polls' [%o booth-polls]]
+            :: ['polls' [%o booth-polls]]
             ['delegates' [%o booth-delegates]]
             ['custom-actions' booth-custom-actions]
           ==
@@ -3273,7 +3278,21 @@
     :~  s+'member'
         s+'admin'
     ==
-
+    =/  admin-permissions
+    :~  s+'read-proposal'
+        s+'vote-proposal'
+        s+'create-proposal'
+        s+'edit-proposal'
+        s+'delete-proposal'
+        s+'invite-member'
+        s+'remove-member'
+        s+'change-settings'
+    ==
+    =/  member-permissions
+    :~  s+'read-proposal'
+        s+'vote-proposal'
+        s+'create-proposal'
+    ==
     ::  create booth metadata
     =/  data=json
     %-  pairs:enjs:format
@@ -3289,6 +3308,8 @@
       ['policy' s+'invite-only']
       ['defaults' defaults]
       ['permissions' [%a permissions]]
+      ['adminPermissions' [%a admin-permissions]]
+      ['memberPermissions' [%a member-permissions]]
     ==
 
     [key status data]
@@ -3445,6 +3466,16 @@
     =/  context  ((om json):dejs:format (~(got by payload) 'context'))
     =/  booth-key  (so:dejs:format (~(got by context) 'booth'))
 
+    =/  booth  (~(get by booths.state) booth-key)
+    =/  booth  ?~(booth ~ (need booth))
+    =/  booth  ?:(?=([%o *] booth) p.booth ~)
+    =/  booth-owner  (~(get by booth) 'owner')
+    ?~  booth-owner
+      ~&  >>>  "{<dap.bowl>}: error. booth has no owner"
+      `this  ::  if can't find owner nothing to do
+    =/  booth-owner  (so:dejs:format (need booth-owner))
+    =/  hostship=@p  `@p`(slav %p booth-owner)
+
     =/  effects  (~(get by payload) 'effects')
     =/  effects  ?~(effects ~ (need effects))
     =/  effects  ?:(?=([%a *] effects) p.effects ~)
@@ -3469,6 +3500,11 @@
     =/  proposal  ?~(proposal ~ ((om json):dejs:format (need proposal)))
     =/  proposal  (~(gas by proposal) ~(tap by proposal-data))
     =/  booth-proposals  (~(put by booth-proposals) proposal-key [%o proposal])
+
+    ::  poll and timers only pertain to booth host. if not booth host, nothing to do
+    ?.  =(hostship our.bowl)
+      :_  this(proposals (~(put by proposals.state) booth-key booth-proposals))
+      :~  [%give %fact [/booths]~ %json !>([%o payload])]  ==
 
     ::  find the existing poll for this proposal (if it exists)
     =/  booth-polls  (~(get by polls.state) booth-key)
@@ -3818,9 +3854,10 @@
     =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
     =/  booth-votes  (~(gas by booth-votes) ~(tap by votes))
 
-    =/  booth-polls  (~(get by polls.state) booth-key)
-    =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
-    =/  booth-polls  (~(gas by booth-polls) ~(tap by polls))
+    ::  only booth owner should be concerned with polls
+    :: =/  booth-polls  (~(get by polls.state) booth-key)
+    :: =/  booth-polls  ?~(booth-polls ~ (need booth-polls))
+    :: =/  booth-polls  (~(gas by booth-polls) ~(tap by polls))
 
     =/  booth-delegates  (~(get by delegates.state) booth-key)
     =/  booth-delegates  ?~(booth-delegates ~ (need booth-delegates))
@@ -3848,7 +3885,7 @@
       ['effects' [%a [initial-effect]~]]
     ==
 
-    :_  this(booths (~(put by booths.state) booth-key [%o booth]), proposals (~(put by proposals.state) booth-key booth-proposals), participants (~(put by participants.state) booth-key booth-participants), votes (~(put by votes.state) booth-key booth-votes), polls (~(put by polls.state) booth-key booth-polls), delegates (~(put by delegates.state) booth-key booth-delegates), custom-actions (~(put by custom-actions.state) booth-key [%o custom-actions]))
+    :_  this(booths (~(put by booths.state) booth-key [%o booth]), proposals (~(put by proposals.state) booth-key booth-proposals), participants (~(put by participants.state) booth-key booth-participants), votes (~(put by votes.state) booth-key booth-votes), delegates (~(put by delegates.state) booth-key booth-delegates), custom-actions (~(put by custom-actions.state) booth-key [%o custom-actions]))
 
     :~
       ::  for clients (e.g. UI) and "our" agent, send to generic /booths path
