@@ -1512,6 +1512,7 @@
                 :~  ['created' (time:enjs:format now.bowl)]
                     ['key' s+(crip "{<our.bowl>}")]
                     ['name' s+(crip "{<our.bowl>}")]
+                    ['role' s+'member']
                     ['status' s+'active']
                 ==
                 (~(put by wire-payload) 'data' participant-data)
@@ -4288,6 +4289,7 @@
           :: %-  (log:util %info "ballot: voter turnout not sufficient. not enough voter support.")
           :: ~
 
+    %-  (slog leaf+"{<dap.bowl>}: vote-count => {<tallies>}..." ~)
     =/  vote-count
       %-  ~(rep by tallies)
         |=  [[key=@t jon=json] acc=@ud]
