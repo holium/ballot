@@ -59,7 +59,7 @@ export const Participants: FC<ParticipantsProps> = (
   const booth = store.booth!;
   const isGroup = store.booth?.type === "group";
   const hasAdmin = booth.hasAdmin;
-  console.log("rendering participants", hasAdmin); // todo prevent unnecessary render
+  // console.log("rendering participants"); // todo prevent unnecessary render
   return (
     <Card
       elevation="lifted"
