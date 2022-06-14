@@ -1,18 +1,9 @@
-import {
-  types,
-  flow,
-  Instance,
-  SnapshotIn,
-  getParent,
-  SnapshotOut,
-  IJsonPatch,
-  applyPatch,
-} from "mobx-state-tree";
+import { types, flow } from "mobx-state-tree";
 import delegateApi from "../../api/delegates";
 import { timeout } from "../../utils/dev";
 import { ContextModelType, EffectModelType } from "../common/effects";
 import { LoaderModel } from "../common/loader";
-import { DelegateModel } from "./delegate";
+import { DelegateModel, DelegateModelType } from "./delegate";
 
 export const DelegateStore = types
   .model({
@@ -33,6 +24,18 @@ export const DelegateStore = types
     },
     get isLoaded() {
       return self.loader.isLoaded;
+    },
+    getDelegate(ship: string) {
+      let ourDelegate: string = "";
+      Array.from(self.delegates.values()).forEach(
+        (delegate: DelegateModelType) => {
+          if (delegate.sig?.voter === ship) {
+            ourDelegate = delegate.delegate;
+            return;
+          }
+        }
+      );
+      return ourDelegate;
     },
     getVotingPower(ship: string): number {
       let votingPower: number = 0;
@@ -146,8 +149,8 @@ export const DelegateStore = types
     },
     updateEffect(delegateKey: string, data: any) {
       // console.log("delegate updateEffect ", delegateKey, data);
-      const oldBooth = self.delegates.get(delegateKey);
-      oldBooth?.updateEffect(data);
+      const oldDelegate = self.delegates.get(delegateKey);
+      oldDelegate?.updateEffect(data);
     },
     deleteEffect(context: ContextModelType) {
       console.log("delegate deleteEffect ", context.participant);

@@ -15,13 +15,20 @@ import rehypeSanitize from "rehype-sanitize";
 import { useNavigate, useParams } from "react-router";
 import { toJS } from "mobx";
 import { Observer, observer } from "mobx-react-lite";
-import { VoteCard } from "../../../components/VoteCard";
+import { ActionDataTable, VoteCard } from "../../../components/VoteCard";
 import { createPath, getKeyFromUrl } from "../../../logic/utils/path";
 import { descriptiveTimeString, displayDate } from "../../../logic/utils/time";
-import { DetailHeader, DetailBody } from "./Detail.styles";
+import {
+  DetailHeader,
+  DetailBody,
+  ProposalResultSection,
+} from "./Detail.styles";
 import { Status } from "../../../components/Status";
 import { useMst } from "../../../logic/stores/root";
-import { ProposalModelType } from "../../../logic/stores/proposals";
+import {
+  ChoiceModelType,
+  ProposalModelType,
+} from "../../../logic/stores/proposals";
 import { ProposalResult } from "./ProposalResults";
 import { useMobile } from "../../../logic/utils/useMobile";
 
@@ -100,6 +107,11 @@ export const ProposalDetail: FC = observer((props: any) => {
     }, []);
 
     const delegateStore = booth.delegateStore;
+    const winningChoice = toJS(
+      proposal.choices.find(
+        (choice: ChoiceModelType) => proposal.tally?.topChoice === choice.label
+      )
+    );
 
     content = (
       <Grid2.Row reverse={["xs"]} justify="center">
@@ -145,6 +157,14 @@ export const ProposalDetail: FC = observer((props: any) => {
             </DetailHeader>
             {proposal.status === "Ended" && (
               <ProposalResult booth={booth} proposal={proposal} />
+            )}
+            {proposal.status === "Ended" && winningChoice && (
+              <ProposalResultSection style={{ fontSize: 14 }}>
+                <ActionDataTable
+                  action={winningChoice.action!}
+                  data={winningChoice.data}
+                />
+              </ProposalResultSection>
             )}
             <DetailBody>
               <MDEditor.Markdown

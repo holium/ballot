@@ -27,6 +27,11 @@ export const VoteCardButton = styled(Button)<StyleProps>`
     color: ${(props: StyleProps) => `${props.theme.colors.text.disabled}`};
     background: ${(props: StyleProps) => `${props.theme.colors.ui.disabled}25`};
   }
+  table {
+    td {
+      text-align: left;
+    }
+  }
   ${(props) =>
     props.additionalVariant === "submit" &&
     css`
