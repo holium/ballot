@@ -18,3 +18,45 @@
 ```
 
 9. This can now be committed and is ready to deploy on the app distribution moon.
+
+## Testing upgrade from old version
+
+You should create a new ship for this i.e. `~nec`
+
+```zsh
+./urbit -F nec
+```
+
+### Preparing various desks
+
+1. In an old release branch and run:
+
+- `|install our %ballot, =local %ballot-old`
+- `|mount %ballot-old`
+
+2. In an old release branch and run:
+
+- `|install our %ballot`
+- `|mount %ballot`
+
+3. In an new release branch and run:
+
+- `|install our %ballot, =local %ballot-new`
+- `|mount %ballot-new`
+
+You should have three desks:
+
+- `ballot`
+- `ballot-old`: clean old version
+- `ballot-new`: clean new version
+
+### Updating the version
+
+1. With the old release branch running, make sure you do a few things like create a proposal so there is some state from the old version.
+2. Run `|install our %ballot-new, =local %ballot`. This will update from the old version to the new version and you can identify any upgrade errors.
+
+### Reverting to old version
+
+1. Run `|nuke %ballot` to clear out the old state.
+2. Run `|uninstall %ballot` (note: also uninstall from app grid if you are testing UI)
+3. Run `|install our %ballot-old, =local %ballot`. This should load the old version of the app. You can check using `+vats` or by viewing the old ui.
