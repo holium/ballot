@@ -2872,11 +2872,9 @@
           ==
 
         %delete
-          =/  booth-participants  (~(get by delegates.state) booth-key)
-          =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
-          =/  participant  (~(get by booth-participants) participant-key)
-          =/  booth-participants  (~(del by booth-participants) participant-key)
-          :_  this(delegates (~(put by delegates.state) booth-key booth-participants))
+          =/  participant-ship  `@p`(slav %p participant-key)
+          =/  result=[effects=(list json) cards=(list card) =_state]  (clear-delegation booth-key participant-ship)
+          :_  this(state state.result)
           :~  [%give %fact [/booths]~ %json !>([%o payload])]
           ==
 
@@ -3188,60 +3186,8 @@
 
       =/  art=(quip card _state)  (delete-participants 'group-remove-members' booth-key ships.action)
 
-      :: =/  data=[effects=(list card) participants=(map @t json)]
-      ::   %-  ~(rep in ships.action)
-      ::   |=  [p=@p acc=[effects=(list card) data=(map @t json)]]
-      ::   =/  participant-key  (crip "{<p>}")
-      ::   =/  participant  (~(get by booth-participants) participant-key)
-      ::   =/  participant  ?~(participant ~
-      ::  (need participant))
-      ::   =/  booth-participants  (~(del by booth-participants) participant-key)
-
-      ::   =/  context=json
-      ::   %-  pairs:enjs:format
-      ::   :~
-      ::     ['booth' s+booth-key]
-      ::     ['participant' s+participant-key]
-      ::   ==
-
-      ::   =/  effect-list=(list json)
-      ::     ?:  =(p our.bowl)
-      ::       =/  booth-effect=json
-      ::       %-  pairs:enjs:format
-      ::       :~
-      ::         ['resource' s+'booth']
-      ::         ['effect' s+'delete']
-      ::         ['data' booth]
-      ::       ==
-      ::       [booth-effect ~]
-      ::     [~]
-
-      ::   =/  participant-effect=json
-      ::   %-  pairs:enjs:format
-      ::   :~
-      ::     ['resource' s+'participant']
-      ::     ['effect' s+'delete']
-      ::     ['data' participant]
-      ::   ==
-
-      ::   =/  effect-list  (snoc effect-list participant-effect)
-      ::   =/  effects=json
-      ::   %-  pairs:enjs:format
-      ::   :~
-      ::     ['action' s+'group-remove-members-reaction']
-      ::     ['context' context]
-      ::     ['effects' [%a effect-list]]
-      ::   ==
-
-      ::   =/  effects=(list card)
-      ::   :~  [%give %fact [/booths]~ %json !>(effects)]
-      ::       [%give %kick ~[/booths/(scot %tas booth-key)] (some p)]
-      ::   ==
-      ::   [(weld effects.acc effects) booth-participants]
-
       :_  this(state +.art)
 
-      :: [effects.data]
       [-.art]
 
     ++  booth-from-resource
@@ -4027,95 +3973,11 @@
       =/  participant-ship  `@p`(slav %p participant-key)
       =/  participants=(set ship)  (silt ~[participant-ship])
 
-      ?:  =(our.bowl participant-ship)
-          =/  art=(quip card _state)  (delete-participants action booth-key participants)
-          :_  this(state +.art)
-          [-.art]
-        :: =/  art=[effects=(list json) =_state]
+      =/  art=(quip card _state)  (delete-participants action booth-key participants)
 
-        ::  participant is some other ship
-        =/  booth-participants  (~(get by participants.state) booth-key)
-        =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
-        :: =/  booth-participants  ?:(?=([%o *] booth-participants) p.booth-participants ~)
-        =/  booth-participants  (~(del by booth-participants) participant-key)
+      :_  this(state +.art)
 
-        ::  is this participant a delegate?
-        =/  booth-delegates  (~(get by delegates.state) booth-key)
-        =/  booth-delegates  ?~(booth-delegates ~ (need booth-delegates))
-        :: =/  booth-delegates  ?:(?=([%o *] booth-delegates) p.booth-delegates ~)
-
-        ::  does the participant have a delegate record
-        =/  delegate  (~(get by booth-delegates) participant-key)
-        =/  delegate  ?~(delegate ~ (need delegate))
-
-        ::  remove any record from the delegates.state store where the
-        ::    delegate key is the participant being removed OR if the delegate
-        ::    data contains a reference to the participant being deleted
-        =/  booth-delegates=(map @t json)
-        ?:  =(delegate ~)
-          =/  booth-delegates=(map @t json)
-          %-  ~(rep by booth-delegates)
-          |=  [[key=@t jon=json] result=(map @t json)]
-            =/  data  ?:(?=([%o *] jon) p.jon ~)
-            =/  delegate  (~(get by data) 'delegate')
-            ?~  delegate  result
-            =/  delegate  (so:dejs:format (need delegate))
-            ?.  =(delegate participant-key)
-              (~(put by result) key jon)
-            result
-          booth-delegates
-        ::  this participant is a delegate
-        (~(del by booth-delegates) participant-key)
-        ::
-
-        =/  booth-proposals  (~(get by proposals.state) booth-key)
-        =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
-        :: =/  booth-proposals  ?:(?=([%o *] booth-proposals) p.booth-proposals ~)
-        ::  get a list of all active proposals (status != 'closed')
-        =/  active-proposals=(map @t json)
-        %-  ~(rep by booth-proposals)
-        |=  [[key=@t jon=json] result=(map @t json)]
-          =/  data  ?:(?=([%o *] jon) p.jon ~)
-          =/  status  (~(get by data) 'status')
-          ?~  status
-            ~&  >>  "{<dap.bowl>}: warning. proposal {<key>} has no status"
-            result
-          =/  status  (so:dejs:format (need status))
-          ?.  =(status 'closed')
-            (~(put by result) key jon)
-          result
-
-        =/  booth-votes=(map @t json)
-        %-  ~(rep by active-proposals)
-        |=  [[proposal-key=@t jon=json] booth-votes=(map @t json)]
-          =/  data  ?:(?=([%o *] jon) p.jon ~)
-          =/  booth-votes  (~(get by votes.state) booth-key)
-          =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
-          :: =/  booth-votes  ?:(?=([%o *] booth-votes) p.booth-votes ~)
-          =/  proposal-votes  (~(get by booth-votes) proposal-key)
-          =/  proposal-votes  ?~(proposal-votes ~ (need proposal-votes))
-          =/  proposal-votes  ?:(?=([%o *] proposal-votes) p.proposal-votes ~)
-          =/  proposal-votes=(map @t json)
-          %-  ~(rep by proposal-votes)
-          |=  [[voter-key=@t jon=json] proposal-votes=(map @t json)]
-            ?:  =(participant-key voter-key)
-              proposal-votes
-            =/  vote-data  ?:(?=([%o *] jon) p.jon ~)
-            =/  delegators  (~(get by vote-data) 'delegators')
-            =/  delegators  ?~(delegators ~ (need delegators))
-            =/  delegators  ?:(?=([%o *] delegators) p.delegators ~)
-            ?:  (~(has by delegators) participant-key)
-                proposal-votes
-              (~(put by proposal-votes) voter-key jon)
-          (~(put by booth-votes) proposal-key [%o proposal-votes])
-
-        :_  this(participants (~(put by participants.state) booth-key booth-participants), delegates (~(put by delegates.state) booth-key booth-delegates), votes (~(put by votes.state) booth-key booth-votes))
-
-        :~
-          [%give %fact [/booths]~ %json !>(effects)]
-          [%give %kick ~[/booths/(scot %tas booth-key)] (some participant-ship)]
-        ==
-
+      [-.art]
     --
 
   ++  on-arvo
@@ -4528,115 +4390,165 @@
 ++  delete-participants
   |=  [action=@t booth-key=@t participants=(set ship)]
   ^-  (quip card _state)
-  :: ^-  [effects=(list json) =_state]
 
-  =/  booth  (~(get by booths.state) booth-key)
-  =/  booth  ?~(booth ~ (need booth))
-
-  =/  booth-participants  (~(get by participants.state) booth-key)
-  =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+  ::  loop thru all participants in the set, generating effects
+  ::    and new update state
+  =/  result=[effects=(list json) cards=(list card) =_state]
+  %-  ~(rep in participants)
+  |=  [=ship acc=[effects=(list json) cards=(list card) =_state]]
+    ::  delete the participant from state and generate effects/cards
+    (delete-participant booth-key ship)
 
   =/  context=json
   %-  pairs:enjs:format
   :~
     ['booth' s+booth-key]
-    :: ['participant' s+participant-key]
   ==
-
-  ::  loop thru all participants in the set, generating effects
-  ::    and new update state
-  =/  result=[cards=(list card) effects=(list json) participants=(map @t json)]
-  %-  ~(rep in participants)
-  |=  [p=@p acc=[cards=(list card) effects=(list json) participants=(map @t json)]]
-    =/  participant-key  (crip "{<p>}")
-    =/  participant  (~(get by booth-participants) participant-key)
-    =/  participant  ?~(participant ~ (need participant))
-    =/  booth-participants  (~(del by booth-participants) participant-key)
-
-    =/  effect-list=(list json)
-      ?:  =(p our.bowl)
-        =/  booth-effect=json
-        %-  pairs:enjs:format
-        :~
-          ['resource' s+'booth']
-          ['effect' s+'delete']
-          ['data' booth]
-        ==
-        [booth-effect ~]
-      [~]
-
-    =/  participant-effect=json
-    %-  pairs:enjs:format
-    :~
-      ['resource' s+'participant']
-      ['effect' s+'delete']
-      ['data' participant]
-    ==
-
-    =/  effect-list  (snoc effect-list participant-effect)
-
-    =.  cards.acc  (snoc cards.acc [%give %kick ~[/booths/(scot %tas booth-key)] (some p)])
-    =.  effects.acc  effect-list
-    =.  participants.acc  booth-participants
-
-    acc
 
   =/  effects=json
   %-  pairs:enjs:format
   :~
-    ['action' s+(crip (weld "{<action>}" "-reaction"))]  :: 'group-remove-members-reaction']
+    ['action' s+(crip (weld "{<action>}" "-reaction"))]
     ['context' context]
     ['effects' [%a effects.result]]
   ==
 
-  :_  state(participants (~(put by participants.state) booth-key participants.result))
+  :_  state.result
 
+  ::  in addition to any cards that were generated during the removal process,
+  ::    %give an addition %fact card to the UI that includes all resource effects
   (snoc cards.result [%give %fact [/booths]~ %json !>(effects)])
-
-
-  :: =/  booth  (~(get by booths.state) booth-key)
-  :: =/  booth  ?~(booth ~ (need booth))
-  :: =/  booth-participants  (~(del by participants.state) booth-key)
-  :: =/  booth-votes  (~(del by votes.state) booth-key)
-  :: =/  booth-proposals  (~(del by proposals.state) booth-key)
-  :: =/  booth-polls  (~(del by polls.state) booth-key)
-  :: =/  booth-invitations  (~(del by invitations.state) booth-key)
-  :: =/  booth-effect=json
-  :: %-  pairs:enjs:format
-  :: :~
-  ::   ['resource' s+'booth']
-  ::   ['effect' s+'delete']
-  ::   ['key' s+booth-key]
-  ::   ['data' booth]
-  :: ==
-
-  :: :_  state(booths (~(del by booths.state) booth-key), participants booth-participants, votes booth-votes, proposals booth-proposals, polls booth-polls, invitations booth-invitations)
-
-  :: :~  booth-effect
-  :: ==
 ::
-++  clear-delegate
-  |=  [booth-key=@t participant-key=@t]
-  ^-  [effects=(list json) =_state]
+++  delete-participant
+  |=  [booth-key=@t participant-ship=@p]
+  ^-  [effects=(list json) cards=(list card) =_state]
 
-  =/  booth  (~(get by booths.state) booth-key)
-  =/  booth  ?~(booth ~ (need booth))
-  =/  booth-participants  (~(del by participants.state) booth-key)
-  =/  booth-votes  (~(del by votes.state) booth-key)
-  =/  booth-proposals  (~(del by proposals.state) booth-key)
-  =/  booth-polls  (~(del by polls.state) booth-key)
-  =/  booth-invitations  (~(del by invitations.state) booth-key)
-  =/  booth-effect=json
+  =/  participant-key  (crip "{<participant-ship>}")
+
+  =/  booth-participants  (~(get by participants.state) booth-key)
+  =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+  =/  booth-participants  (~(del by booth-participants) participant-key)
+
+  =/  participant  (~(get by booth-participants) participant-key)
+  =/  participant  ?~(participant ~ (need participant))
+
+  =/  participant-effect=json
   %-  pairs:enjs:format
   :~
-    ['resource' s+'booth']
+    ['resource' s+'participant']
     ['effect' s+'delete']
-    ['key' s+booth-key]
-    ['data' booth]
+    ['data' participant]
   ==
 
-  :_  state(booths (~(del by booths.state) booth-key), participants booth-participants, votes booth-votes, proposals booth-proposals, polls booth-polls, invitations booth-invitations)
+  =/  effects  ~[participant-effect]
 
-  :~  booth-effect
-  ==
+  ?:  =(participant-ship our.bowl)
+    ::  for the ship being deleted, an additional booth delete effect needs to be sent
+    =/  booth  (~(get by booths.state) booth-key)
+    =/  booth  ?~(booth ~ (need booth))
+    =/  booth-effect=json
+    %-  pairs:enjs:format
+    :~
+      ['resource' s+'booth']
+      ['effect' s+'delete']
+      ['data' booth]
+    ==
+    ::  clear all booth information from the ship being deleted
+    =.  participants.state  (~(del by participants.state) booth-key)
+    =.  votes.state  (~(del by votes.state) booth-key)
+    =.  proposals.state  (~(del by proposals.state) booth-key)
+    =.  polls.state  (~(del by polls.state) booth-key)
+    =.  invitations.state  (~(del by invitations.state) booth-key)
+
+    =/  cards
+    :~  [%give %kick ~[/booths/(scot %tas booth-key)] (some participant-ship)]  ==
+
+    [(snoc effects booth-effect) cards state]
+  ::  else
+  =/  result  (clear-delegation booth-key participant-ship)
+  [?~(effects.result effects (weld effects effects.result)) cards.result state.result]
+::
+++  clear-delegation
+  |=  [booth-key=@t participant-ship=@p]
+  ^-  [effects=(list json) cards=(list card) =_state]
+
+  =/  participant-key  (crip "{<participant-ship>}")
+
+  ::  participant is some other ship
+  =/  booth-participants  (~(get by participants.state) booth-key)
+  =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+  :: =/  booth-participants  ?:(?=([%o *] booth-participants) p.booth-participants ~)
+  =/  booth-participants  (~(del by booth-participants) participant-key)
+
+  ::  is this participant a delegate?
+  =/  booth-delegates  (~(get by delegates.state) booth-key)
+  =/  booth-delegates  ?~(booth-delegates ~ (need booth-delegates))
+  :: =/  booth-delegates  ?:(?=([%o *] booth-delegates) p.booth-delegates ~)
+
+  ::  does the participant have a delegate record
+  =/  delegate  (~(get by booth-delegates) participant-key)
+  =/  delegate  ?~(delegate ~ (need delegate))
+
+  ::  remove any record from the delegates.state store where the
+  ::    delegate key is the participant being removed OR if the delegate
+  ::    data contains a reference to the participant being deleted
+  =/  booth-delegates=(map @t json)
+  ?:  =(delegate ~)
+    =/  booth-delegates=(map @t json)
+    %-  ~(rep by booth-delegates)
+    |=  [[key=@t jon=json] result=(map @t json)]
+      =/  data  ?:(?=([%o *] jon) p.jon ~)
+      =/  delegate  (~(get by data) 'delegate')
+      ?~  delegate  result
+      =/  delegate  (so:dejs:format (need delegate))
+      ?.  =(delegate participant-key)
+        (~(put by result) key jon)
+      result
+    booth-delegates
+  ::  this participant is a delegate
+  (~(del by booth-delegates) participant-key)
+  ::
+
+  =/  booth-proposals  (~(get by proposals.state) booth-key)
+  =/  booth-proposals  ?~(booth-proposals ~ (need booth-proposals))
+  :: =/  booth-proposals  ?:(?=([%o *] booth-proposals) p.booth-proposals ~)
+  ::  get a list of all active proposals (status != 'closed')
+  =/  active-proposals=(map @t json)
+  %-  ~(rep by booth-proposals)
+  |=  [[key=@t jon=json] result=(map @t json)]
+    =/  data  ?:(?=([%o *] jon) p.jon ~)
+    =/  status  (~(get by data) 'status')
+    ?~  status
+      ~&  >>  "{<dap.bowl>}: warning. proposal {<key>} has no status"
+      result
+    =/  status  (so:dejs:format (need status))
+    ?.  =(status 'closed')
+      (~(put by result) key jon)
+    result
+
+  =/  booth-votes=(map @t json)
+  %-  ~(rep by active-proposals)
+  |=  [[proposal-key=@t jon=json] booth-votes=(map @t json)]
+    =/  data  ?:(?=([%o *] jon) p.jon ~)
+    =/  booth-votes  (~(get by votes.state) booth-key)
+    =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
+    :: =/  booth-votes  ?:(?=([%o *] booth-votes) p.booth-votes ~)
+    =/  proposal-votes  (~(get by booth-votes) proposal-key)
+    =/  proposal-votes  ?~(proposal-votes ~ (need proposal-votes))
+    =/  proposal-votes  ?:(?=([%o *] proposal-votes) p.proposal-votes ~)
+    =/  proposal-votes=(map @t json)
+    %-  ~(rep by proposal-votes)
+    |=  [[voter-key=@t jon=json] proposal-votes=(map @t json)]
+      ?:  =(participant-key voter-key)
+        proposal-votes
+      =/  vote-data  ?:(?=([%o *] jon) p.jon ~)
+      =/  delegators  (~(get by vote-data) 'delegators')
+      =/  delegators  ?~(delegators ~ (need delegators))
+      =/  delegators  ?:(?=([%o *] delegators) p.delegators ~)
+      ?:  (~(has by delegators) participant-key)
+          proposal-votes
+        (~(put by proposal-votes) voter-key jon)
+    (~(put by booth-votes) proposal-key [%o proposal-votes])
+
+  [~ ~ state(participants (~(put by participants.state) booth-key booth-participants), delegates (~(put by delegates.state) booth-key booth-delegates), votes (~(put by votes.state) booth-key booth-votes))]
 --
