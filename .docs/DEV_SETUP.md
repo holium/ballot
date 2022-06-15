@@ -76,8 +76,8 @@ app/group-store.hoon
 lib/group-store.hoon
 lib/resource.hoon
 lib/migrate.hoon
-lib/naive.hoon      # in %base
-lib/tiny.hoon       # in %base
+lib/naive.hoon      # in arvo
+lib/tiny.hoon       # in arvo
 mar/css.hoon
 mar/group/update.hoon
 mar/group/view-action.hoon
@@ -86,9 +86,10 @@ mar/group/action.hoon
 mar/group/update-0.hoon
 sur/group/hoon
 sur/resource.hoon
-sur/dice.hoon
+sur/dice.hoon       # in arvo
 sur/group-store.hoon
 sur/group-view.hoon
+sur/invite-store.hoon
 ```
 
 Now, you want to start your dev ship `zod`.
@@ -151,8 +152,22 @@ This is how we can update and write new code from a dev folder. To have the upda
 
 #### Allow origin (CORS)
 
+For `~zod`:
+
 ```hoon
 ~zod:dojo> |pass [%e [%approve-origin 'http://localhost:3000']]
+```
+
+For `~bus`:
+
+```hoon
+~bus:dojo> |pass [%e [%approve-origin 'http://localhost:3001']]
+```
+
+For `~dev`:
+
+```hoon
+~dev:dojo> |pass [%e [%approve-origin 'http://localhost:3002']]
 ```
 
 READ: https://github.com/urbit/create-landscape-app/tree/master/full

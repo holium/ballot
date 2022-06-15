@@ -72,7 +72,7 @@ export class BoothsApi extends BaseAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          action: "save",
+          action: "save-booth",
           resource: "booth",
           context: {
             booth: boothKey,

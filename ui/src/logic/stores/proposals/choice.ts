@@ -14,6 +14,7 @@ export const ChoiceModel = types
   .model({
     label: types.string,
     description: types.maybeNull(types.string),
+    data: types.maybeNull(types.map(types.string)),
     action: types.maybeNull(types.string),
   })
   .actions((self) => ({

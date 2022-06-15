@@ -7,13 +7,14 @@ import {
   VoteModel,
   VoteModelType,
 } from ".";
+import votes from "../../api/votes";
 import { BoothModelType } from "../booths";
 import { rootStore } from "../root";
 
 export const ResultSummaryModel = types.model({
   voteCount: types.optional(types.number, 0),
   participantCount: types.optional(types.number, 1),
-  reason: types.maybeNull(types.enumeration(["tied", "support"])),
+  reason: types.maybeNull(types.string),
   status: types.optional(
     types.enumeration("ResultStatus", ["counted", "failed", "preliminary"]),
     "preliminary"
@@ -49,6 +50,23 @@ export const ResultModel = types
       return parentBooth.participantStore.count;
     },
     get getMyVote(): VoteModelType {
+      // TODO clean this up
+      let ourVote: any = null;
+      Object.values(Object.fromEntries(self.votes.entries())).forEach(
+        (vote: VoteModelType) => {
+          if (
+            Object.keys(Object.fromEntries(vote.delegators.entries())).includes(
+              rootStore.app.ship.patp
+            )
+          ) {
+            ourVote = vote;
+          }
+        }
+      );
+      if (ourVote) {
+        return ourVote;
+      }
+
       return self.votes.get(rootStore.app.ship.patp)!;
     },
   }))

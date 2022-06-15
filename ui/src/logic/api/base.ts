@@ -1,4 +1,5 @@
 const baseUrl = import.meta.env.VITE_SHIP_URL?.toString()!;
+
 export class BaseAPI {
   baseUrl: string = baseUrl;
 

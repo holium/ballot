@@ -9,6 +9,7 @@ import {
   applyPatch,
   IJsonPatch,
 } from "mobx-state-tree";
+import { date } from "yup";
 import {
   ChoiceModel,
   determineStatus,
@@ -88,29 +89,28 @@ export const ProposalStore = types
           proposalForm
         );
         if (error) throw error;
-
         // response could be null
-        const parentBooth: BoothModelType = getParent(self, 1);
-        const newProposal = ProposalModel.create({
-          ...response.data,
-          status: determineStatus(response.data),
-          owner: rootStore.app.ship.patp,
-          boothKey: self.boothKey,
-          // we need to set the appropriate participant count by default
-          results: {
-            didVote: false,
-            votes: {},
-            resultSummary: {
-              voteCount: 0,
-              participantCount: parentBooth.participantStore.count,
-              topChoice: undefined,
-              tallies: [],
-            },
-          },
-        });
-        self.proposals.set(newProposal.key, newProposal);
-        self.addLoader.set("loaded");
-        return newProposal;
+        // const parentBooth: BoothModelType = getParent(self, 1);
+        // const newProposal = ProposalModel.create({
+        //   ...response.data,
+        //   status: determineStatus(response.data),
+        //   owner: rootStore.app.ship.patp,
+        //   boothKey: self.boothKey,
+        //   // we need to set the appropriate participant count by default
+        //   results: {
+        //     didVote: false,
+        //     votes: {},
+        //     resultSummary: {
+        //       voteCount: 0,
+        //       participantCount: parentBooth.participantStore.count,
+        //       topChoice: undefined,
+        //       tallies: [],
+        //     },
+        //   },
+        // });
+        // self.proposals.set(newProposal.key, newProposal);
+        // self.addLoader.set("loaded");
+        // return newProposal;
       } catch (err: any) {
         self.loader.error(err);
         return;
@@ -132,7 +132,7 @@ export const ProposalStore = types
           proposalKey
         );
         if (error) throw error;
-        self.proposals.delete(proposalKey);
+        // self.proposals.delete(proposalKey);
       } catch (err: any) {
         self.loader.error(err);
       }
@@ -147,13 +147,16 @@ export const ProposalStore = types
     ) {
       switch (payload.effect) {
         case "add":
-          this.addEffect(payload.data);
+          this.addEffect(action, context, payload.data);
           break;
         case "update":
           this.updateEffect(payload.key!, payload.data, action);
           break;
         case "delete":
           this.deleteEffect(payload.key!);
+          break;
+        case "error":
+          this.errorEffect(action, payload);
           break;
         case "initial":
           // this.initialEffect(payload);
@@ -191,13 +194,18 @@ export const ProposalStore = types
       });
     },
 
-    addEffect(proposal: any) {
+    addEffect(action: string, context: any, proposal: any) {
       // console.log("proposal addEffect ", proposal);
       const parentBooth: BoothModelType = getParent(self, 1);
+      const key = context.proposal;
+      if (action === "save-proposal-reaction" && self.loader.isLoading) {
+        self.loader.set("loaded");
+      }
       self.proposals.set(
-        proposal.key,
+        key,
         ProposalModel.create({
           ...proposal,
+          key,
           status: determineStatus(proposal),
           boothKey: self.boothKey,
           results: {
@@ -224,5 +232,10 @@ export const ProposalStore = types
     deleteEffect(proposalKey: string) {
       // console.log("proposal deleteEffect ", proposalKey);
       self.proposals.delete(proposalKey);
+    },
+    errorEffect(action: string, effect: any) {
+      console.error(
+        `${effect.data.error} on ${action.replace("-reaction", "")}`
+      );
     },
   }));

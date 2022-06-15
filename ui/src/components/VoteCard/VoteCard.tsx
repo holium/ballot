@@ -12,6 +12,7 @@ import {
   Box,
   Spinner,
   Notification,
+  Tooltip,
 } from "@holium/design-system";
 import { ChoiceType, VoteType } from "../../logic/types/proposals";
 import { VoteBreakdownBar } from "../VoteBreakdownBar";
@@ -40,7 +41,7 @@ export type VoteCardProps = {
   timeLeft?: string;
   castingLoading?: boolean;
   strategy: string;
-  choices: [];
+  choices: ChoiceModelType[];
   chosenOption?: ChoiceModelType;
   voteResults?: ResultSummaryType;
   voteSubmitted?: boolean;
@@ -111,7 +112,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
       </Flex>
     );
   } else if (!chosenOption) {
-    middleSection = choices?.map((choice: ChoiceType) => (
+    middleSection = choices?.map((choice: ChoiceModelType) => (
       <VoteCardButton
         variant="custom"
         disabled={disabled || votingPower === 0}
@@ -123,13 +124,27 @@ export const VoteCard: any = (props: VoteCardProps) => {
           setChosenVote({
             chosenVote: {
               label: choice.label,
-              action: choice.action,
+              action: choice.action!,
             },
             proposalId: proposalId,
           })
         }
       >
-        {choice.label}
+        {choice.label}{" "}
+        {choice.action && (
+          <Tooltip
+            style={{ position: "absolute", right: 6 }}
+            content={
+              <Card>
+                <ActionDataTable action={choice.action!} data={choice.data} />
+              </Card>
+            }
+            placement="bottom-left"
+            delay={0.5}
+          >
+            <Icons.TerminalLine opacity={0.5} color="text.primary" />
+          </Tooltip>
+        )}
       </VoteCardButton>
     ));
   } else if (chosenOption) {
@@ -283,3 +298,30 @@ export const VoteCard: any = (props: VoteCardProps) => {
 };
 
 VoteCard.defaultProps = {};
+
+export const ActionDataTable = (props: any) => {
+  const actionConfig = Object.fromEntries(props.data);
+  const keys = Object.keys(actionConfig);
+  const values = Object.values<any>(actionConfig);
+  return (
+    <table>
+      <tbody>
+        <tr>
+          <td style={{ opacity: 0.7 }} colSpan={1}>
+            action:
+          </td>
+          <td colSpan={2}>{props.action}</td>
+        </tr>
+
+        {keys.map((key: string, index: number) => (
+          <tr key={key}>
+            <td style={{ opacity: 0.7 }} colSpan={1}>
+              {key}:
+            </td>
+            <td colSpan={2}>{values[index].toString()}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
