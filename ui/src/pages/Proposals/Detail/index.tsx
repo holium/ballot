@@ -9,6 +9,7 @@ import {
   BreadcrumbNav,
   Grid2,
   Box,
+  Tab,
 } from "@holium/design-system";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
@@ -31,13 +32,14 @@ import {
 } from "../../../logic/stores/proposals";
 import { ProposalResult } from "./ProposalResults";
 import { useMobile } from "../../../logic/utils/useMobile";
+import { VoteResultList } from "./VoteResultList";
 
 export const ProposalDetail: FC = observer((props: any) => {
   const navigate = useNavigate();
   const urlParams = useParams();
   const isMobile = useMobile();
   const { store, app, metadata } = useMst();
-
+  const [tab, setTab] = useState("details");
   const currentBoothKey = getKeyFromUrl(urlParams);
   store.setBooth(currentBoothKey);
 
@@ -121,6 +123,7 @@ export const ProposalDetail: FC = observer((props: any) => {
           md={6}
           lg={9}
           xl={9}
+          gap={12}
         >
           <Card
             padding={0}
@@ -154,11 +157,32 @@ export const ProposalDetail: FC = observer((props: any) => {
                 />
                 <KPI icon={<TlonIcon icon="Clock" />} value={time} />
               </Flex>
+              {/* {proposal.status === "Ended" && (
+                  <ProposalResult booth={booth} proposal={proposal} />
+                )} */}
+              <Flex style={{ gap: 16 }} mt={5} flexDirection="row">
+                <Tab
+                  active={tab === "details"}
+                  onClick={() => setTab("details")}
+                >
+                  Details
+                </Tab>
+                <Tab
+                  active={tab === "vote-breakdown"}
+                  isDisabled={
+                    proposal.status !== "Ended" ||
+                    proposal.tally?.status === "failed"
+                  }
+                  onClick={() => setTab("vote-breakdown")}
+                >
+                  Voters
+                </Tab>
+              </Flex>
             </DetailHeader>
             {proposal.status === "Ended" && (
               <ProposalResult booth={booth} proposal={proposal} />
             )}
-            {proposal.status === "Ended" && winningChoice && (
+            {proposal.status === "Ended" && winningChoice?.action && (
               <ProposalResultSection style={{ fontSize: 14 }}>
                 <ActionDataTable
                   action={winningChoice.action!}
@@ -166,20 +190,33 @@ export const ProposalDetail: FC = observer((props: any) => {
                 />
               </ProposalResultSection>
             )}
-            <DetailBody>
-              <MDEditor.Markdown
-                style={{
-                  padding: 16,
-                  borderBottomLeftRadius: 6,
-                  borderBottomRightRadius: 6,
-                  background: "transparent",
-                  fontFamily: "Inter, sans-serif",
-                  color: "inherit",
-                }}
-                source={proposal.content}
-                rehypePlugins={[[rehypeSanitize]]}
-              />
-            </DetailBody>
+            {tab === "details" && (
+              <>
+                <DetailBody>
+                  <MDEditor.Markdown
+                    style={{
+                      padding: 16,
+                      borderBottomLeftRadius: 6,
+                      borderBottomRightRadius: 6,
+                      background: "transparent",
+                      fontFamily: "Inter, sans-serif",
+                      color: "inherit",
+                    }}
+                    source={proposal.content}
+                    rehypePlugins={[[rehypeSanitize]]}
+                  />
+                </DetailBody>
+              </>
+            )}
+            {tab === "vote-breakdown" && (
+              <>
+                {proposal.status === "Ended" && (
+                  <Flex p={16}>
+                    <VoteResultList votes={proposal.results!.votes} />
+                  </Flex>
+                )}
+              </>
+            )}
           </Card>
         </Grid2.Column>
         <Grid2.Column gap={12} mb="16px" md={2} lg={3}>

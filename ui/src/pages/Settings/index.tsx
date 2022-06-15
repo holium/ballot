@@ -84,7 +84,7 @@ export const Settings: FC = observer(() => {
 
   useEffect(() => {
     booth.getCustomActions();
-  }, []);
+  }, [booth.key]);
 
   const { form, support, duration, proposalPermission } = useMemo(
     () =>

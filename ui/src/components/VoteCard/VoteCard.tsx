@@ -135,8 +135,12 @@ export const VoteCard: any = (props: VoteCardProps) => {
           <Tooltip
             style={{ position: "absolute", right: 6 }}
             content={
-              <Card>
-                <ActionDataTable action={choice.action!} data={choice.data} />
+              <Card padding={2}>
+                <ActionDataTable
+                  orientation="column"
+                  action={choice.action!}
+                  data={choice.data}
+                />
               </Card>
             }
             placement="bottom-left"
@@ -247,12 +251,12 @@ export const VoteCard: any = (props: VoteCardProps) => {
                 flexDirection="column"
                 alignItems="center"
               >
-                <Text fontSize={2} fontWeight={400}>
-                  You've delegated to
+                <Text textAlign="center" fontSize={2} fontWeight={400}>
+                  You've delegated to <b>{delegate.delegate}</b>
                 </Text>
-                <Text fontSize={2} fontWeight={600}>
+                {/* <Text fontSize={2} fontWeight={600}>
                   {delegate.delegate}
-                </Text>
+                </Text> */}
               </Flex>
             </Notification>
           </Flex>
@@ -299,29 +303,62 @@ export const VoteCard: any = (props: VoteCardProps) => {
 
 VoteCard.defaultProps = {};
 
-export const ActionDataTable = (props: any) => {
+export const ActionDataTable = (props: {
+  action: string;
+  data: any;
+  orientation?: "column" | "row";
+}) => {
   const actionConfig = Object.fromEntries(props.data);
   const keys = Object.keys(actionConfig);
   const values = Object.values<any>(actionConfig);
   return (
-    <table>
-      <tbody>
-        <tr>
-          <td style={{ opacity: 0.7 }} colSpan={1}>
-            action:
-          </td>
-          <td colSpan={2}>{props.action}</td>
-        </tr>
-
-        {keys.map((key: string, index: number) => (
-          <tr key={key}>
-            <td style={{ opacity: 0.7 }} colSpan={1}>
-              {key}:
-            </td>
-            <td colSpan={2}>{values[index].toString()}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <Flex
+      style={{ flex: 1, gap: 8 }}
+      flexDirection={props.orientation || "row"}
+      onClick={(evt: any) => evt.stopPropagation()}
+    >
+      <Flex flexDirection="row" style={{ flex: 1, gap: 6 }} alignItems="center">
+        <Icons.TerminalLine
+          width={18}
+          height={18}
+          opacity={0.5}
+          color="text.primary"
+        />
+        <Text fontWeight={500} fontSize={2} color="text.primary">
+          {props.action}
+        </Text>
+      </Flex>
+      <Flex
+        style={{ flex: 3, gap: 12 }}
+        flexDirection="row"
+        alignItems="center"
+      >
+        <Icons.ListOptions
+          width={18}
+          height={18}
+          opacity={0.5}
+          color="text.primary"
+        />
+        <Flex flexDirection="row" flexWrap="1">
+          {keys.map((key: string, index: number) => (
+            <Flex
+              key={key}
+              flexDirection="row"
+              alignItems="center"
+              p="4px 8px"
+              style={{ gap: 6 }}
+              borderRadius={6}
+              // backgroundColor="bg.tertiary"
+              borderWidth="1px"
+              borderStyle="solid"
+              borderColor="ui.borderColor"
+            >
+              <Text style={{ opacity: 0.7 }}>{key}:</Text>
+              <Text>{values[index].toString()}</Text>
+            </Flex>
+          ))}
+        </Flex>
+      </Flex>
+    </Flex>
   );
 };

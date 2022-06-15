@@ -120,8 +120,8 @@ export const DelegationCard: FC<DelegationCardProps> = observer(
             </Text>
           ) : (
             <Text variant="body" opacity={0.7}>
-              Delegating your vote to another Urbit ID will prevent you from
-              being able to vote on proposals in the booth:{" "}
+              Delegating your vote to another ship will prevent you from being
+              able to vote on proposals in the booth:{" "}
               <b
                 style={{
                   fontFamily: "Source Code Pro, mono",
@@ -182,7 +182,7 @@ export const DelegationCard: FC<DelegationCardProps> = observer(
   }
 );
 
-export const createDelegateForm = (ourDelegate: string) => {
+export const createDelegateForm = (ourDelegate?: string) => {
   const form = createForm({
     onSubmit({ values }) {
       return values;
