@@ -1,4 +1,4 @@
-import React, { FC, useEffect } from "react";
+import React, { FC, useCallback, useEffect, useMemo } from "react";
 import { observer } from "mobx-react";
 import { useLocation, useNavigate, Outlet, useParams } from "react-router-dom";
 import Helmet from "react-helmet";
@@ -89,6 +89,36 @@ export const App: FC = observer(() => {
     });
   }
 
+  const onContextClick = useCallback(
+    (selectedBooth: Partial<BoothModelType>) => {
+      let newPath = createPath(selectedBooth.key!, app.currentPage);
+      navigate(newPath);
+      app.setCurrentUrl(newPath, app.currentPage);
+      store.setBooth(selectedBooth.key!);
+    },
+    [app]
+  );
+
+  const onAccept = useCallback(
+    (boothName: string) => {
+      store.booths.get(boothName)!.acceptInvite(boothName);
+    },
+    [store.booths]
+  );
+
+  const BoothsContext = useMemo(
+    () => (
+      <BoothsDropdown
+        booths={store.list}
+        onNewBooth={toggle}
+        onJoin={onAccept}
+        onAccept={onAccept}
+        onContextClick={onContextClick}
+      />
+    ),
+    [store.list]
+  );
+
   const contextLoading =
     store.isLoading ||
     metadata.groupsLoader.isLoading ||
@@ -121,24 +151,7 @@ export const App: FC = observer(() => {
             icon: <Icons.AppBallotSM size={2} />,
             name: "Ballot",
             color: "#6535CC",
-            contextMenu: (
-              <BoothsDropdown
-                booths={store.list}
-                onNewBooth={toggle}
-                onJoin={(boothName: string) =>
-                  store.booths.get(boothName)!.acceptInvite(boothName)
-                }
-                onAccept={(boothName: string) =>
-                  store.booths.get(boothName)!.acceptInvite(boothName)
-                }
-                onContextClick={(selectedBooth: Partial<BoothModelType>) => {
-                  let newPath = createPath(selectedBooth.key!, app.currentPage);
-                  navigate(newPath);
-                  app.setCurrentUrl(newPath, app.currentPage);
-                  store.setBooth(selectedBooth.key!);
-                }}
-              />
-            ),
+            contextMenu: BoothsContext,
           }}
           ship={{
             patp: ship.patp,

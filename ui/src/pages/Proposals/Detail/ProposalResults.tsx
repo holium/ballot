@@ -20,6 +20,7 @@ import { failedReason } from "../../../logic/utils/poll-failed";
 import { ActionDataTable } from "../../../components/VoteCard";
 
 type ProposalResultType = {
+  hideBorderBottom?: boolean;
   booth: BoothModelType;
   proposal: ProposalModelType;
 };
@@ -27,7 +28,7 @@ type ProposalResultType = {
 export const ProposalResult: FC<ProposalResultType> = (
   props: ProposalResultType
 ) => {
-  const { booth, proposal } = props;
+  const { hideBorderBottom, booth, proposal } = props;
   let voteCount = proposal.results.resultSummary.voteCount || 0;
   let participantCount = booth.participantStore.count || 1;
   const tally = proposal.tally;
@@ -39,7 +40,9 @@ export const ProposalResult: FC<ProposalResultType> = (
 
   return (
     tally && (
-      <ProposalResultSection>
+      <ProposalResultSection
+        {...(hideBorderBottom && { style: { borderBottom: "none" } })}
+      >
         {tally.status === "failed" ? (
           <Flex flexDirection="row" alignItems="center">
             <Text

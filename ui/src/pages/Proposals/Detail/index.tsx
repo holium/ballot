@@ -114,6 +114,8 @@ export const ProposalDetail: FC = observer((props: any) => {
         (choice: ChoiceModelType) => proposal.tally?.topChoice === choice.label
       )
     );
+    const hasAction =
+      winningChoice?.action && winningChoice?.data ? true : false;
 
     content = (
       <Grid2.Row reverse={["xs"]} justify="center">
@@ -180,13 +182,19 @@ export const ProposalDetail: FC = observer((props: any) => {
               </Flex>
             </DetailHeader>
             {proposal.status === "Ended" && (
-              <ProposalResult booth={booth} proposal={proposal} />
+              <ProposalResult
+                hideBorderBottom={hasAction}
+                booth={booth}
+                proposal={proposal}
+              />
             )}
-            {proposal.status === "Ended" && winningChoice?.action && (
-              <ProposalResultSection style={{ fontSize: 14 }}>
+            {proposal.status === "Ended" && hasAction && (
+              <ProposalResultSection
+                style={{ fontSize: 14, borderTop: "none", paddingTop: 2 }}
+              >
                 <ActionDataTable
-                  action={winningChoice.action!}
-                  data={winningChoice.data}
+                  action={winningChoice?.action!}
+                  data={winningChoice?.data}
                 />
               </ProposalResultSection>
             )}

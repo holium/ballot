@@ -131,7 +131,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
         }
       >
         {choice.label}{" "}
-        {choice.action && (
+        {choice.action && choice.data && (
           <Tooltip
             style={{ position: "absolute", right: 6 }}
             content={
@@ -345,7 +345,7 @@ export const ActionDataTable = (props: {
               key={key}
               flexDirection="row"
               alignItems="center"
-              p="4px 8px"
+              p="2px 6px"
               style={{ gap: 6 }}
               borderRadius={6}
               // backgroundColor="bg.tertiary"
