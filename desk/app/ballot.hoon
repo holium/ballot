@@ -2872,9 +2872,11 @@
           ==
 
         %delete
-          =/  participant-ship  `@p`(slav %p participant-key)
-          =/  result=[effects=(list json) cards=(list card) =_state]  (clear-delegation booth-key participant-ship)
-          :_  this(state state.result)
+          =/  booth-participants  (~(get by delegates.state) booth-key)
+          =/  booth-participants  ?~(booth-participants ~ (need booth-participants))
+          =/  participant  (~(get by booth-participants) participant-key)
+          =/  booth-participants  (~(del by booth-participants) participant-key)
+          :_  this(delegates (~(put by delegates.state) booth-key booth-participants))
           :~  [%give %fact [/booths]~ %json !>([%o payload])]
           ==
 
@@ -4522,32 +4524,33 @@
       ~&  >>  "{<dap.bowl>}: warning. proposal {<key>} has no status"
       result
     =/  status  (so:dejs:format (need status))
-    ?.  =(status 'closed')
+    ?.  =(status 'poll-closed')
       (~(put by result) key jon)
     result
 
-  =/  booth-votes=(map @t json)
+  =/  booth-votes  (~(get by votes.state) booth-key)
+  =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
+
+  %-  (log:util %info "{<dap.bowl>}: processing active proposals: {<active-proposals>}")
+  =/  booth-votes
   %-  ~(rep by active-proposals)
-  |=  [[proposal-key=@t jon=json] booth-votes=(map @t json)]
+  |:  [`[proposal-key=@t jon=json]`['' ~] booth-votes=`(map @t json)`booth-votes]
     =/  data  ?:(?=([%o *] jon) p.jon ~)
-    =/  booth-votes  (~(get by votes.state) booth-key)
-    =/  booth-votes  ?~(booth-votes ~ (need booth-votes))
-    :: =/  booth-votes  ?:(?=([%o *] booth-votes) p.booth-votes ~)
     =/  proposal-votes  (~(get by booth-votes) proposal-key)
     =/  proposal-votes  ?~(proposal-votes ~ (need proposal-votes))
     =/  proposal-votes  ?:(?=([%o *] proposal-votes) p.proposal-votes ~)
-    =/  proposal-votes=(map @t json)
+    =/  proposal-votes
     %-  ~(rep by proposal-votes)
-    |=  [[voter-key=@t jon=json] proposal-votes=(map @t json)]
+    |:  [`[voter-key=@t jon=json]`['' ~] proposal-votes=`(map @t json)`proposal-votes]
       ?:  =(participant-key voter-key)
-        proposal-votes
+        (~(del by proposal-votes) voter-key)
       =/  vote-data  ?:(?=([%o *] jon) p.jon ~)
       =/  delegators  (~(get by vote-data) 'delegators')
       =/  delegators  ?~(delegators ~ (need delegators))
       =/  delegators  ?:(?=([%o *] delegators) p.delegators ~)
       ?:  (~(has by delegators) participant-key)
-          proposal-votes
-        (~(put by proposal-votes) voter-key jon)
+          (~(del by proposal-votes) voter-key)
+        proposal-votes
     (~(put by booth-votes) proposal-key [%o proposal-votes])
 
   [~ ~ state(participants (~(put by participants.state) booth-key booth-participants), delegates (~(put by delegates.state) booth-key booth-delegates), votes (~(put by votes.state) booth-key booth-votes))]
