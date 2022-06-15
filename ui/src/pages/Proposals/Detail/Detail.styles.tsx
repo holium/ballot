@@ -9,7 +9,7 @@ type SignalCardProps = {
 export const DetailHeader = styled.header`
   border-bottom: 1px solid
     ${(props: SignalCardProps) => props.theme.colors.ui.input.borderColor};
-  padding: 16px;
+  padding: 16px 16px 0 16px;
 `;
 
 export const DetailCentered = styled(Flex)`

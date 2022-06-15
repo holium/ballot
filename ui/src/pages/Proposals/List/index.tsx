@@ -50,6 +50,7 @@ export const ProposalList: FC = observer(() => {
   let proposalsList: any[] = booth?.listProposals!;
 
   const hasCreatePermission = booth?.hasCreatePermission;
+  const hasDeletePermission = booth?.hasAdmin;
   const isOwner = booth?.isOwner;
   const statusCounts = getProposalFilters(proposalsList);
   if (selectedOption === "All") {
@@ -229,7 +230,7 @@ export const ProposalList: FC = observer(() => {
                     label: "Delete",
                     intent: "alert",
                     disabled:
-                      !hasCreatePermission ||
+                      !hasDeletePermission ||
                       proposal.status === "Active" ||
                       proposal.status === "Ended",
                     section: 2,

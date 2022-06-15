@@ -37,6 +37,30 @@ export class BoothsApi extends BaseAPI {
     }
   }
 
+  async getCustomActionFile(boothKey: string): Promise<any> {
+    const scryUrl = `${this.baseUrl}/ballot/api/booths`;
+    try {
+      const response = await fetch(scryUrl, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "request-custom-actions",
+          resource: "booth",
+          context: {
+            booth: boothKey,
+          },
+          data: null,
+        }), // ACTION TYPE
+      });
+      return [await response.json(), null];
+    } catch (error) {
+      return [null, this.handleErrors(error)];
+    }
+  }
+
   // /**
   //  *
   //  * @returns - array of booth objects

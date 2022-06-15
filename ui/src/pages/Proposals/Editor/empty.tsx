@@ -69,7 +69,12 @@ export const emptyState = () => {
           <Text fontWeight="600" variant="h6" p={12} mb={2}>
             Choices
           </Text>
-          <ChoiceEditor choices={[]} onUpdate={() => {}} />
+          <ChoiceEditor
+            actions={[]}
+            choices={[]}
+            onUpdate={() => {}}
+            onActionUpdate={() => {}}
+          />
         </Card>
       </Flex>
       <Grid gridTemplateRows="44px 1fr" gridGap={16}>
