@@ -22,6 +22,7 @@ import { getKeyFromUrl, getNameFromUrl } from "../../logic/utils/path";
 import { useMst } from "../../logic/stores/root";
 import { toJS } from "mobx";
 import { useMobile } from "../../logic/utils/useMobile";
+import { BoothsApi } from "../../logic/api/booths";
 
 const createSettingsForm = (defaults: any = {}) => {
   const form = createForm({
