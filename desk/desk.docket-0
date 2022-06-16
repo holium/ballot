@@ -1,8 +1,8 @@
-:~  title+'Ballot (alpha)'
+:~  title+'Ballot'
     info+'An app that allows you to vote with other ships. Built by Holium.'
     color+0xce.bef0
     image+'https://lomder-librun.sfo3.digitaloceanspaces.com/tiles/ballot-app-tile.svg'
-    glob-http+['https://lomder-librun.sfo3.digitaloceanspaces.com/globs/glob-0vp7jel.sou4t.6an62.5a1pb.b714j.glob' 0vp7jel.sou4t.6an62.5a1pb.b714j]
+    glob-http+['https://lomder-librun.sfo3.digitaloceanspaces.com/globs/glob-0v7.apevr.8rgkr.nhg1b.v79mu.30077.glob' 0v7.apevr.8rgkr.nhg1b.v79mu.30077]
     base+'ballot'
     version+[0 0 5]
     website+'https://holium.com'

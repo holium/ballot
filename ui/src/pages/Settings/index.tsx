@@ -289,7 +289,10 @@ export const Settings: FC = observer(() => {
           <Text variant="body" opacity={0.7} mb={2}>
             Hoon code that can be configured to execute via a proposal choice.
             You can add additional actions by following the guide{" "}
-            <a target="_blank" href="https://www.holium.com">
+            <a
+              target="_blank"
+              href="https://docs.holium.com/ballot/custom-actions"
+            >
               here
             </a>
             .
