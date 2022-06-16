@@ -109,6 +109,12 @@
             =/  data  .^(json %cx lib-file)
             (~(put by acc) key data)
           acc
+      [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=booths.old proposals=proposals.old participants=participants.old invitations=invitations.old votes=votes.old delegates=delegates.old custom-actions=custom-actions]
+    ::  ensure new delegates map is set to null ~
+    ::  ensure all members with pariticipant role (or no role) are given member role
+    ++  upgrade-0-to-1
+      |=  [old=state-0:ballot]
+      ^-  state-1:ballot
       =/  upgraded-booths
         %-  ~(rep in booths.old)
           |=  [[key=@t jon=json] acc=(map @t json)]
@@ -140,41 +146,6 @@
             ==
             =/  booth  (~(put by booth) 'defaults' defaults)
             =/  booth  (~(put by booth) 'permissions' [%a permissions])
-            =/  booth  (~(put by booth) 'adminPermissions' [%a admin-permissions])
-            =/  booth  (~(put by booth) 'memberPermissions' [%a member-permissions])
-            (~(put by acc) key [%o booth])
-      [%1 authentication=authentication.old mq=mq.old polls=polls.old booths=upgraded-booths proposals=proposals.old participants=participants.old invitations=invitations.old votes=votes.old delegates=delegates.old custom-actions=custom-actions]
-    ::  ensure new delegates map is set to null ~
-    ::  ensure all members with pariticipant role (or no role) are given member role
-    ++  upgrade-0-to-1
-      |=  [old=state-0:ballot]
-      ^-  state-1:ballot
-      =/  upgraded-booths
-        %-  ~(rep in booths.old)
-          |=  [[key=@t jon=json] acc=(map @t json)]
-            =/  booth  ?:(?=([%o *] jon) p.jon ~)
-            =/  defaults
-            %-  pairs:enjs:format
-            :~
-              ['support' n+'50']
-              ['duration' n+'7']
-            ==
-            =/  admin-permissions
-            :~  s+'read-proposal'
-                s+'vote-proposal'
-                s+'create-proposal'
-                s+'edit-proposal'
-                s+'delete-proposal'
-                s+'invite-member'
-                s+'remove-member'
-                s+'change-settings'
-            ==
-            =/  member-permissions
-            :~  s+'read-proposal'
-                s+'vote-proposal'
-                s+'create-proposal'
-            ==
-            =/  booth  (~(put by booth) 'defaults' defaults)
             =/  booth  (~(put by booth) 'adminPermissions' [%a admin-permissions])
             =/  booth  (~(put by booth) 'memberPermissions' [%a member-permissions])
             (~(put by acc) key [%o booth])
