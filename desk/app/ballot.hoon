@@ -191,6 +191,19 @@
             =/  member  (~(put by member) 'role' s+role)
             (~(put by acc-inner) key [%o member])
           (~(put by acc-outer) key result)
+      :: =/  upgraded-proposals
+      ::   %-  ~(rep in proposals.old)
+      ::     |=  [[key=@t m=(map @t json)] acc-outer=(map @t (map @t json))]
+      ::     :: =/  members  ?:(?=([%o *] jon) p.jon ~)
+      ::     =/  result  %-  ~(rep in m)
+      ::       |=  [[key=@t jon=json] acc-inner=(map @t json)]
+      ::       =/  proposal  ?:(?=([%o *] jon) p.jon ~)
+      ::       =/  role  (~(get by member) 'role')
+      ::       =/  role  ?~(role 'member' (so:dejs:format (need role)))
+      ::       =/  role  ?:(=(role 'participant') 'member' role)
+      ::       =/  member  (~(put by member) 'role' s+role)
+      ::       (~(put by acc-inner) key [%o member])
+      ::     (~(put by acc-outer) key result)
       =/  custom-actions
         %-  ~(rep in booths.old)
           |=  [[key=@t jon=json] acc=(map @t json)]
@@ -794,6 +807,11 @@
           ::  the participant key is the remote ship that sent the poke
           =/  participant-key  (crip "{<src.bowl>}")
 
+          =/  participant  (~(get by booth-participants) participant-key)
+          =/  participant  ?~(participant ~ ((om json):dejs:format (need participant)))
+          =/  role  (~(get by participant) 'role')
+          =/  role  ?~(role 'member' (so:dejs:format (need role)))
+
           ::  if this is a group acceptance, the payload will contain the participant
           ::    data; otherwise, we already know if it since in all other cases, we must
           ::    invite them first
@@ -801,10 +819,11 @@
                 ?:  =(booth-type 'group')
                   ((om json):dejs:format (~(got by contract) 'data'))
                 ::  get the participant from the booth participant list
-                =/  participant  (~(get by booth-participants) participant-key)
-                =/  participant  ?~(participant ~ ((om json):dejs:format (need participant)))
                 [participant]
 
+          ::  the booth owner has the official role of the participant. do not overwrite
+          ::    the role sent by the accepting ship
+          =/  participant  (~(put by participant) 'role' s+role)
           :: update the participant's status to 'active'
           =/  participant  (~(put by participant) 'status' s+'active')
           :: add the updated participant back to the booth participant list
@@ -2686,6 +2705,9 @@
 
                     %add-tag
                       (on-member-add-tag action)
+
+                    %remove-tag
+                      (on-member-remove-tag action)
                   ==
             ==
         ==
@@ -3129,13 +3151,72 @@
         =/  participant  (~(get by booth-participants) participant-key)
         =/  participant  ?~(participant ~ (need participant))
         =/  participant  ?:(?=([%o *] participant) p.participant ~)
-        =/  participant  (~(put by participant) 'role' s+-.tag.action)
+        ~&  >>  "{<dap.bowl>}: setting role to {<action>}..."
+        =/  role=@t  ?:(=(tag.action %admin) 'admin' 'member')
+        =/  participant  (~(put by participant) 'role' s+role)
         =/  updated-participant=json
         %-  pairs:enjs:format
         :~
-          ['role' s+-.tag.action]
+          ['role' s+role]
         ==
-        =/  booth-participants  (~(put by booth-participants) participant-key updated-participant)
+        =/  booth-participants  (~(put by booth-participants) participant-key [%o participant])
+        =/  context=json
+        %-  pairs:enjs:format
+        :~
+          ['booth' s+booth-key]
+        ==
+        =/  effect=json
+        %-  pairs:enjs:format
+        :~
+          ['resource' s+'participant']
+          ['effect' s+'update']
+          ['data' updated-participant]
+        ==
+        =/  effects=json
+        %-  pairs:enjs:format
+        :~
+          ['action' s+'group-member-add-tag-reaction']
+          ['context' context]
+          ['effects' [%a [effect]~]]
+        ==
+        =/  effects=(list card)
+        :~  [%give %fact [/booths]~ %json !>(effects)]
+            [%give %fact [/booths/(scot %tas booth-key)]~ %json !>(effects)]
+        ==
+        [(weld effects.acc effects) booth-participants]
+
+      :_  this(participants (~(put by participants.state) booth-key participants.result))
+
+      [effects.result]
+
+    ++  on-member-remove-tag
+      |=  =action:group-store
+      ?>  ?=(%remove-tag -.action)
+      =/  tag=[rid=resource =tag ships=(set ship)]  +.action
+      =/  booth-key  (crip (weld (weld "{<entity.resource.action>}" "-groups-") (trip `@t`name.resource.action)))
+      %-  (log:util %info "on-member-remove-tag {<booth-key>}")
+      =/  booth-participants  (~(get by participants.state) booth-key)
+      ?~  booth-participants
+            %-  (log:util %info "booth {<booth-key>} participants not found...")
+            `this
+      =/  booth-participants  (need booth-participants)
+      =/  result=[effects=(list card) participants=(map @t json)]
+      %-  ~(rep in ships.action)
+      |=  [p=@p acc=[effects=(list card) data=(map @t json)]]
+        =/  participant-key  (crip "{<p>}")
+        =/  participant  (~(get by booth-participants) participant-key)
+        =/  participant  ?~(participant ~ (need participant))
+        =/  participant  ?:(?=([%o *] participant) p.participant ~)
+        =/  role  (~(get by participant) 'role')
+        =/  role  ?~(role 'member' (so:dejs:format (need role)))
+        =/  role=@t  ?:(=(tag.action %admin) 'member' role)
+        =/  participant  (~(put by participant) 'role' s+role)
+        =/  updated-participant=json
+        %-  pairs:enjs:format
+        :~
+          ['role' s+role]
+        ==
+        =/  booth-participants  (~(put by booth-participants) participant-key [%o participant])
         =/  context=json
         %-  pairs:enjs:format
         :~
@@ -3326,9 +3407,10 @@
         |=  [[=resource =group] acc=[effects=(list card) booths=(map @t json) participants=(map @t (map @t json)) custom-actions=(map @t json)]]  :: participants=(map @t (map @t json))]]
           ^-  [effects=(list card) booths=(map @t json) participants=(map @t (map @t json)) custom-actions=(map @t json)] :: participants=(map @t (map @t json))]
           =/  booth  (booth-from-resource resource)
-          :: ?:  (~(has by booths.state) key.booth)
-          ::       %-  (log:util %warn "cannot add booth {<key.booth>} to store. already exists...")
-          ::       [effects.acc booths.acc participants.acc custom-actions.acc]
+          ?:  (~(has by booths.state) key.booth)
+                %-  (log:util %warn "booth {<key.booth>} exists. updating member permissions...")
+                =/  members  (members-to-participants resource group)
+                [effects.acc booths.acc (~(put by participants.acc) key.booth members) custom-actions.acc]
           =/  effects
                 ?:  =(status.booth 'active')
                   %-  (log:util %info "activating booth {<key.booth>} on {<our.bowl>}...")
@@ -4375,7 +4457,10 @@
                   %-  (log:util %info "{<dap.bowl>}: comparing {<custom-action>} to {<choice-action>}...")
                   ?:  =(custom-action choice-action)  %.y  %.n
                 ::  grab the first match
-                =/  choice-data=json  (snag 0 choice-data)
+                =/  choice-data=json  ?:((gth (lent choice-data) 0) (snag 0 choice-data) ~)
+                ?~  choice-data
+                  ~&  "{<dap.bowl>}: warning. proposal choice not found for custom-action {<custom-action>}"
+                  [(some label) ~ ~ ~]
                 =/  custom-action  ?~(custom-action ~ (some custom-action))
                 [(some label) custom-action choice-data ~]
               [~ ~ ~ (some 'support')]
