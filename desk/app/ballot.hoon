@@ -191,6 +191,19 @@
             =/  member  (~(put by member) 'role' s+role)
             (~(put by acc-inner) key [%o member])
           (~(put by acc-outer) key result)
+      :: =/  upgraded-proposals
+      ::   %-  ~(rep in proposals.old)
+      ::     |=  [[key=@t m=(map @t json)] acc-outer=(map @t (map @t json))]
+      ::     :: =/  members  ?:(?=([%o *] jon) p.jon ~)
+      ::     =/  result  %-  ~(rep in m)
+      ::       |=  [[key=@t jon=json] acc-inner=(map @t json)]
+      ::       =/  proposal  ?:(?=([%o *] jon) p.jon ~)
+      ::       =/  role  (~(get by member) 'role')
+      ::       =/  role  ?~(role 'member' (so:dejs:format (need role)))
+      ::       =/  role  ?:(=(role 'participant') 'member' role)
+      ::       =/  member  (~(put by member) 'role' s+role)
+      ::       (~(put by acc-inner) key [%o member])
+      ::     (~(put by acc-outer) key result)
       =/  custom-actions
         %-  ~(rep in booths.old)
           |=  [[key=@t jon=json] acc=(map @t json)]
@@ -4444,7 +4457,10 @@
                   %-  (log:util %info "{<dap.bowl>}: comparing {<custom-action>} to {<choice-action>}...")
                   ?:  =(custom-action choice-action)  %.y  %.n
                 ::  grab the first match
-                =/  choice-data=json  (snag 0 choice-data)
+                =/  choice-data=json  ?:((gth (lent choice-data) 0) (snag 0 choice-data) ~)
+                ?~  choice-data
+                  ~&  "{<dap.bowl>}: warning. proposal choice not found for custom-action {<custom-action>}"
+                  [(some label) ~ ~ ~]
                 =/  custom-action  ?~(custom-action ~ (some custom-action))
                 [(some label) custom-action choice-data ~]
               [~ ~ ~ (some 'support')]
