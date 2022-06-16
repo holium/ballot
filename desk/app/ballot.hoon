@@ -191,19 +191,6 @@
             =/  member  (~(put by member) 'role' s+role)
             (~(put by acc-inner) key [%o member])
           (~(put by acc-outer) key result)
-      :: =/  upgraded-proposals
-      ::   %-  ~(rep in proposals.old)
-      ::     |=  [[key=@t m=(map @t json)] acc-outer=(map @t (map @t json))]
-      ::     :: =/  members  ?:(?=([%o *] jon) p.jon ~)
-      ::     =/  result  %-  ~(rep in m)
-      ::       |=  [[key=@t jon=json] acc-inner=(map @t json)]
-      ::       =/  proposal  ?:(?=([%o *] jon) p.jon ~)
-      ::       =/  role  (~(get by member) 'role')
-      ::       =/  role  ?~(role 'member' (so:dejs:format (need role)))
-      ::       =/  role  ?:(=(role 'participant') 'member' role)
-      ::       =/  member  (~(put by member) 'role' s+role)
-      ::       (~(put by acc-inner) key [%o member])
-      ::     (~(put by acc-outer) key result)
       =/  custom-actions
         %-  ~(rep in booths.old)
           |=  [[key=@t jon=json] acc=(map @t json)]
@@ -3170,6 +3157,7 @@
         :~
           ['resource' s+'participant']
           ['effect' s+'update']
+          ['key' s+participant-key]
           ['data' updated-participant]
         ==
         =/  effects=json
@@ -3227,6 +3215,7 @@
         :~
           ['resource' s+'participant']
           ['effect' s+'update']
+          ['key' s+participant-key]
           ['data' updated-participant]
         ==
         =/  effects=json
@@ -4522,7 +4511,7 @@
       :: =/  percentage  (div choice-count `@ud`voter-count)
 
       =.  result  (~(put by result) 'label' s+label)
-      =.  result  (~(put by result) 'action' ?~(action ~ s+(need action)))
+      =.  result  (~(put by result) 'action' ?~(action s+'' s+(need action)))
       =.  result  (~(put by result) 'count' (numb:enjs:format choice-count))
       =.  result  (~(put by result) 'percentage' n+(crip "{(r-co:co (drg:rd percentage))}"))
 
