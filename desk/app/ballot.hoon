@@ -2683,6 +2683,9 @@
 
                     %remove-group
                       (on-group-removed action)
+
+                    %add-tag
+                      (on-member-add-tag action)
                   ==
             ==
         ==
@@ -3108,6 +3111,61 @@
 
       [%give %fact [/booths]~ %json !>(effects)]
 
+    ++  on-member-add-tag
+      |=  =action:group-store
+      ?>  ?=(%add-tag -.action)
+      =/  tag=[rid=resource =tag ships=(set ship)]  +.action
+      =/  booth-key  (crip (weld (weld "{<entity.resource.action>}" "-groups-") (trip `@t`name.resource.action)))
+      %-  (log:util %info "on-member-add-tag {<booth-key>}")
+      =/  booth-participants  (~(get by participants.state) booth-key)
+      ?~  booth-participants
+            %-  (log:util %info "booth {<booth-key>} participants not found...")
+            `this
+      =/  booth-participants  (need booth-participants)
+      =/  result=[effects=(list card) participants=(map @t json)]
+      %-  ~(rep in ships.action)
+      |=  [p=@p acc=[effects=(list card) data=(map @t json)]]
+        =/  participant-key  (crip "{<p>}")
+        =/  participant  (~(get by booth-participants) participant-key)
+        =/  participant  ?~(participant ~ (need participant))
+        =/  participant  ?:(?=([%o *] participant) p.participant ~)
+        =/  participant  (~(put by participant) 'role' s+-.tag.action)
+        =/  updated-participant=json
+        %-  pairs:enjs:format
+        :~
+          ['role' s+-.tag.action]
+        ==
+        =/  booth-participants  (~(put by booth-participants) participant-key updated-participant)
+        =/  context=json
+        %-  pairs:enjs:format
+        :~
+          ['booth' s+booth-key]
+        ==
+        =/  effect=json
+        %-  pairs:enjs:format
+        :~
+          ['resource' s+'participant']
+          ['effect' s+'update']
+          ['data' updated-participant]
+        ==
+        =/  effects=json
+        %-  pairs:enjs:format
+        :~
+          ['action' s+'group-member-add-tag-reaction']
+          ['context' context]
+          ['effects' [%a [effect]~]]
+        ==
+        =/  effects=(list card)
+        :~  [%give %fact [/booths]~ %json !>(effects)]
+            [%give %fact [/booths/(scot %tas booth-key)]~ %json !>(effects)]
+        ==
+        [(weld effects.acc effects) booth-participants]
+
+      :_  this(participants (~(put by participants.state) booth-key participants.result))
+
+      [effects.result]
+
+
     ++  on-group-member-added
       |=  =action:group-store
       ?>  ?=(%add-members -.action)
@@ -3268,9 +3326,9 @@
         |=  [[=resource =group] acc=[effects=(list card) booths=(map @t json) participants=(map @t (map @t json)) custom-actions=(map @t json)]]  :: participants=(map @t (map @t json))]]
           ^-  [effects=(list card) booths=(map @t json) participants=(map @t (map @t json)) custom-actions=(map @t json)] :: participants=(map @t (map @t json))]
           =/  booth  (booth-from-resource resource)
-          ?:  (~(has by booths.state) key.booth)
-                %-  (log:util %warn "cannot add booth {<key.booth>} to store. already exists...")
-                [effects.acc booths.acc participants.acc custom-actions.acc]
+          :: ?:  (~(has by booths.state) key.booth)
+          ::       %-  (log:util %warn "cannot add booth {<key.booth>} to store. already exists...")
+          ::       [effects.acc booths.acc participants.acc custom-actions.acc]
           =/  effects
                 ?:  =(status.booth 'active')
                   %-  (log:util %info "activating booth {<key.booth>} on {<our.bowl>}...")
@@ -3368,6 +3426,7 @@
       |=  [=resource =group]
       ^-  (map @t json)
       =/  timestamp  (crip (en-json:html (time:enjs:format now.bowl)))
+      =/  admins  (~(get ju tags.group) %admin)
       ::  add all other members
       =/  participants=(map @t json)
         ^-  [participants=(map @t json)]
@@ -3375,13 +3434,14 @@
             |=  [=ship acc=[participants=(map @t json)]]
             ^-  [participants=(map @t json)]
             =/  participant-key  (crip "{<ship>}")
+            =/  is-admin  ?:((~(has in admins) ship) %.y %.n)
             =/  member=json
             %-  pairs:enjs:format
             :~
               ['key' s+participant-key]
               ['name' s+participant-key]
               ['status' s+'enlisted']
-              ['role' s+'member']
+              ['role' s+?:(is-admin 'admin' 'member')]
               ['created' (time:enjs:format now.bowl)]
             ==
             =/  member=json
