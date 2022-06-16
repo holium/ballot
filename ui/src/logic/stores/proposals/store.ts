@@ -145,6 +145,12 @@ export const ProposalStore = types
       context: ContextModelType,
       action: string
     ) {
+      if (action === "save-proposal-reaction" && self.loader.isLoading) {
+        self.loader.set("loaded");
+      }
+      if (action === "save-proposal-reaction" && self.addLoader.isLoading) {
+        self.addLoader.set("loaded");
+      }
       switch (payload.effect) {
         case "add":
           this.addEffect(action, context, payload.data);
@@ -198,9 +204,7 @@ export const ProposalStore = types
       // console.log("proposal addEffect ", proposal);
       const parentBooth: BoothModelType = getParent(self, 1);
       const key = context.proposal;
-      if (action === "save-proposal-reaction" && self.loader.isLoading) {
-        self.loader.set("loaded");
-      }
+
       self.proposals.set(
         key,
         ProposalModel.create({
