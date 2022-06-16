@@ -68,7 +68,7 @@
       =/  effects
         %-  ~(rep by booths.old)
           |=  [[key=@t jon=json] acc=(list card)]
-            ~&  >>  "{<dap.bowl>}: processing upgrade {<key>}, {<jon>}..."
+            %-  (log:util %warn "{<dap.bowl>}: processing upgrade {<key>}, {<jon>}...")
             =/  data  ?:(?=([%o *] jon) p.jon ~)
             =/  owner  (~(get by data) 'owner')
             ?~  owner

@@ -22,7 +22,7 @@
     |=  [t=@tas m=tape]
     ^+  same
 
-    ?:  =(1 0)  same
+    ?:  =(1 1)  same
 
     ?+  t  same
       %info
