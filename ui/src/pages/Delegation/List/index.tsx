@@ -31,7 +31,11 @@ export const DelegationList: FC = observer(() => {
 
   return (
     <CenteredPane
-      style={{ height: "100%", marginTop: 16 }}
+      style={{
+        height: "100%",
+        paddingTop: 16,
+        overflowY: "scroll",
+      }}
       width={isMobile ? "calc(100% - 24px)" : 500}
       bordered={false}
     >
@@ -47,7 +51,7 @@ export const DelegationList: FC = observer(() => {
           </Flex>
         }
       />
-      <Flex flexDirection="column">
+      <Flex flexDirection="column" pb={16}>
         <DelegationCard ship={app.account!} />
         <Card
           style={{ borderColor: "transparent" }}

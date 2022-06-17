@@ -78,7 +78,7 @@ export const BoothStore = types
           yield boothApi.getAll();
         if (error) throw error;
         self.loader.set("loaded");
-        Object.values(response).forEach(async (booth: any) => {
+        Object.values(response).forEach((booth: any) => {
           // a hacky way to remove dms for now
           if (!booth.key.includes("dm--")) {
             const newBooth = BoothModel.create({
@@ -98,11 +98,10 @@ export const BoothStore = types
               }),
               loader: { state: "loaded" },
             });
-
-            newBooth.isActive && newBooth.proposalStore.getProposals();
-            // Initialize booth store
-            newBooth.isActive && newBooth.participantStore.getParticipants();
-            newBooth.isActive && newBooth.delegateStore.getDelegates();
+            // newBooth.isActive && newBooth.proposalStore.getProposals();
+            // // Initialize booth store
+            // newBooth.isActive && newBooth.participantStore.getParticipants();
+            // newBooth.isActive && newBooth.delegateStore.getDelegates();
             self.booths.set(newBooth.key, newBooth);
           }
         });

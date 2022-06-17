@@ -115,7 +115,8 @@ export const Settings: FC = observer(() => {
     <CenteredPane
       style={{
         height: "100%",
-        marginTop: 16,
+        paddingTop: 16,
+        overflowY: "scroll",
       }}
       width={isMobile ? "calc(100% - 24px)" : 500}
       bordered={false}
@@ -124,209 +125,211 @@ export const Settings: FC = observer(() => {
         title="Settings"
         subtitle={{ text: getNameFromUrl(urlParams), patp: true }}
       />
-      <Card
-        style={{ borderColor: "transparent" }}
-        elevation="lifted"
-        padding="16px"
-        mt={3}
-      >
-        <Flex flexDirection="column" gap={2}>
-          <Text fontWeight="600" variant="h6" mb={2}>
-            Permissions
-          </Text>
-          {/* <Text variant="body" opacity={0.7} mb={2}>
+      <Flex flexDirection="column" pb={16}>
+        <Card
+          style={{ borderColor: "transparent" }}
+          elevation="lifted"
+          padding="16px"
+          mt={3}
+        >
+          <Flex flexDirection="column" gap={2}>
+            <Text fontWeight="600" variant="h6" mb={2}>
+              Permissions
+            </Text>
+            {/* <Text variant="body" opacity={0.7} mb={2}>
             Sets different permissions for proposal actions.
           </Text> */}
-          <FormControl.FieldSet pl={3} pr={3} mb={4}>
-            <Observer>
-              {() => {
-                return (
-                  <>
+            <FormControl.FieldSet pl={3} pr={3} mb={4}>
+              <Observer>
+                {() => {
+                  return (
+                    <>
+                      <FormControl.Field inline>
+                        <Label>Create proposals</Label>
+                        <Box flexDirection="column" alignItems="flex-end">
+                          <Select
+                            id="strategy"
+                            tabIndex={5}
+                            style={{ width: 175 }}
+                            placeholder="Select..."
+                            selectionOption={proposalPermission.state.value}
+                            gray={false}
+                            options={[
+                              {
+                                label: "Owner only",
+                                value: "owner",
+                              },
+                              {
+                                label: "Admins",
+                                value: "admin",
+                              },
+                              {
+                                label: "Members, Admins",
+                                value: "member-admin",
+                              },
+                              // {
+                              //   label: "Quadratic voting",
+                              //   disabled: true,
+                              //   value: "quadratic-voting",
+                              // },
+                            ]}
+                            onSelected={(option: any) => {
+                              proposalPermission.actions.onChange(option.value);
+                            }}
+                          />
+                        </Box>
+                      </FormControl.Field>
+                    </>
+                  );
+                }}
+              </Observer>
+            </FormControl.FieldSet>
+            <Text fontWeight="600" variant="h6" mb={2}>
+              Proposal defaults
+            </Text>
+            <Text variant="body" opacity={0.7} mb={2}>
+              These set the defaults for a new proposal form.
+            </Text>
+            <FormControl.FieldSet pl={3} pr={3}>
+              <Observer>
+                {() => {
+                  return (
                     <FormControl.Field inline>
-                      <Label>Create proposals</Label>
-                      <Box flexDirection="column" alignItems="flex-end">
-                        <Select
-                          id="strategy"
-                          tabIndex={5}
-                          style={{ width: 175 }}
-                          placeholder="Select..."
-                          selectionOption={proposalPermission.state.value}
-                          gray={false}
-                          options={[
-                            {
-                              label: "Owner only",
-                              value: "owner",
-                            },
-                            {
-                              label: "Admins",
-                              value: "admin",
-                            },
-                            {
-                              label: "Members, Admins",
-                              value: "member-admin",
-                            },
-                            // {
-                            //   label: "Quadratic voting",
-                            //   disabled: true,
-                            //   value: "quadratic-voting",
-                            // },
-                          ]}
-                          onSelected={(option: any) => {
-                            proposalPermission.actions.onChange(option.value);
-                          }}
+                      <Label>Quorum</Label>
+                      <Box justifyContent="flex-end">
+                        <Input
+                          style={{ width: 75 }}
+                          type="number"
+                          placeholder="ie. 50%"
+                          tabIndex={6}
+                          bg="ui.tertiary"
+                          rightIcon={
+                            <Icons.Percentage
+                              size={1}
+                              style={{ opacity: 0.5 }}
+                              color="text.primary"
+                              aria-hidden
+                            />
+                          }
+                          defaultValue={support.state.value}
+                          // error={title.computed.ifWasEverBlurredThenError}
+                          onChange={(e: any) =>
+                            support.actions.onChange(e.target.value)
+                          }
+                          onFocus={() => support.actions.onFocus()}
+                          onBlur={() => support.actions.onBlur()}
                         />
                       </Box>
                     </FormControl.Field>
-                  </>
-                );
-              }}
-            </Observer>
-          </FormControl.FieldSet>
-          <Text fontWeight="600" variant="h6" mb={2}>
-            Proposal defaults
-          </Text>
-          <Text variant="body" opacity={0.7} mb={2}>
-            These set the defaults for a new proposal form.
-          </Text>
-          <FormControl.FieldSet pl={3} pr={3}>
-            <Observer>
-              {() => {
-                return (
-                  <FormControl.Field inline>
-                    <Label>Quorum</Label>
-                    <Box justifyContent="flex-end">
-                      <Input
-                        style={{ width: 75 }}
-                        type="number"
-                        placeholder="ie. 50%"
-                        tabIndex={6}
-                        bg="ui.tertiary"
-                        rightIcon={
-                          <Icons.Percentage
-                            size={1}
-                            style={{ opacity: 0.5 }}
-                            color="text.primary"
-                            aria-hidden
-                          />
-                        }
-                        defaultValue={support.state.value}
-                        // error={title.computed.ifWasEverBlurredThenError}
-                        onChange={(e: any) =>
-                          support.actions.onChange(e.target.value)
-                        }
-                        onFocus={() => support.actions.onFocus()}
-                        onBlur={() => support.actions.onBlur()}
-                      />
-                    </Box>
-                  </FormControl.Field>
-                );
-              }}
-            </Observer>
-            <Observer>
-              {() => {
-                return (
-                  <FormControl.Field inline>
-                    <Label>Duration</Label>
-                    <Box justifyContent="flex-end">
-                      <Input
-                        style={{ width: 95 }}
-                        type="number"
-                        placeholder="ie. 7"
-                        tabIndex={6}
-                        bg="ui.tertiary"
-                        rightIcon={
-                          <Text fontSize={2} opacity={0.5}>
-                            days
-                          </Text>
-                        }
-                        defaultValue={duration.state.value}
-                        // error={title.computed.ifWasEverBlurredThenError}
-                        onChange={(e: any) =>
-                          duration.actions.onChange(e.target.value)
-                        }
-                        onFocus={() => duration.actions.onFocus()}
-                        onBlur={() => duration.actions.onBlur()}
-                      />
-                    </Box>
-                  </FormControl.Field>
-                );
-              }}
-            </Observer>
-            <Observer>
-              {() => {
-                return (
-                  <Button
-                    ref={saveButton}
-                    isLoading={booth.settingsLoader.isLoading}
-                    // isLoading={
-                    //   (isNew && proposalStore.isAdding) ||
-                    //   (!isNew && proposal.isLoading)
-                    // }
-                    mt={4}
-                    type="submit"
-                    variant="minimal"
-                    onClick={onSubmit}
-                    disabled={form.computed.isError}
-                  >
-                    Save
-                  </Button>
-                );
-              }}
-            </Observer>
-          </FormControl.FieldSet>
-        </Flex>
-      </Card>
-      <Card
-        style={{ borderColor: "transparent" }}
-        elevation="lifted"
-        padding="16px"
-        mt={3}
-      >
-        <Flex flexDirection="column" gap={2}>
-          <Text fontWeight="600" variant="h6" mb={2}>
-            Custom actions
-          </Text>
-          <Text variant="body" opacity={0.7} mb={2}>
-            Hoon code that can be configured to execute via a proposal choice.
-            You can add additional actions by following the guide{" "}
-            <a
-              target="_blank"
-              href="https://docs.holium.com/ballot/custom-actions"
-            >
-              here
-            </a>
-            .
-          </Text>
-          {customActions.length === 0 && (
-            <Text
-              variant="body"
-              style={{
-                opacity: 0.6,
-                height: 110,
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              No custom actions
-            </Text>
-          )}
-          <Flex flexDirection="column" gap={8}>
-            {customActions.map((action: any, index: number) => {
-              return (
-                <GenericRow key={`${action.label}-${index}`}>
-                  <Flex flexDirection="column">
-                    {action.label}
-                    <Text mt="2px" opacity={0.7} fontSize="12px">
-                      {action.filename}
-                    </Text>
-                  </Flex>
-                </GenericRow>
-              );
-            })}
+                  );
+                }}
+              </Observer>
+              <Observer>
+                {() => {
+                  return (
+                    <FormControl.Field inline>
+                      <Label>Duration</Label>
+                      <Box justifyContent="flex-end">
+                        <Input
+                          style={{ width: 95 }}
+                          type="number"
+                          placeholder="ie. 7"
+                          tabIndex={6}
+                          bg="ui.tertiary"
+                          rightIcon={
+                            <Text fontSize={2} opacity={0.5}>
+                              days
+                            </Text>
+                          }
+                          defaultValue={duration.state.value}
+                          // error={title.computed.ifWasEverBlurredThenError}
+                          onChange={(e: any) =>
+                            duration.actions.onChange(e.target.value)
+                          }
+                          onFocus={() => duration.actions.onFocus()}
+                          onBlur={() => duration.actions.onBlur()}
+                        />
+                      </Box>
+                    </FormControl.Field>
+                  );
+                }}
+              </Observer>
+              <Observer>
+                {() => {
+                  return (
+                    <Button
+                      ref={saveButton}
+                      isLoading={booth.settingsLoader.isLoading}
+                      // isLoading={
+                      //   (isNew && proposalStore.isAdding) ||
+                      //   (!isNew && proposal.isLoading)
+                      // }
+                      mt={4}
+                      type="submit"
+                      variant="minimal"
+                      onClick={onSubmit}
+                      disabled={form.computed.isError}
+                    >
+                      Save
+                    </Button>
+                  );
+                }}
+              </Observer>
+            </FormControl.FieldSet>
           </Flex>
-        </Flex>
-      </Card>
+        </Card>
+        <Card
+          style={{ borderColor: "transparent" }}
+          elevation="lifted"
+          padding="16px"
+          mt={3}
+        >
+          <Flex flexDirection="column" gap={2}>
+            <Text fontWeight="600" variant="h6" mb={2}>
+              Custom actions
+            </Text>
+            <Text variant="body" opacity={0.7} mb={2}>
+              Hoon code that can be configured to execute via a proposal choice.
+              You can add additional actions by following the guide{" "}
+              <a
+                target="_blank"
+                href="https://docs.holium.com/ballot/custom-actions"
+              >
+                here
+              </a>
+              .
+            </Text>
+            {customActions.length === 0 && (
+              <Text
+                variant="body"
+                style={{
+                  opacity: 0.6,
+                  height: 110,
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                No custom actions
+              </Text>
+            )}
+            <Flex flexDirection="column" gap={8}>
+              {customActions.map((action: any, index: number) => {
+                return (
+                  <GenericRow key={`${action.label}-${index}`}>
+                    <Flex flexDirection="column">
+                      {action.label}
+                      <Text mt="2px" opacity={0.7} fontSize="12px">
+                        {action.filename}
+                      </Text>
+                    </Flex>
+                  </GenericRow>
+                );
+              })}
+            </Flex>
+          </Flex>
+        </Card>
+      </Flex>
     </CenteredPane>
   );
 });
