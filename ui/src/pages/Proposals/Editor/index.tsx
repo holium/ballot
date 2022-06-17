@@ -1,7 +1,7 @@
-import React, { FC, useMemo } from "react";
+import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Observer, observer } from "mobx-react";
-import MDEditor from "@uiw/react-md-editor";
+import MDEditor, { ICommand } from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
 import {
   ListHeader,
@@ -29,14 +29,21 @@ import { createPath, getKeyFromUrl } from "../../../logic/utils/path";
 import { toJS } from "mobx";
 import { emptyState } from "./empty";
 import { useMst } from "../../../logic/stores/root";
+import { useMobile } from "../../../logic/utils/useMobile";
 
 export const ProposalEditor: FC = observer(() => {
   const saveButton = React.createRef<HTMLButtonElement>();
   const navigate = useNavigate();
+  const isMobile = useMobile();
   const { store, app } = useMst();
   const urlParams = useParams();
+  // const [actionConfigs, setActionConfigs] = useState([]);
 
   let body = emptyState();
+  const booth = store.booth!;
+  useEffect(() => {
+    booth.getCustomActions();
+  }, []);
   const proposalStore = store.booth?.proposalStore!;
   let proposal: any = store.booth?.proposalStore!.proposals.get(
     urlParams.proposalId!
@@ -63,6 +70,8 @@ export const ProposalEditor: FC = observer(() => {
     app.setCurrentUrl(newPath);
   };
 
+  let initialForm = proposal;
+
   const onSubmit = async () => {
     let responseProposal: any;
     const proposalStore = store.booth!.proposalStore;
@@ -83,6 +92,25 @@ export const ProposalEditor: FC = observer(() => {
     }
   };
 
+  // Filters commands out of the toolbar when in mobile
+  const filterCommands = useCallback(
+    (command: ICommand<string>, isExtra: boolean) => {
+      if (isMobile && isExtra) {
+        return false;
+      }
+      return command;
+    },
+    [isMobile]
+  );
+
+  if (isNew) {
+    initialForm = {
+      ...initialForm,
+      support: booth.defaults?.support,
+      duration: booth.defaults?.duration,
+    };
+  }
+
   const {
     form,
     title,
@@ -94,8 +122,8 @@ export const ProposalEditor: FC = observer(() => {
     support,
     choices,
   } = useMemo(
-    () => createProposalFormFields(proposal),
-    [proposal && proposal.isLoaded]
+    () => createProposalFormFields(initialForm),
+    [proposal, proposal && proposal.isLoaded, booth.customActions.length]
   );
 
   body =
@@ -131,6 +159,7 @@ export const ProposalEditor: FC = observer(() => {
           <FormControl.FieldSet pl={3} pr={3}>
             <Observer>
               {() => {
+                const isMobileMode = isMobile;
                 return (
                   <FormControl.Field>
                     <MarkdownEditor>
@@ -140,6 +169,7 @@ export const ProposalEditor: FC = observer(() => {
                         preview="edit"
                         value={content.state.value}
                         defaultTabEnable={true}
+                        commandsFilter={filterCommands}
                         textareaProps={{
                           tabIndex: 2,
                           placeholder: "Explain more about your proposal",
@@ -174,7 +204,11 @@ export const ProposalEditor: FC = observer(() => {
               {() => {
                 return (
                   <ChoiceEditor
+                    actions={booth.customActions}
                     choices={choices.state.value}
+                    onActionUpdate={(activeActions: any) => {
+                      // setActionConfigs(activeActions);
+                    }}
                     onUpdate={(elements: ChoiceType[]) =>
                       choices.actions.onChange(elements)
                     }
@@ -382,8 +416,13 @@ export const ProposalEditor: FC = observer(() => {
 
   return (
     <Grid2.Box fluid scroll>
-      <Grid2.Box>
-        <Grid2.Column mb="16px" lg={12} xl={12}>
+      <Grid2.Box {...(isMobile && { p: 0 })}>
+        <Grid2.Column
+          {...(isMobile && { noGutter: true })}
+          mb="16px"
+          lg={12}
+          xl={12}
+        >
           <Grid2.Row>
             <Grid2.Column>
               <BreadcrumbNav

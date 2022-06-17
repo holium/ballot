@@ -17,11 +17,14 @@ import { useMst } from "../../../logic/stores/root";
 import { ParticipantModelType } from "../../../logic/stores/participants";
 import { observer } from "mobx-react";
 import { getKeyFromUrl, getNameFromUrl } from "../../../logic/utils/path";
+import { useMobile } from "../../../logic/utils/useMobile";
 
 export const DelegationList: FC = observer(() => {
   const { app, metadata, store } = useMst();
+  const isMobile = useMobile();
   const urlParams = useParams();
   const currentBooth = store.booths.get(getKeyFromUrl(urlParams))!;
+  const delegateStore = currentBooth.delegateStore;
 
   const participants = currentBooth.participantStore.list;
   const totalVotingPower = participants.length;
@@ -29,7 +32,7 @@ export const DelegationList: FC = observer(() => {
   return (
     <CenteredPane
       style={{ height: "100%", marginTop: 16 }}
-      width={500}
+      width={isMobile ? "calc(100% - 24px)" : 500}
       bordered={false}
     >
       <Header
@@ -45,7 +48,7 @@ export const DelegationList: FC = observer(() => {
         }
       />
       <Flex flexDirection="column">
-        <DelegationCard votingPower={1} ship={app.account!} />
+        <DelegationCard ship={app.account!} />
         <Card
           style={{ borderColor: "transparent" }}
           elevation="lifted"
@@ -63,7 +66,9 @@ export const DelegationList: FC = observer(() => {
                   participant.name !== app.ship.patp
               )
               .map((participant: ParticipantModelType) => {
-                const participantVotingPower = 1; // todo implement when delegaton backend is built
+                const participantVotingPower = delegateStore.getVotingPower(
+                  participant.key
+                ); // todo implement when delegaton backend is built
                 const participantMetadata: any = metadata.contactsMap.get(
                   participant.name
                 ) || {

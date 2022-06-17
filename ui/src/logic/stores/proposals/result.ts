@@ -7,13 +7,14 @@ import {
   VoteModel,
   VoteModelType,
 } from ".";
+import votes from "../../api/votes";
 import { BoothModelType } from "../booths";
 import { rootStore } from "../root";
 
 export const ResultSummaryModel = types.model({
   voteCount: types.optional(types.number, 0),
   participantCount: types.optional(types.number, 1),
-  reason: types.maybeNull(types.enumeration(["tied", "support"])),
+  reason: types.maybeNull(types.string),
   status: types.optional(
     types.enumeration("ResultStatus", ["counted", "failed", "preliminary"]),
     "preliminary"
@@ -32,13 +33,40 @@ export const ResultModel = types
   })
   .views((self) => ({
     get voteCount() {
-      return self.votes.size;
+      const parent: ProposalModelType = getParent(self, 1);
+      return Array.from(self.votes.values()).reduce(
+        (count: number, voteRecord: any) => {
+          const votingPower = rootStore.store.booths
+            .get(parent.boothKey)!
+            .delegateStore.getVotingPower(voteRecord.voter);
+          count = count + votingPower;
+          return count;
+        },
+        0
+      );
     },
     get participantCount(): number {
       const parentBooth: BoothModelType = getParent(self, 4);
       return parentBooth.participantStore.count;
     },
     get getMyVote(): VoteModelType {
+      // TODO clean this up
+      let ourVote: any = null;
+      Object.values(Object.fromEntries(self.votes.entries())).forEach(
+        (vote: VoteModelType) => {
+          if (
+            Object.keys(Object.fromEntries(vote.delegators.entries())).includes(
+              rootStore.app.ship.patp
+            )
+          ) {
+            ourVote = vote;
+          }
+        }
+      );
+      if (ourVote) {
+        return ourVote;
+      }
+
       return self.votes.get(rootStore.app.ship.patp)!;
     },
   }))
@@ -59,7 +87,10 @@ export const ResultModel = types
       const tallyMap: any = voteArray.reduce(
         (tallyObj: any, vote: VoteModelType) => {
           const choiceLabel = vote.choice.label;
-          tallyObj[choiceLabel] = tallyObj[choiceLabel] + 1;
+          const votingPower = rootStore.store.booths
+            .get(parent.boothKey)!
+            .delegateStore.getVotingPower(vote.voter);
+          tallyObj[choiceLabel] = tallyObj[choiceLabel] + votingPower;
           return tallyObj;
         },
         initialTally

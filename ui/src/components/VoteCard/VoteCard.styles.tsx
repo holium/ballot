@@ -15,7 +15,8 @@ export const VoteCardButton = styled(Button)<StyleProps>`
   padding: 0px;
   width: 100%;
   border-radius: 3px;
-  height: 32px;
+  padding: 4px;
+  min-height: 32px;
   svg {
     width: 18px;
     height: 18px;
@@ -25,6 +26,11 @@ export const VoteCardButton = styled(Button)<StyleProps>`
     pointer-events: none;
     color: ${(props: StyleProps) => `${props.theme.colors.text.disabled}`};
     background: ${(props: StyleProps) => `${props.theme.colors.ui.disabled}25`};
+  }
+  table {
+    td {
+      text-align: left;
+    }
   }
   ${(props) =>
     props.additionalVariant === "submit" &&

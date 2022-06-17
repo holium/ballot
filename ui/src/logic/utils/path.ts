@@ -6,7 +6,7 @@ export const createPath = (
   page: "proposals" | "delegate" | string = "proposals",
   proposalId: string = "",
   subPath: string = ""
-) => {
+): string => {
   if (subPath) {
     subPath = `/${subPath}`;
   }

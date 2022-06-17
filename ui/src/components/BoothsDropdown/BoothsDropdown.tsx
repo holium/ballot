@@ -111,7 +111,7 @@ export const BoothsDropdown: FC<BoothDrowdownProps> = (
       flexDirection="column"
       onClick={(evt: any) => {
         evt.preventDefault();
-        evt.stopPropagation();
+        // evt.stopPropagation();
       }}
     >
       <Box

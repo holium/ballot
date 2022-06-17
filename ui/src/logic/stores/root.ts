@@ -83,6 +83,11 @@ export function onChannel(data: ChannelResponseModelType) {
         if (participantBooth)
           participantBooth.participantStore.onEffect(effect, context);
         break;
+      case "delegate":
+        const delegateBooth = rootStore.store.booths.get(context.booth!)!;
+        if (delegateBooth)
+          delegateBooth.delegateStore.onEffect(effect, context);
+        break;
       case "proposal":
         const proposalBooth = rootStore.store.booths.get(
           responseJson.context.booth!

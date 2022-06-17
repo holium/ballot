@@ -1,4 +1,4 @@
-import React, { FC, useEffect } from "react";
+import React, { FC, useCallback, useEffect, useMemo } from "react";
 import { observer } from "mobx-react";
 import { useLocation, useNavigate, Outlet, useParams } from "react-router-dom";
 import Helmet from "react-helmet";
@@ -21,6 +21,7 @@ import { createPath, getKeyFromUrl } from "./logic/utils/path";
 import { toJS } from "mobx";
 import { useMst } from "./logic/stores/root";
 import { BoothModelType } from "./logic/stores/booths";
+import { useMobile } from "./logic/utils/useMobile";
 
 export const appName = "ballot";
 
@@ -29,9 +30,8 @@ export const App: FC = observer(() => {
   const location = useLocation();
   const urlParams = useParams();
   const { isShowing, toggle } = useDialog();
-
+  const isMobile = useMobile();
   const { store, app, metadata } = useMst();
-
   // Runs on initial load
   useEffect(() => {
     app.setCurrentUrl(location.pathname);
@@ -59,6 +59,66 @@ export const App: FC = observer(() => {
     app.setTheme(app.theme === "light" ? "dark" : "light");
   };
 
+  const routes = [
+    {
+      icon: <Icons.SurveyLine />,
+      name: "Proposals",
+      nav: "proposals",
+      uri:
+        store.booth?.type === "ship"
+          ? `/apps/${appName}/booth/${store.booth?.key}/proposals`
+          : `/apps/${appName}/booth/${store.booth?.key}/proposals`,
+    },
+    {
+      icon: <Icons.ParentLine />,
+      name: "Delegation",
+      nav: "delegation",
+      uri:
+        store.booth?.type === "ship"
+          ? `/apps/${appName}/booth/${store.booth?.key}/delegation`
+          : `/apps/${appName}/booth/${store.booth?.key}/delegation`,
+    },
+  ];
+
+  if (store.booth?.hasAdmin) {
+    routes.push({
+      icon: <Icons.SettingsLine />,
+      name: "Settings",
+      nav: "settings",
+      uri: `/apps/${appName}/booth/${store.booth?.key}/settings`,
+    });
+  }
+
+  const onContextClick = useCallback(
+    (selectedBooth: Partial<BoothModelType>) => {
+      let newPath = createPath(selectedBooth.key!, app.currentPage);
+      navigate(newPath);
+      app.setCurrentUrl(newPath, app.currentPage);
+      store.setBooth(selectedBooth.key!);
+    },
+    [app]
+  );
+
+  const onAccept = useCallback(
+    (boothName: string) => {
+      store.booths.get(boothName)!.acceptInvite(boothName);
+    },
+    [store.booths]
+  );
+
+  const BoothsContext = useMemo(
+    () => (
+      <BoothsDropdown
+        booths={store.list}
+        onNewBooth={toggle}
+        onJoin={onAccept}
+        onAccept={onAccept}
+        onContextClick={onContextClick}
+      />
+    ),
+    [store.list]
+  );
+
   const contextLoading =
     store.isLoading ||
     metadata.groupsLoader.isLoading ||
@@ -70,7 +130,7 @@ export const App: FC = observer(() => {
       <Helmet defer={false}>
         <title>{`${app.title} | ${app.ship.patp}`}</title>
       </Helmet>
-      <OSViewPort bg="primary" blur={isShowing}>
+      <OSViewPort blur={isShowing} bg="primary">
         <Dialog
           variant="simple"
           hasCloseButton
@@ -80,9 +140,10 @@ export const App: FC = observer(() => {
           isShowing={isShowing}
           onHide={toggle}
         >
-          <NewBoothDialog toggle={toggle} onJoin={store.joinBooth} />
+          {/* <NewBoothDialog toggle={toggle} onJoin={store.joinBooth} /> */}
         </Dialog>
         <AppWindow
+          isMobile={isMobile}
           isStandalone
           loadingContext={contextLoading}
           style={{ padding: "0px 16px" }}
@@ -90,24 +151,7 @@ export const App: FC = observer(() => {
             icon: <Icons.AppBallotSM size={2} />,
             name: "Ballot",
             color: "#6535CC",
-            contextMenu: (
-              <BoothsDropdown
-                booths={store.list}
-                onNewBooth={toggle}
-                onJoin={(boothName: string) =>
-                  store.booths.get(boothName)!.acceptInvite(boothName)
-                }
-                onAccept={(boothName: string) =>
-                  store.booths.get(boothName)!.acceptInvite(boothName)
-                }
-                onContextClick={(selectedBooth: Partial<BoothModelType>) => {
-                  let newPath = createPath(selectedBooth.key!, app.currentPage);
-                  navigate(newPath);
-                  app.setCurrentUrl(newPath, app.currentPage);
-                  store.setBooth(selectedBooth.key!);
-                }}
-              />
-            ),
+            contextMenu: BoothsContext,
           }}
           ship={{
             patp: ship.patp,
@@ -141,26 +185,7 @@ export const App: FC = observer(() => {
             navigate(route.uri);
             app.setCurrentUrl(route.uri, route.name.toLowerCase());
           }}
-          subRoutes={[
-            {
-              icon: <Icons.SurveyLine />,
-              name: "Proposals",
-              nav: "proposals",
-              uri:
-                store.booth?.type === "ship"
-                  ? `/apps/${appName}/booth/${store.booth?.key}/proposals`
-                  : `/apps/${appName}/booth/${store.booth?.key}/proposals`,
-            },
-            {
-              icon: <Icons.ParentLine />,
-              name: "Delegation",
-              nav: "delegation",
-              uri:
-                store.booth?.type === "ship"
-                  ? `/apps/${appName}/booth/${store.booth?.key}/delegation`
-                  : `/apps/${appName}/booth/${store.booth?.key}/delegation`,
-            },
-          ]}
+          subRoutes={routes}
           contexts={store.list}
         >
           {store.booth && store.booth.isLoaded && <Outlet />}

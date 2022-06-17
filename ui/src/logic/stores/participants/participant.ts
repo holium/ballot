@@ -8,8 +8,8 @@ export const ParticipantModel: any = types
     name: types.string,
     created: types.number,
     role: types.optional(
-      types.enumeration(["owner", "participant"]),
-      "participant"
+      types.enumeration(["owner", "member", "admin"]),
+      "member"
     ),
     metadata: types.optional(ContactMetadataModel, { color: "#000000" }),
     status: types.enumeration("State", [
