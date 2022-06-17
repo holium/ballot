@@ -6,10 +6,7 @@ import { urbitPlugin } from "@urbit/vite-plugin-urbit";
 // https://vitejs.dev/config/
 export default ({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd()));
-  const SHIP_URL =
-    process.env.SHIP_URL ||
-    process.env.VITE_SHIP_URL ||
-    "http://localhost:8080";
+  const SHIP_URL = process.env.SHIP_URL || process.env.VITE_SHIP_URL;
   // console.log(SHIP_URL);
 
   return defineConfig({
@@ -29,22 +26,14 @@ export default ({ mode }) => {
         "styled-system": path.resolve("./node_modules/styled-system"),
       },
     },
-    // optimizeDeps: {
-    //   exclude: [
-    //     "@holium/design-system/node_modules/react",
-    //     "@holium/design-system/node_modules/react-dom",
-    //     "@holium/design-system/node_modules/styled-components",
-    //     "@holium/design-system/node_modules/styled-system",
-    //   ],
-    // },
     server: {
-      port: parseInt(process.env.VITE_PORT),
+      port: process.env.VITE_PORT ? parseInt(process.env.VITE_PORT) : 3000,
       fs: {
         allow: ["../../design-system", "../"],
       },
     },
     plugins: [
-      urbitPlugin({ base: "ballot", target: SHIP_URL, secure: false }),
+      urbitPlugin({ base: "ballot", target: SHIP_URL!, secure: false }),
       reactRefresh(),
     ],
   });

@@ -166,6 +166,14 @@ export const ProposalModel = types
           if (newVote.voter === rootStore.app.ship.patp) {
             self.results!.didVote = true;
           }
+          if (
+            newVote.delegators &&
+            Object.keys(
+              Object.fromEntries(newVote.delegators.entries())
+            ).includes(rootStore.app.ship.patp)
+          ) {
+            self.results!.didVote = true;
+          }
           self.results!.votes.set(vote.voter, newVote);
         });
         self.results!.generateResultSummary();
@@ -181,9 +189,22 @@ export const ProposalModel = types
      * @param {[voter: string]: VoteModelType} voteMap
      */
     setVotes(voteMap: any) {
+      // rootStore.store.booth?.delegateStore.
+      const ourDelegate = rootStore.store.booth?.delegateStore.getDelegate(
+        rootStore.app.ship.patp
+      );
       Object.values(voteMap || []).forEach((vote: any) => {
         const newVote = VoteModel.create(vote);
         if (newVote.voter === rootStore.app.ship.patp) {
+          self.results!.didVote = true;
+        }
+
+        if (
+          newVote.delegators &&
+          Object.keys(
+            Object.fromEntries(newVote.delegators.entries())
+          ).includes(rootStore.app.ship.patp)
+        ) {
           self.results!.didVote = true;
         }
         self.results!.votes.set(vote.voter, newVote);

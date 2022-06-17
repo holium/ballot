@@ -18,24 +18,6 @@ export default function AppRoutes() {
     <Routes>
       <Route path={`/apps/${appName}/`} element={<App />}>
         <Route
-          path={`/apps/${appName}/booth/:boothName/groups/:groupName/proposals`}
-          element={<Proposals />}
-        >
-          <Route index element={<ProposalList />} />
-          <Route
-            path={`/apps/${appName}/booth/:boothName/groups/:groupName/proposals/:proposalId`}
-            element={<ProposalDetail />}
-          />
-          <Route
-            path={`/apps/${appName}/booth/:boothName/groups/:groupName/proposals/create-new`}
-            element={<ProposalEditor />}
-          />
-          <Route
-            path={`/apps/${appName}/booth/:boothName/groups/:groupName/proposals/editor/:proposalId`}
-            element={<ProposalEditor />}
-          />
-        </Route>
-        <Route
           path={`/apps/${appName}/booth/:boothName/proposals`}
           element={<Proposals />}
         >
@@ -60,11 +42,9 @@ export default function AppRoutes() {
           <Route index element={<DelegationList />} />
         </Route>
         <Route
-          path={`/apps/${appName}/booth/:boothName/groups/:groupName/delegation`}
-          element={<Delegation />}
-        >
-          <Route index element={<DelegationList />} />
-        </Route>
+          path={`/apps/${appName}/booth/:boothName/settings`}
+          element={<Settings />}
+        />
       </Route>
       <Route path="*" element={<NoMatch />} />
     </Routes>

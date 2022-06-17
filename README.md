@@ -16,7 +16,7 @@ To get started using Ballot first you need to run `yarn` inside the `ui` directo
 
 To develop you'll need a running ship to point to. You should have set up a fake zod in the top level README.md. This will be running on `http://localhost:80`.
 
-Copy the `.env.local-example` file and rename it to `.env.local`. Set your own ship if you want. This will allow you to run `yarn dev`. This will proxy all requests to the ship except for those powering the interface, allowing you to see live data.
+Copy the `.env.local-example` file and rename it to `.env.zod`. Set your own ship if you want. This will allow you to run `yarn dev:env zod`. This will proxy all requests to the ship except for those powering the interface, allowing you to see live data.
 
 Regardless of what you run to develop, Vite will hot-reload code changes as you work so you don't have to constantly refresh.
 
@@ -29,37 +29,10 @@ yarn link
 
 Then in the `ballot/ui` folder run `yarn link "@holium/design-system"`.
 
-### Dojo commands
+#### Url for ballot
 
-```hoon
-|install ~zod %ballot
-|commit %ballot
-|rein %ballot [& %booth-store]
 ```
-
-Check agents
-
-```hoon
-> +agents %ballot
-status: running   %poll
-```
-
-Dbug
-
-```hoon
->   [%0 readers={} policies={}]
-> :poll +dbug
->=
-```
-
-Create a poll
-
-```hoon
-:: create a poll
-:poll &poll-command [%create-poll %test-poll [%open ~]]
-
-:: get polls
-:poll &poll-action [%get-polls ~]
+http://localhost:3000/apps/ballot/booth/~zod/proposals
 ```
 
 [react]: https://reactjs.org/

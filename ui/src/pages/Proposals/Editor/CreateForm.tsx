@@ -48,7 +48,7 @@ export const createProposalFormFields = (defaults: any = {}) => {
   newStartTime.setMinutes(0);
   newStartTime.setSeconds(0);
   const newEndTime = new Date();
-  newEndTime.setDate(newStartTime.getDate() + 7);
+  newEndTime.setDate(newStartTime.getDate() + defaults.duration || 7);
   newEndTime.setHours(newStartTime.getHours());
   newEndTime.setMinutes(0);
   newEndTime.setSeconds(0);
@@ -100,8 +100,8 @@ export const createProposalFormFields = (defaults: any = {}) => {
     id: "choices",
     form,
     initialValue: defaultChoices || [
-      { label: "Approve", action: "approve-action" },
-      { label: "Reject", action: "reject-action" },
+      { label: "Approve", action: "" },
+      { label: "Reject", action: "" },
     ],
     validationSchema: yup.array().min(2, "Need at least two choices."),
   });

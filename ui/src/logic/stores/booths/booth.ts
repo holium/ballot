@@ -23,6 +23,8 @@ import { ParticipantStore } from "../participants";
 import { ProposalModelType, ProposalStore } from "../proposals";
 import { rootStore } from "../root";
 import { toJS } from "mobx";
+import { DelegateStore } from "../delegates";
+import participants from "../../api/participants";
 
 const sortMap = {
   recent: (list: ProposalModelType[]) =>
@@ -48,6 +50,23 @@ export const BoothMetadataModel = types.union(
   GroupMetadataModel
 );
 
+const ActionForm = types.model({
+  label: types.string,
+  description: types.maybe(types.string),
+  filename: types.string,
+  key: types.string,
+  form: types.map(
+    types.union(
+      types.model({ type: types.string }),
+      types.model({ type: types.enumeration(["cord", "?"]) }),
+      types.model({
+        type: types.enumeration(["list"]),
+        options: types.array(types.string),
+      })
+    )
+  ),
+});
+
 export const BoothModel = types
   .model({
     key: types.identifier,
@@ -60,6 +79,14 @@ export const BoothModel = types
     permission: types.maybeNull(
       types.enumeration("Permission", ["owner", "admin", "member", "viewer"])
     ),
+    permissions: types.optional(
+      types.array(types.enumeration(["owner", "admin", "member"])),
+      []
+    ),
+    customActions: types.optional(types.array(ActionForm), []),
+    defaults: types.maybeNull(
+      types.model({ support: types.number, duration: types.number })
+    ),
     status: types.enumeration("State", [
       "pending", // spinner
       "enlisted", // group auto invite
@@ -69,8 +96,10 @@ export const BoothModel = types
       "active", // joined
     ]),
     loader: LoaderModel,
+    settingsLoader: types.optional(LoaderModel, { state: "initial" }),
     proposalStore: ProposalStore,
     participantStore: ParticipantStore,
+    delegateStore: DelegateStore,
     sortBy: types.optional(
       types.union(
         types.literal("recent"),
@@ -96,9 +125,43 @@ export const BoothModel = types
     get listParticipants() {
       return Array.from(self.participantStore.participants.values());
     },
-    get hasAdmin(): boolean {
-      // TODO use booth.permission (patrick fix)
+    get isOwner(): boolean {
       return self.owner === rootStore.app.ship.patp;
+    },
+    get hasCreatePermission(): boolean {
+      if (self.owner === rootStore.app.ship.patp) {
+        return true;
+      }
+
+      if (self.participantStore.isLoaded) {
+        const participant: ParticipantModelType =
+          self.participantStore.participants.get(rootStore.app.ship.patp);
+
+        if (self.permissions.includes(participant.role)) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    },
+    get hasAdmin(): boolean {
+      if (self.owner === rootStore.app.ship.patp) {
+        return true;
+      }
+      if (self.participantStore.isLoaded) {
+        const participant: ParticipantModelType =
+          self.participantStore.participants.get(rootStore.app.ship.patp);
+        if (
+          self.permissions.includes("admin") &&
+          participant.role === "admin"
+        ) {
+          return true;
+        }
+        return false;
+      }
+      return false;
     },
     get isLoading() {
       return self.loader.isLoading;
@@ -117,6 +180,24 @@ export const BoothModel = types
     setSortBy(sortBy: "recent" | "ending" | "starting") {
       self.sortBy = sortBy;
     },
+    /**
+     * Note: an action should set a loader and post to the ship. The reaction
+     *       effect will update the loader to state="loaded" and perform the
+     *       operation that the effect defined.
+     */
+    updateSettings: flow(function* (boothKey: string, updatedSettings: any) {
+      try {
+        self.settingsLoader.set("loading");
+        const [response, error] = yield boothApi.saveBooth(
+          boothKey,
+          updatedSettings
+        );
+        if (error) throw error;
+        // self.settingsLoader.set("loaded");
+      } catch (err: any) {
+        self.settingsLoader.error(err);
+      }
+    }),
     acceptInvite: flow(function* (boothKey: string) {
       try {
         const [response, error] = yield boothApi.acceptInvite(boothKey);
@@ -125,9 +206,24 @@ export const BoothModel = types
         self.loader.error(err);
       }
     }),
+    getCustomActions: flow(function* () {
+      try {
+        const [response, error] = yield boothApi.getCustomActions(self.key);
+        if (error) throw error;
+        // @ts-expect-error TODO look into this type issue
+        self.customActions = Object.keys(response).map((actionKey: string) => ({
+          label: response[actionKey].label,
+          description: response[actionKey].description,
+          filename: `${actionKey}.hoon`,
+          key: actionKey,
+          form: response[actionKey].form,
+        }));
+        return response;
+      } catch (err: any) {
+        self.loader.error(err);
+      }
+    }),
     updateEffect(update: any) {
-      // console.log("updateEffect in booth ", update);
-
       const validKeys = Object.keys(update).filter((key: string) =>
         self.hasOwnProperty(key)
       );
@@ -137,6 +233,15 @@ export const BoothModel = types
         value: update[key],
       }));
       applyPatch(self, patches);
+      if (self.loader.isLoading) {
+        self.loader.set("loaded");
+      }
+      if (self.settingsLoader.isLoading) {
+        self.settingsLoader.set("loaded");
+      }
+    },
+    errorEffect(error: any) {
+      console.log("error effect in booth: ", error);
     },
     remove(item: SnapshotIn<typeof self>) {
       destroy(item);

@@ -11,6 +11,8 @@ import {
   Fill,
   Box,
   Spinner,
+  Notification,
+  Tooltip,
 } from "@holium/design-system";
 import { ChoiceType, VoteType } from "../../logic/types/proposals";
 import { VoteBreakdownBar } from "../VoteBreakdownBar";
@@ -32,16 +34,18 @@ export type VoteCardProps = {
     patp: string;
     metadata: ContactModelType;
   };
+  delegate?: any;
   title: string;
   blurred?: boolean;
   loading?: boolean;
   timeLeft?: string;
   castingLoading?: boolean;
   strategy: string;
-  choices: [];
+  choices: ChoiceModelType[];
   chosenOption?: ChoiceModelType;
   voteResults?: ResultSummaryType;
   voteSubmitted?: boolean;
+  votingPower?: number;
   onClick: (option: string) => any;
   onVote: (chosenVote: VoteType) => any;
 };
@@ -51,6 +55,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
     style,
     disabled,
     loading,
+    delegate,
     castingLoading,
     currentUser,
     choices,
@@ -62,6 +67,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
     chosenOption,
     voteSubmitted,
     voteResults,
+    votingPower,
     onClick,
     onVote,
   } = props;
@@ -106,10 +112,10 @@ export const VoteCard: any = (props: VoteCardProps) => {
       </Flex>
     );
   } else if (!chosenOption) {
-    middleSection = choices?.map((choice: ChoiceType) => (
+    middleSection = choices?.map((choice: ChoiceModelType) => (
       <VoteCardButton
         variant="custom"
-        disabled={disabled}
+        disabled={disabled || votingPower === 0}
         chosenOption={chosenVote?.chosenVote?.label === choice.label}
         additionalVariant="option"
         key={choice.label}
@@ -118,12 +124,31 @@ export const VoteCard: any = (props: VoteCardProps) => {
           setChosenVote({
             chosenVote: {
               label: choice.label,
+              action: choice.action!,
             },
             proposalId: proposalId,
           })
         }
       >
-        {choice.label}
+        {choice.label}{" "}
+        {choice.action && choice.data && (
+          <Tooltip
+            style={{ position: "absolute", right: 6 }}
+            content={
+              <Card padding={2}>
+                <ActionDataTable
+                  orientation="column"
+                  action={choice.action!}
+                  data={choice.data}
+                />
+              </Card>
+            }
+            placement="bottom-left"
+            delay={0.5}
+          >
+            <Icons.TerminalLine opacity={0.5} color="text.primary" />
+          </Tooltip>
+        )}
       </VoteCardButton>
     ));
   } else if (chosenOption) {
@@ -204,14 +229,43 @@ export const VoteCard: any = (props: VoteCardProps) => {
             size="small"
             clickable={false}
           />
-          {/* <Text variant="hint" opacity={0.5}>
-            {`1 ${pluralize("vote", 1)}`}
-          </Text> */}
+          <Text variant="hint" opacity={0.5}>
+            {`${votingPower} ${pluralize("vote", votingPower!)}`}
+          </Text>
         </Flex>
+        {delegate && (
+          <Flex
+            display="inline-flex"
+            alignItems="center"
+            justifyContent="center"
+            textAlign="center"
+            flexDirection="column"
+            mt={1}
+            pl={2}
+            pr={2}
+          >
+            <Notification hasBorder customColor="#EF9134">
+              <Flex
+                width="100%"
+                flex={1}
+                flexDirection="column"
+                alignItems="center"
+              >
+                <Text textAlign="center" fontSize={2} fontWeight={400}>
+                  You've delegated to <b>{delegate.delegate}</b>
+                </Text>
+                {/* <Text fontSize={2} fontWeight={600}>
+                  {delegate.delegate}
+                </Text> */}
+              </Flex>
+            </Notification>
+          </Flex>
+        )}
         <Text mt={3} mb={3} variant="body">
           {title}
         </Text>
-        <Grid gridTemplateRows="auto" gridRowGap={1}>
+
+        <Grid position="relative" gridTemplateRows="auto" gridRowGap={1}>
           {middleSection}
         </Grid>
 
@@ -248,3 +302,63 @@ export const VoteCard: any = (props: VoteCardProps) => {
 };
 
 VoteCard.defaultProps = {};
+
+export const ActionDataTable = (props: {
+  action: string;
+  data: any;
+  orientation?: "column" | "row";
+}) => {
+  const actionConfig = Object.fromEntries(props.data);
+  const keys = Object.keys(actionConfig);
+  const values = Object.values<any>(actionConfig);
+  return (
+    <Flex
+      style={{ flex: 1, gap: 8 }}
+      flexDirection={props.orientation || "row"}
+      onClick={(evt: any) => evt.stopPropagation()}
+    >
+      <Flex flexDirection="row" style={{ flex: 1, gap: 6 }} alignItems="center">
+        <Icons.TerminalLine
+          width={18}
+          height={18}
+          opacity={0.5}
+          color="text.primary"
+        />
+        <Text fontWeight={500} fontSize={2} color="text.primary">
+          {props.action}
+        </Text>
+      </Flex>
+      <Flex
+        style={{ flex: 3, gap: 12 }}
+        flexDirection="row"
+        alignItems="center"
+      >
+        <Icons.ListOptions
+          width={18}
+          height={18}
+          opacity={0.5}
+          color="text.primary"
+        />
+        <Flex flexDirection="row" flexWrap="1">
+          {keys.map((key: string, index: number) => (
+            <Flex
+              key={key}
+              flexDirection="row"
+              alignItems="center"
+              p="2px 6px"
+              style={{ gap: 6 }}
+              borderRadius={6}
+              // backgroundColor="bg.tertiary"
+              borderWidth="1px"
+              borderStyle="solid"
+              borderColor="ui.borderColor"
+            >
+              <Text style={{ opacity: 0.7 }}>{key}:</Text>
+              <Text>{values[index].toString()}</Text>
+            </Flex>
+          ))}
+        </Flex>
+      </Flex>
+    </Flex>
+  );
+};

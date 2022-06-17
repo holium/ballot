@@ -9,26 +9,37 @@ import {
   BreadcrumbNav,
   Grid2,
   Box,
+  Tab,
 } from "@holium/design-system";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
 import { useNavigate, useParams } from "react-router";
 import { toJS } from "mobx";
 import { Observer, observer } from "mobx-react-lite";
-import { VoteCard } from "../../../components/VoteCard";
+import { ActionDataTable, VoteCard } from "../../../components/VoteCard";
 import { createPath, getKeyFromUrl } from "../../../logic/utils/path";
 import { descriptiveTimeString, displayDate } from "../../../logic/utils/time";
-import { DetailHeader, DetailBody } from "./Detail.styles";
+import {
+  DetailHeader,
+  DetailBody,
+  ProposalResultSection,
+} from "./Detail.styles";
 import { Status } from "../../../components/Status";
 import { useMst } from "../../../logic/stores/root";
-import { ProposalModelType } from "../../../logic/stores/proposals";
+import {
+  ChoiceModelType,
+  ProposalModelType,
+} from "../../../logic/stores/proposals";
 import { ProposalResult } from "./ProposalResults";
+import { useMobile } from "../../../logic/utils/useMobile";
+import { VoteResultList } from "./VoteResultList";
 
 export const ProposalDetail: FC = observer((props: any) => {
   const navigate = useNavigate();
   const urlParams = useParams();
+  const isMobile = useMobile();
   const { store, app, metadata } = useMst();
-
+  const [tab, setTab] = useState("details");
   const currentBoothKey = getKeyFromUrl(urlParams);
   store.setBooth(currentBoothKey);
 
@@ -97,9 +108,25 @@ export const ProposalDetail: FC = observer((props: any) => {
       };
     }, []);
 
+    const delegateStore = booth.delegateStore;
+    const winningChoice = toJS(
+      proposal.choices.find(
+        (choice: ChoiceModelType) => proposal.tally?.topChoice === choice.label
+      )
+    );
+    const hasAction =
+      winningChoice?.action && winningChoice?.data ? true : false;
+
     content = (
       <Grid2.Row reverse={["xs"]} justify="center">
-        <Grid2.Column mb="16px" md={6} lg={9} xl={9}>
+        <Grid2.Column
+          {...(isMobile && { noGutter: true })}
+          mb="16px"
+          md={6}
+          lg={9}
+          xl={9}
+          gap={12}
+        >
           <Card
             padding={0}
             style={{
@@ -132,30 +159,79 @@ export const ProposalDetail: FC = observer((props: any) => {
                 />
                 <KPI icon={<TlonIcon icon="Clock" />} value={time} />
               </Flex>
+              {/* {proposal.status === "Ended" && (
+                  <ProposalResult booth={booth} proposal={proposal} />
+                )} */}
+              <Flex style={{ gap: 16 }} mt={5} flexDirection="row">
+                <Tab
+                  active={tab === "details"}
+                  onClick={() => setTab("details")}
+                >
+                  Details
+                </Tab>
+                <Tab
+                  active={tab === "vote-breakdown"}
+                  isDisabled={
+                    proposal.status !== "Ended" ||
+                    proposal.tally?.status === "failed"
+                  }
+                  onClick={() => setTab("vote-breakdown")}
+                >
+                  Voters
+                </Tab>
+              </Flex>
             </DetailHeader>
             {proposal.status === "Ended" && (
-              <ProposalResult booth={booth} proposal={proposal} />
-            )}
-            <DetailBody>
-              <MDEditor.Markdown
-                style={{
-                  padding: 16,
-                  borderBottomLeftRadius: 6,
-                  borderBottomRightRadius: 6,
-                  background: "transparent",
-                  fontFamily: "Inter, sans-serif",
-                  color: "inherit",
-                }}
-                source={proposal.content}
-                rehypePlugins={[[rehypeSanitize]]}
+              <ProposalResult
+                hideBorderBottom={hasAction}
+                booth={booth}
+                proposal={proposal}
               />
-            </DetailBody>
+            )}
+            {proposal.status === "Ended" && hasAction && (
+              <ProposalResultSection
+                style={{ fontSize: 14, borderTop: "none", paddingTop: 2 }}
+              >
+                <ActionDataTable
+                  action={winningChoice?.action!}
+                  data={winningChoice?.data}
+                />
+              </ProposalResultSection>
+            )}
+            {tab === "details" && (
+              <>
+                <DetailBody>
+                  <MDEditor.Markdown
+                    style={{
+                      padding: 16,
+                      borderBottomLeftRadius: 6,
+                      borderBottomRightRadius: 6,
+                      background: "transparent",
+                      fontFamily: "Inter, sans-serif",
+                      color: "inherit",
+                    }}
+                    source={proposal.content}
+                    rehypePlugins={[[rehypeSanitize]]}
+                  />
+                </DetailBody>
+              </>
+            )}
+            {tab === "vote-breakdown" && (
+              <>
+                {proposal.status === "Ended" && (
+                  <Flex p={16}>
+                    <VoteResultList votes={proposal.results!.votes} />
+                  </Flex>
+                )}
+              </>
+            )}
           </Card>
         </Grid2.Column>
         <Grid2.Column gap={12} mb="16px" md={2} lg={3}>
           <Grid2.Row>
             <VoteCard
               style={{ width: "100%" }}
+              delegate={delegateStore.delegates.get(app.account.patp)}
               disabled={!isActive}
               choices={proposal.choices}
               title={proposal.title}
@@ -164,6 +240,7 @@ export const ProposalDetail: FC = observer((props: any) => {
               strategy={proposal.strategy}
               onVote={onVote}
               timeLeft={time}
+              votingPower={delegateStore.getVotingPower(app.account.patp)}
               chosenOption={chosenVote && chosenVote.choice}
               voteResults={proposal.results!.resultSummary}
               voteSubmitted={proposal.results!.didVote}
@@ -242,8 +319,13 @@ export const ProposalDetail: FC = observer((props: any) => {
 
   return (
     <Grid2.Box offset={40} fluid scroll ref={div}>
-      <Grid2.Box>
-        <Grid2.Column mb="16px" lg={12} xl={12}>
+      <Grid2.Box {...(isMobile && { p: 0 })}>
+        <Grid2.Column
+          {...(isMobile && { noGutter: true })}
+          mb="16px"
+          lg={12}
+          xl={12}
+        >
           <Grid2.Row>
             <Grid2.Column>
               <BreadcrumbNav

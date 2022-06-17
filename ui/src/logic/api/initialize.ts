@@ -124,7 +124,9 @@ export function initializeShipSubscriptions(booths: any[]) {
           ship: ship,
           app: "ballot",
           mark: "json",
-          json: { command: "null" },
+          // @lodlev-migdev - believe it or not this should be a valid
+          //   action at this point under the action/reaction/effect framework
+          json: { action: "ping" },
         },
       ])
         .then((res) => {

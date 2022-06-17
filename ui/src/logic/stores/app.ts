@@ -45,11 +45,17 @@ export const AppModel = types
       // Checks if delegation is selected
       // TODO better routing mst
       const matchesDelegation = matchPath(
-        `/apps/ballot/booth/:type/:boothName/delegation`,
+        `/apps/ballot/booth/:boothName/delegation`,
+        url
+      );
+      const matchesSettings = matchPath(
+        `/apps/ballot/booth/:boothName/settings`,
         url
       );
       if (matchesDelegation) {
         self.currentPage = "delegation";
+      } else if (matchesSettings) {
+        self.currentPage = "settings";
       } else {
         self.currentPage = "proposals";
       }
