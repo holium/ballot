@@ -1091,16 +1091,13 @@
 
           ::  for proposals, in addition to baseline permission check, allow
           ::   edit/delete if the member is the author (was given create-proposal permission)
-          =/  tst=[success=? msg=@t]
-          ?.  success.tst
+          =/  tst=[success=? msg=@t]  ?:  success.tst  tst
             =/  proposal-owner  (~(get by proposal) 'owner')
             ?~  proposal-owner  [%.n 'proposal owner not found']
             =/  proposal-owner  (so:dejs:format (need proposal-owner))
             =/  proposal-owner  `@p`(slav %p proposal-owner)
-            ?.  ?|(success.tst ?&(?!(success.tst) =(proposal-owner member-key)))
-              [%.n 'insufficient privileges']
-            [%.y 'no error']
-          [%.y 'no error']
+            ?:  =(proposal-owner `@p`(slav %p member-key))  [%.y 'no error']
+            [%.n 'insufficient privileges']
 
           ?.  success.tst  (send-error payload msg.tst)
 
@@ -1374,15 +1371,16 @@
           ::    or proposal creator can edit
           =/  tst=[success=? msg=@t]  ?:  is-update
             =/  tst=[success=? msg=@t]  (check-permission booth-key member-key 'edit-proposal')
+            ~&  >>  "{<dap.bowl>}: check-permission {<tst>}"
+            ?:  =(success.tst %.y)  [%.y 'no error']
             =/  proposal-owner  (~(get by proposal) 'owner')
             ?~  proposal-owner  [%.n 'proposal owner not found']
             =/  proposal-owner  (so:dejs:format (need proposal-owner))
             =/  proposal-owner  `@p`(slav %p proposal-owner)
             ::  for proposals, in addition to baseline permission check, allow
             ::   edit/delete if the member is the author (was given create-proposal permission)
-            ?.  ?|(success.tst ?&(?!(success.tst) =(proposal-owner member-key)))
-              [%.n 'insufficient privileges']
-            [%.y 'no error']
+            ?:  =(proposal-owner `@p`(slav %p member-key))  [%.y 'no error']
+            [%.n 'insufficient privileges']
           (check-permission booth-key member-key 'create-proposal')
 
           ?.  success.tst  (send-error payload msg.tst)
