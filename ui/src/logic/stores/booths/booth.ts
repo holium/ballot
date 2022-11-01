@@ -137,7 +137,7 @@ export const BoothModel = types
         const participant: ParticipantModelType =
           self.participantStore.participants.get(rootStore.app.ship.patp);
 
-        if (self.permissions.includes(participant.role)) {
+        if (self.permissions.includes(participant?.role)) {
           return true;
         } else {
           return false;
@@ -155,7 +155,7 @@ export const BoothModel = types
           self.participantStore.participants.get(rootStore.app.ship.patp);
         if (
           self.permissions.includes("admin") &&
-          participant.role === "admin"
+          participant?.role === "admin"
         ) {
           return true;
         }
