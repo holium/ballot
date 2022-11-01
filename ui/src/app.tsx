@@ -44,9 +44,11 @@ export const App: FC = observer(() => {
         } else {
           // use your current ship booth since we didnt find the url booth
           store.setBooth(app.ship.patp);
-          let newPath = createPath(store.booth!.key, app.currentPage);
-          navigate(newPath);
-          app.setCurrentUrl(newPath, app.currentPage);
+          if (store.booth?.key) {
+            const newPath = createPath(store.booth.key, app.currentPage);
+            navigate(newPath);
+            app.setCurrentUrl(newPath, app.currentPage);
+          }
           return;
         }
       }),
