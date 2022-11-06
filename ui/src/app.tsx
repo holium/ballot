@@ -22,6 +22,8 @@ import { toJS } from "mobx";
 import { useMst } from "./logic/stores/root";
 import { BoothModelType } from "./logic/stores/booths";
 import { useMobile } from "./logic/utils/useMobile";
+import { useRealmTheme } from "./logic/utils/useRealmTheme";
+import { AppModelType } from "./logic/stores/app";
 
 export const appName = "ballot";
 
@@ -32,6 +34,7 @@ export const App: FC = observer(() => {
   const { isShowing, toggle } = useDialog();
   const isMobile = useMobile();
   const { store, app, metadata } = useMst();
+  const realmTheme = useRealmTheme();
   // Runs on initial load
   useEffect(() => {
     app.setCurrentUrl(location.pathname);
@@ -55,8 +58,11 @@ export const App: FC = observer(() => {
     ]);
   }, []);
 
-  const toggleTheme = () => {
-    app.setTheme(app.theme === "light" ? "dark" : "light");
+  const getTheme = () => {
+    if (app.theme === "auto") {
+      return realmTheme ?? theme.light;
+    }
+    return theme[app.theme];
   };
 
   const routes = [
@@ -126,7 +132,7 @@ export const App: FC = observer(() => {
   const ship = app.account;
   return (
     // @ts-ignore
-    <ThemeProvider theme={theme[app.theme]}>
+    <ThemeProvider theme={getTheme()}>
       <Helmet defer={false}>
         <title>{`${app.title} | ${app.ship.patp}`}</title>
       </Helmet>
@@ -164,13 +170,27 @@ export const App: FC = observer(() => {
                   {ship.metadata.nickname || ship.patp}
                 </Text>
 
-                <Button
-                  data-prevent-menu-close
-                  variant="minimal"
-                  onClick={() => toggleTheme()}
-                >
-                  Theme: {app.theme}
-                </Button>
+                <Text pb={1} variant="body">
+                  Theme:
+                </Text>
+
+                <Flex gap={2}>
+                  {["light", "dark", "auto"].map((themeMode) => (
+                    <Button
+                      key={themeMode}
+                      data-prevent-menu-close
+                      style={{ textTransform: "capitalize" }}
+                      variant={
+                        app.theme === themeMode ? "primary" : "secondary"
+                      }
+                      onClick={() =>
+                        app.setTheme(themeMode as AppModelType["theme"])
+                      }
+                    >
+                      {themeMode}
+                    </Button>
+                  ))}
+                </Flex>
               </Flex>
             ),
           }}
