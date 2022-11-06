@@ -9,11 +9,10 @@ import {
   Menu,
   Text,
   MenuItem,
-  Spinner,
   GenericRow,
 } from "@holium/design-system";
 
-export type ParticipantRowProps = {
+export interface ParticipantRowProps {
   loading?: boolean;
   patp: string;
   avatar?: string;
@@ -22,21 +21,21 @@ export type ParticipantRowProps = {
   status: string;
   canAdmin?: boolean;
   onRemove: (patp: string) => any;
-};
+}
 
 export const ParticipantRow = (props: ParticipantRowProps) => {
   const { avatar, nickname, loading, canAdmin, patp, color, status, onRemove } =
     props;
 
   const moreButtonRef = React.useRef();
-  let anchorPoint: any,
-    show: boolean = false,
-    setShow: any;
+  let anchorPoint: any;
+  let show: boolean = false;
+  let setShow: any;
   const menuWidth = 180;
 
   // if a user has the ability to edit participants
   if (canAdmin) {
-    let config = useMenu(moreButtonRef, {
+    const config = useMenu(moreButtonRef, {
       orientation: "bottom-left",
       padding: 2,
       menuWidth,
@@ -75,7 +74,7 @@ export const ParticipantRow = (props: ParticipantRowProps) => {
       {canAdmin && (
         <>
           <IconButton
-            // @ts-ignore
+            // @ts-expect-error
             ref={moreButtonRef}
             id={`${patp}-more`}
             tabIndex={-1}

@@ -19,17 +19,16 @@ import { getKeyFromUrl } from "../../logic/utils/path";
 import { ParticipantModal } from "./Modal/ParticipantModal";
 import { ParticipantRow } from "./ParticipantRow";
 import { ParticipantModelType } from "../../logic/stores/participants";
-import { toJS } from "mobx";
 
 export const Container = styled(Card);
 
-export type ParticipantsProps = {
+export interface ParticipantsProps {
   loading: boolean;
   participants: any[];
   onAdd: (patp: string) => any;
   onRemove: (patp: string) => any;
   onClick?: () => any;
-};
+}
 
 const sortOrderType = ["active", "enlisted", "invited", "pending"];
 const sortRole = ["owner", "participant"];
@@ -42,7 +41,7 @@ export const Participants: FC<ParticipantsProps> = (
   const urlParams = useParams();
   const { store, metadata } = useMst();
   const [page, setPage] = useState(0);
-  let sortedParticipants = participants
+  const sortedParticipants = participants
     .sort((a: ParticipantModelType, b: ParticipantModelType) => {
       return sortOrderType.indexOf(b.type) - sortOrderType.indexOf(a.type);
     })
@@ -117,7 +116,7 @@ export const Participants: FC<ParticipantsProps> = (
                         .slice(startIndex, endIndex)
                         .map((ship: ParticipantModelType) => {
                           const participantMetadata: any =
-                            metadata.contactsMap.get(ship.name) || {
+                            metadata.contactsMap.get(ship.name) != null || {
                               color: "#000",
                             };
                           const isOwner = ship.role === "owner";

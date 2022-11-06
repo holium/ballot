@@ -32,7 +32,7 @@ export const descriptiveTimeold = ({
         //   descriptiveString = `${minutes + 1} minute`;
         // }
       } else {
-        descriptiveString = `less than a minute`;
+        descriptiveString = "less than a minute";
       }
     }
   }
@@ -68,7 +68,7 @@ const getDayString = (days: number, hours: number) => {
   } else if (days > 0) {
     return `${days} days`;
   } else {
-    return `1 day`;
+    return "1 day";
   }
 };
 
@@ -78,7 +78,7 @@ const getHourString = (hours: number, minutes?: number) => {
   } else if (hours > 0) {
     return `${hours} hours`;
   } else {
-    return `1 hour`;
+    return "1 hour";
   }
 };
 
@@ -88,7 +88,7 @@ const getMinString = (minutes: number) => {
   } else if (minutes > 0) {
     return `${minutes} minutes`;
   } else {
-    return ``;
+    return "";
   }
 };
 
@@ -112,7 +112,7 @@ export const descriptiveTimeString = (
   start: number,
   end: number
 ): { timeString: string; timerInterval: number | null } => {
-  let now = new Date().getTime();
+  const now = new Date().getTime();
   start = start * 1000;
   end = end * 1000;
   let timeString;
@@ -132,17 +132,17 @@ export const descriptiveTimeString = (
   } else {
     timeString = "Closed";
   }
-  let timerInterval = getTimerInterval(dateDiff);
+  const timerInterval = getTimerInterval(dateDiff);
   // console.log(timerInterval);
   return { timeString, timerInterval };
 };
 
-type DateDiff = {
+interface DateDiff {
   hours: number;
   minutes: number;
   days: number;
   seconds: number;
-};
+}
 
 /**
  * Calculates the time between start and end.
@@ -152,12 +152,12 @@ type DateDiff = {
  * @return {*}  {DateDiff}
  */
 export const getDateDiff = (start: number, end: number): DateDiff => {
-  var timeDiff = end - start;
-  let dayDiff = Math.floor(timeDiff / 1000 / 60 / 60 / 24);
-  var minDiff = Math.floor(timeDiff / 60 / 1000);
-  var hourDiff = timeDiff / 3600 / 1000;
-  var secDiff = Math.floor(timeDiff / 1000);
-  var diffObj: DateDiff = {
+  const timeDiff = end - start;
+  const dayDiff = Math.floor(timeDiff / 1000 / 60 / 60 / 24);
+  const minDiff = Math.floor(timeDiff / 60 / 1000);
+  const hourDiff = timeDiff / 3600 / 1000;
+  const secDiff = Math.floor(timeDiff / 1000);
+  const diffObj: DateDiff = {
     hours: 0,
     minutes: 0,
     days: dayDiff,

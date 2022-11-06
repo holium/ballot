@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   Card,
   Grid,
@@ -11,14 +11,13 @@ import {
 import { Observer } from "mobx-react";
 import styled from "styled-components";
 import { createNewBoothForm } from "./NewBoothForm";
-import { toJS } from "mobx";
 
 export const Container = styled(Card);
 
-export type NewBoothDailogProps = {
+export interface NewBoothDailogProps {
   status?: "loading" | "success" | "error";
   onJoin: (boothName: string) => any;
-};
+}
 
 export const NewBoothDialog: any = (props: NewBoothDailogProps) => {
   const { status, onJoin } = props;
@@ -49,7 +48,7 @@ export const NewBoothDialog: any = (props: NewBoothDailogProps) => {
                 <Button
                   variant="minimal"
                   type="submit"
-                  disabled={error ? true : false}
+                  disabled={!!error}
                   onClick={() => {
                     const formData = form.actions.submit();
                     onJoin(formData.boothName);

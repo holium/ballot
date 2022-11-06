@@ -2,10 +2,9 @@ import { Instance, onSnapshot, types } from "mobx-state-tree";
 import { createContext, useContext } from "react";
 import { AppModel } from "./app";
 import { BoothStore } from "./booths";
-import { cleanGroupMetadata, MetadataModel, MetadataType } from "./metadata";
+import { MetadataModel } from "./metadata";
 import { ChannelResponseModelType, EffectModelType } from "./common/effects";
-import { toJS } from "mobx";
-import { BaseWatcher, ChannelResponseType } from "../watcher";
+import { BaseWatcher } from "../watcher";
 
 import ShipModel from "./ship";
 
@@ -18,7 +17,7 @@ const RootModel = types.model("RootStore", {
   metadata: MetadataModel,
 });
 
-let initialState = RootModel.create({
+const initialState = RootModel.create({
   store: {}, // todo a smooth way to handle data persisting and getting new data without a bunch of loading
   app: loadRootSnapshot("app"),
   metadata: {},
@@ -80,20 +79,23 @@ export function onChannel(data: ChannelResponseModelType) {
         break;
       case "participant":
         const participantBooth = rootStore.store.booths.get(context.booth!)!;
-        if (participantBooth)
+        if (participantBooth) {
           participantBooth.participantStore.onEffect(effect, context);
+        }
         break;
       case "delegate":
         const delegateBooth = rootStore.store.booths.get(context.booth!)!;
-        if (delegateBooth)
+        if (delegateBooth) {
           delegateBooth.delegateStore.onEffect(effect, context);
+        }
         break;
       case "proposal":
         const proposalBooth = rootStore.store.booths.get(
           responseJson.context.booth!
         )!;
-        if (proposalBooth)
+        if (proposalBooth) {
           proposalBooth.proposalStore.onEffect(effect, context, action);
+        }
         break;
       // case "poll":
       //   const proposalPollBooth = rootStore.store.booths.get(

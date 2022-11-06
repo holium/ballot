@@ -1,6 +1,6 @@
 import React, { FC } from "react";
 import styled from "styled-components";
-import { Flex, Ship, Sigil, Text, ThemeType } from "@holium/design-system";
+import { Flex, Ship, Text, ThemeType } from "@holium/design-system";
 import { VoteModelType } from "../../../logic/stores/proposals";
 import { useMst } from "../../../logic/stores/root";
 import { DelegateModelType } from "../../../logic/stores/delegates/delegate";
@@ -9,9 +9,9 @@ interface IProps {
   votes: Map<string, VoteModelType>;
 }
 
-type StyleTableProps = {
+interface StyleTableProps {
   theme: ThemeType;
-};
+}
 
 const StyledTable = styled.table<StyleTableProps>`
   -webkit-font-smoothing: antialiased;
@@ -59,9 +59,8 @@ export const VoteResultList: FC<IProps> = (props: IProps) => {
       </thead>
 
       {voteArray.map((vote: VoteModelType) => {
-        const participantMetadata: any = metadata.contactsMap.get(
-          vote.voter
-        ) || {
+        const participantMetadata: any = metadata.contactsMap.get(vote.voter) !=
+          null || {
           color: "#000",
         };
         const delegateArray = Array.from(vote.delegators.values());

@@ -1,4 +1,4 @@
-import React, { useContext, createContext, useState } from "react";
+import React from "react";
 import { Routes, Route, Link } from "react-router-dom";
 import { App, appName } from "./app";
 // /proposals
@@ -11,7 +11,6 @@ import { Delegation } from "./pages/Delegation";
 import { DelegationList } from "./pages/Delegation/List";
 // /settings
 import { Settings } from "./pages/Settings";
-import { Navigate } from "react-router-dom";
 
 export default function AppRoutes() {
   return (

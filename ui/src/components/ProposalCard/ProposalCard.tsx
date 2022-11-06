@@ -1,28 +1,27 @@
-import React, { FC, useEffect, useMemo, useState } from "react";
-import styled from "styled-components";
 import {
-  Flex,
+  Box,
   Card,
-  Text,
-  KPI,
-  TlonIcon,
   ContextMenu,
+  Flex,
+  KPI,
   MenuItemProps,
   Ship,
-  Box,
+  Text,
+  TlonIcon,
 } from "@holium/design-system";
-import { toJS } from "mobx";
 import { Observer } from "mobx-react";
+import React, { FC, useEffect, useMemo, useState } from "react";
+import styled from "styled-components";
 
-import { Status } from "../Status";
-import { descriptiveTimeString } from "../../logic/utils/time";
-import { useMst } from "../../logic/stores/root";
-import { ProposalModelType } from "../../logic/stores/proposals";
 import { ContactModelType } from "../../logic/stores/metadata";
+import { ProposalModelType } from "../../logic/stores/proposals";
+import { useMst } from "../../logic/stores/root";
 import { failedReason } from "../../logic/utils/poll-failed";
+import { descriptiveTimeString } from "../../logic/utils/time";
 import { useMobile } from "../../logic/utils/useMobile";
+import { Status } from "../Status";
 
-export type ProposalCardType = {
+export interface ProposalCardType {
   proposal: ProposalModelType;
   onClick: (proposalId: any) => any;
   contextMenu: MenuItemProps[];
@@ -31,7 +30,7 @@ export type ProposalCardType = {
   authorMetadata?: ContactModelType;
   entity: "group" | "ship" | string;
   statusInfoValue?: string;
-};
+}
 
 const ProposalTitle = styled(Text)`
   white-space: nowrap;
@@ -144,19 +143,19 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
           >
             <Observer>
               {() => {
-                const booth = store.booths!.get(store.activeBooth!)!;
+                const booth = store.booths.get(store.activeBooth)!;
                 const proposalModel = booth?.proposalStore.proposals.get(
                   proposal.key
                 )!;
 
                 let voteCount =
-                  proposalModel.results.resultSummary!.voteCount || 0;
+                  proposalModel.results.resultSummary.voteCount || 0;
                 let participantCount = booth.participantStore.count || 1;
 
                 if (proposalModel.isVoteLoading) {
                   return <Skeleton style={{ height: 16, width: 60 }} />;
                 }
-                if (proposal.tally) {
+                if (proposal.tally != null) {
                   voteCount = proposal.tally.voteCount;
                   participantCount = proposal.tally.participantCount;
                 }
@@ -200,13 +199,12 @@ export const ProposalCard: FC<ProposalCardType> = (props: ProposalCardType) => {
   );
 };
 
-type TallyProps = {
+interface TallyProps {
   proposal: ProposalModelType;
-};
+}
 
 const TallyStatus: FC<TallyProps> = (props: TallyProps) => {
   const { proposal } = props;
-  proposal.tally?.status === "failed";
   const tally = proposal.tally!;
 
   return tally && tally.status === "failed" ? (

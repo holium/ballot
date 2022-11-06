@@ -1,6 +1,6 @@
-import React from "react";
 import { ComponentMeta, ComponentStory } from "@storybook/react";
-import { Status, StatusProps } from "./Status";
+import React from "react";
+import { Status } from "./Status";
 
 export default {
   title: "Components/Status",

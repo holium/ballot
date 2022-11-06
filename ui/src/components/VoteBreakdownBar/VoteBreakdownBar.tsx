@@ -1,15 +1,15 @@
-import React, { FC } from "react";
-import { KPI, Text, TlonIcon, Icons, Box } from "@holium/design-system";
+import React from "react";
+import { KPI, Text, Icons, Box } from "@holium/design-system";
 import { SideBySide, BarSet, Bar } from "./VoteBreakdownBar.styles";
 
-export type VoteBreakdownBarProps = {
+export interface VoteBreakdownBarProps {
   ourChoice?: boolean;
   win?: boolean;
   label: string;
   percentage: number;
   overlay?: boolean;
   width?: string;
-};
+}
 
 export const VoteBreakdownBar = (props: VoteBreakdownBarProps) => {
   const { win, label, percentage, overlay, ourChoice, width } = props;

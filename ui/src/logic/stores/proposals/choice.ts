@@ -1,14 +1,4 @@
-import {
-  types,
-  flow,
-  Instance,
-  SnapshotIn,
-  getParent,
-  destroy,
-  SnapshotOut,
-  applyPatch,
-  IJsonPatch,
-} from "mobx-state-tree";
+import { types, Instance } from "mobx-state-tree";
 
 export const ChoiceModel = types
   .model({

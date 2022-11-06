@@ -8,7 +8,7 @@ export default {
   argTypes: { onClick: { action: "clicked" } },
 };
 
-// @ts-ignore
+// @ts-expect-error
 const Template: Story = (args: ParticipantsProps) => {
   return (
     <Flex width="300px" height="364px">

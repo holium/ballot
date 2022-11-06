@@ -1,4 +1,3 @@
-import { URLSearchParamsInit } from "react-router-dom";
 import { appName } from "../../app";
 
 export const createPath = (
@@ -39,7 +38,7 @@ export const getNameFromUrl = (urlParams: {
   boothName?: string;
   groupName?: string;
 }) => {
-  const nameArr = urlParams.boothName && urlParams.boothName!.split("-groups-");
+  const nameArr = urlParams.boothName && urlParams.boothName.split("-groups-");
 
   if (nameArr?.length === 2) {
     return `${nameArr[0]}/${nameArr[1]}`;

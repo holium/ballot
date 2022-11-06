@@ -7,7 +7,7 @@ export default {
   component: VoteBreakdownBar,
 };
 
-// @ts-ignore
+// @ts-expect-error
 const Template: Story = (args: VoteBreakdownBarProps) => (
   <Flex style={{ gap: 4 }} flexDirection="column" width="860px">
     <VoteBreakdownBar

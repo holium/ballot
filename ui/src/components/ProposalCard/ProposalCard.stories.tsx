@@ -1,9 +1,7 @@
 import React from "react";
-import { ComponentMeta, ComponentStory, Story } from "@storybook/react";
+import { ComponentMeta, ComponentStory } from "@storybook/react";
 import { ProposalCard, ProposalCardType } from "./ProposalCard";
 import { Flex } from "@holium/design-system";
-import { ChoiceModel } from "../../logic/stores/proposals";
-import { types } from "mobx-state-tree";
 
 export default {
   title: "Components/ProposalCard",

@@ -3,17 +3,10 @@ import {
   types,
   flow,
   Instance,
-  SnapshotIn,
   getParent,
-  getSnapshot,
-  destroy,
-  SnapshotOut,
   applyPatch,
   IJsonPatch,
-  castToSnapshot,
-  SnapshotOrInstance,
 } from "mobx-state-tree";
-import { type } from "os";
 import {
   ChoiceModel,
   determineStatus,
@@ -24,7 +17,6 @@ import {
 
 import proposalsApi from "../../api/proposals";
 import votesApi from "../../api/votes";
-import { timeout } from "../../utils/dev";
 import { BoothModelType } from "../booths";
 import { ContextModelType, EffectModelType } from "../common/effects";
 
@@ -126,7 +118,6 @@ export const ProposalModel = types
         return self;
       } catch (err: any) {
         self.loader.error(err);
-        return;
       }
     }),
     castVote: flow(function* (chosenVote: VoteModelType) {
@@ -138,13 +129,13 @@ export const ProposalModel = types
         );
         if (error) throw error;
         const voter = chosenVote.voter || rootStore.app.ship.patp;
-        self.results!.votes.set(voter, {
+        self.results.votes.set(voter, {
           ...response.data,
           status: "pending",
           sig: null,
           voter,
         });
-        self.results!.didVote = true;
+        self.results.didVote = true;
         self.results.generateResultSummary();
       } catch (err: any) {
         self.loader.error(err);
@@ -164,7 +155,7 @@ export const ProposalModel = types
         Object.values(response || []).forEach((vote: any) => {
           const newVote = VoteModel.create(vote);
           if (newVote.voter === rootStore.app.ship.patp) {
-            self.results!.didVote = true;
+            self.results.didVote = true;
           }
           if (
             newVote.delegators &&
@@ -172,11 +163,11 @@ export const ProposalModel = types
               Object.fromEntries(newVote.delegators.entries())
             ).includes(rootStore.app.ship.patp)
           ) {
-            self.results!.didVote = true;
+            self.results.didVote = true;
           }
-          self.results!.votes.set(vote.voter, newVote);
+          self.results.votes.set(vote.voter, newVote);
         });
-        self.results!.generateResultSummary();
+        self.results.generateResultSummary();
         self.voteLoader.set("loaded");
       } catch (err: any) {
         self.voteLoader.error(err);
@@ -196,7 +187,7 @@ export const ProposalModel = types
       Object.values(voteMap || []).forEach((vote: any) => {
         const newVote = VoteModel.create(vote);
         if (newVote.voter === rootStore.app.ship.patp) {
-          self.results!.didVote = true;
+          self.results.didVote = true;
         }
 
         if (
@@ -205,11 +196,11 @@ export const ProposalModel = types
             Object.fromEntries(newVote.delegators.entries())
           ).includes(rootStore.app.ship.patp)
         ) {
-          self.results!.didVote = true;
+          self.results.didVote = true;
         }
-        self.results!.votes.set(vote.voter, newVote);
+        self.results.votes.set(vote.voter, newVote);
       });
-      self.results!.generateResultSummary();
+      self.results.generateResultSummary();
       self.voteLoader.set("loaded");
     },
     onVoteEffect(payload: EffectModelType | any, context: ContextModelType) {
@@ -217,7 +208,7 @@ export const ProposalModel = types
       const newVote = VoteModel.create(payload.data!);
       switch (payload.effect) {
         case "add":
-          self.results!.votes.set(payload.key, newVote);
+          self.results.votes.set(payload.key, newVote);
           self.results.generateResultSummary();
           break;
         case "update":
@@ -229,7 +220,7 @@ export const ProposalModel = types
     onPollEffect(update: any) {
       const statusPatch: IJsonPatch = {
         op: "replace",
-        path: `/status`,
+        path: "/status",
         value: determineStatus(update),
       };
 
@@ -245,11 +236,11 @@ export const ProposalModel = types
         //     });
         //   })
         //   .sort((a: TallyType, b: TallyType) => b!.count - a!.count);
-        self.results.resultSummary!.voteCount = update.results.voteCount;
-        self.results.resultSummary!.participantCount =
+        self.results.resultSummary.voteCount = update.results.voteCount;
+        self.results.resultSummary.participantCount =
           update.results.participantCount;
-        self.results.resultSummary!.topChoice = update.results.topChoice;
-        self.results.resultSummary!.tallies = update.results.tallies.map(
+        self.results.resultSummary.topChoice = update.results.topChoice;
+        self.results.resultSummary.tallies = update.results.tallies.map(
           (tally: TallyType) => TallyModel.create(tally)
         );
 

@@ -1,3 +1,3 @@
-export const timeout = (ms: number) => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export const timeout = async (ms: number) => {
+  return await new Promise((resolve) => setTimeout(resolve, ms));
 };

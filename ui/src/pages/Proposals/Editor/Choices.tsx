@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useState } from "react";
 import {
   Button,
   Grid,
@@ -12,28 +12,28 @@ import {
   FormControl,
   Tag,
 } from "@holium/design-system";
-import { action, runInAction, toJS } from "mobx";
+import { runInAction } from "mobx";
 import { getSnapshot } from "mobx-state-tree";
 import { useMobile } from "../../../logic/utils/useMobile";
 
-export type ChoiceType = {
+export interface ChoiceType {
   label: string;
   action: string;
   data: any;
-};
+}
 
-type ChoiceEditorProps = {
+interface ChoiceEditorProps {
   actions: any[];
   choices: ChoiceType[];
   onActionUpdate: (actions: any[]) => void;
   onUpdate: (elements: ChoiceType[]) => void;
-};
+}
 
 export const ChoiceEditor: FC<ChoiceEditorProps> = (
   props: ChoiceEditorProps
 ) => {
   const isMobile = useMobile();
-  const { actions, choices, onUpdate, onActionUpdate } = props;
+  const { actions, choices, onUpdate } = props;
 
   const buttonRef = React.createRef();
   const [actionMap, setAction] = useState(
@@ -190,7 +190,7 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
               placeholder="Choice text"
               defaultValue={choice.label}
               onBlur={(evt: any) => {
-                let updatedChoice = choices[index];
+                const updatedChoice = choices[index];
                 runInAction(() => {
                   choices.splice(index, 1, {
                     ...updatedChoice,
@@ -200,7 +200,7 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
                 onUpdate(choices);
               }}
               onChange={(evt: any) => {
-                let updatedChoice = choices[index];
+                const updatedChoice = choices[index];
                 runInAction(() => {
                   choices.splice(index, 1, {
                     ...updatedChoice,
@@ -227,7 +227,7 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
           </Flex>
         );
       })}
-      {!choices.length && (
+      {choices.length === 0 && (
         <Text textAlign="center" p="12px 0" opacity={0.5}>
           Please add a choice
         </Text>
@@ -237,11 +237,11 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
           pt="4px"
           pb="4px"
           tabIndex={choices.length + 7}
-          // @ts-ignore
+          // @ts-expect-error
           ref={buttonRef}
           variant="minimal"
           onClick={(evt: any) => {
-            // @ts-ignore
+            // @ts-expect-error
             buttonRef.current.blur();
             onAddChoice();
           }}
@@ -253,12 +253,12 @@ export const ChoiceEditor: FC<ChoiceEditorProps> = (
   );
 };
 
-type ActionConfigRowProps = {
+interface ActionConfigRowProps {
   index: number;
   isMobile?: boolean;
   actionConfig: any;
   onChange: (form: any) => void;
-};
+}
 
 const ActionConfigRow: FC<ActionConfigRowProps> = (
   props: ActionConfigRowProps

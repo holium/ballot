@@ -3,14 +3,18 @@ import { LoaderModel } from "./common/loader";
 import { types, Instance, clone } from "mobx-state-tree";
 import { BaseWatcher, ChannelResponseType } from "../watcher";
 
-export type LandscapeGroup = {
+export interface LandscapeGroup {
   color: string;
   creator: string;
   description: string;
   picture: string;
   title: string;
-};
-export type MetadataType = { "app-name": string; group: string; metadata: any };
+}
+export interface MetadataType {
+  "app-name": string;
+  group: string;
+  metadata: any;
+}
 
 export function cleanColor(ux: string) {
   if (ux.length > 2 && ux.substr(0, 2) === "0x") {
@@ -91,16 +95,16 @@ export const MetadataModel = types
         (data: ChannelResponseType) => {
           const metadata = data.json["metadata-update"];
           // Only look for the initial associations key
-          if (metadata["associations"]) {
+          if (metadata.associations) {
             const associations: MetadataType = metadata
-              ? metadata["associations"]
+              ? metadata.associations
               : {};
             const groupsMap = Object.values(associations)
               .filter(
                 (metadata: MetadataType) => metadata["app-name"] === "groups"
               )
               .reduce((groupMap, currentGroup: MetadataType, index) => {
-                const groupPathSplit = currentGroup["group"].split("/");
+                const groupPathSplit = currentGroup.group.split("/");
                 // remove the /ship/ from the group name
                 groupPathSplit.shift();
                 groupPathSplit.shift();
@@ -130,11 +134,11 @@ export const MetadataModel = types
         "/all",
         (data: ChannelResponseType) => {
           const contactInitial: any = data.json["contact-update"];
-          const initial: any = contactInitial && contactInitial["initial"];
+          const initial: any = contactInitial && contactInitial.initial;
           // Only look for the initial key
           if (initial) {
             const rolodex: Map<string, ContactModelType> =
-              initial && initial["rolodex"];
+              initial && initial.rolodex;
             const contactKeys = Object.keys(rolodex || {});
             const contactMap = Object.values(rolodex).reduce(
               (

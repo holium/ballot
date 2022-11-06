@@ -1,6 +1,6 @@
 import { ResourcePermissionType } from "./common";
 
-export type BoothType = {
+export interface BoothType {
   key: string;
   created: number;
   image: any;
@@ -10,15 +10,15 @@ export type BoothType = {
   type: "group" | "ship" | string;
   status: "invited" | "pending" | string | null;
   permission: ResourcePermissionType;
-};
+}
 
-export type BoothActionType = {
+export interface BoothActionType {
   action: BoothActions;
   reaction?: "ack" | "nawk" | "nod";
   resource: string;
   key: string;
   data: any;
-};
+}
 
 export type BoothActions =
   | "invite"

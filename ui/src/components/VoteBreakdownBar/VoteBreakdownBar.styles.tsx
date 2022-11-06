@@ -1,12 +1,12 @@
 import { Flex } from "@holium/design-system";
 import styled, { css } from "styled-components";
 
-type BarProps = {
+interface BarProps {
   win?: boolean;
   results?: number;
   overlay?: boolean;
   containerWidth?: string;
-};
+}
 
 export const BarSet = styled.div<BarProps>`
   display: flex;

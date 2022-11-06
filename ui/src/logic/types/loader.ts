@@ -1,4 +1,4 @@
-import { IComputedValue, IActionFactory } from "mobx";
+import { IComputedValue } from "mobx";
 
 export enum STATE {
   INITIAL = "initial",
@@ -7,8 +7,8 @@ export enum STATE {
   LOADED = "loaded",
 }
 
-export type LoaderType = {
+export interface LoaderType {
   isLoading: IComputedValue<boolean>;
   state: STATE;
   set: (state: STATE) => STATE;
-};
+}

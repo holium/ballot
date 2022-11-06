@@ -1,4 +1,4 @@
-import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
+import React, { FC, useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Observer, observer } from "mobx-react";
 import MDEditor, { ICommand } from "@uiw/react-md-editor";
@@ -26,7 +26,6 @@ import { createProposalFormFields } from "./CreateForm";
 import { MarkdownEditor } from "../../../components/MarkdownEditor";
 import { ChoiceEditor, ChoiceType } from "./Choices";
 import { createPath, getKeyFromUrl } from "../../../logic/utils/path";
-import { toJS } from "mobx";
 import { emptyState } from "./empty";
 import { useMst } from "../../../logic/stores/root";
 import { useMobile } from "../../../logic/utils/useMobile";
@@ -48,7 +47,7 @@ export const ProposalEditor: FC = observer(() => {
   let proposal: any = store.booth?.proposalStore!.proposals.get(
     urlParams.proposalId!
   )!;
-  let isNew = urlParams.proposalId ? false : true;
+  const isNew = !urlParams.proposalId;
 
   // This loads the form data or not for the editor
   if (
@@ -65,7 +64,7 @@ export const ProposalEditor: FC = observer(() => {
   }
 
   const onBack = () => {
-    let newPath = createPath(getKeyFromUrl(urlParams), "proposals");
+    const newPath = createPath(getKeyFromUrl(urlParams), "proposals");
     navigate(newPath);
     app.setCurrentUrl(newPath);
   };
@@ -83,10 +82,10 @@ export const ProposalEditor: FC = observer(() => {
     } else {
       responseProposal = await proposalStore.add(form.actions.submit());
     }
-    saveButton.current && saveButton.current.blur();
+    saveButton.current != null && saveButton.current.blur();
     if (isNew) {
-      saveButton.current && saveButton.current!.blur();
-      let newPath = createPath(getKeyFromUrl(urlParams), "proposals");
+      saveButton.current != null && saveButton.current.blur();
+      const newPath = createPath(getKeyFromUrl(urlParams), "proposals");
       navigate(newPath);
       app.setCurrentUrl(newPath);
     }

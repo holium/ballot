@@ -17,7 +17,7 @@ export default {
   },
 };
 
-// @ts-ignore
+// @ts-expect-error
 const Template: Story = (args: VoteCardProps) => (
   <Flex style={{ gap: 4 }} flexDirection="row">
     <VoteCard

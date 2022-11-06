@@ -1,15 +1,4 @@
-import {
-  types,
-  flow,
-  Instance,
-  SnapshotIn,
-  getParent,
-  destroy,
-  SnapshotOut,
-  applyPatch,
-  IJsonPatch,
-} from "mobx-state-tree";
-import { date } from "yup";
+import { types, flow, Instance, getParent } from "mobx-state-tree";
 import {
   ChoiceModel,
   determineStatus,
@@ -23,7 +12,6 @@ import { BoothModelType } from "../booths";
 import { ContextModelType, EffectModelType } from "../common/effects";
 
 import { LoaderModel } from "../common/loader";
-import { rootStore } from "../root";
 
 export const ProposalStore = types
   .model({
@@ -113,7 +101,6 @@ export const ProposalStore = types
         // return newProposal;
       } catch (err: any) {
         self.loader.error(err);
-        return;
       }
     }),
     //
@@ -156,10 +143,10 @@ export const ProposalStore = types
           this.addEffect(action, context, payload.data);
           break;
         case "update":
-          this.updateEffect(payload.key!, payload.data, action);
+          this.updateEffect(payload.key, payload.data, action);
           break;
         case "delete":
-          this.deleteEffect(payload.key!);
+          this.deleteEffect(payload.key);
           break;
         case "error":
           this.errorEffect(action, payload);
@@ -187,13 +174,14 @@ export const ProposalStore = types
         voteMap[proposalKey] &&
           Object.keys(voteMap[proposalKey]).forEach((voterKey: string) => {
             const voteResult = voteMap[proposalKey][voterKey];
-            if (voteResult)
-              newProposal.results!.setNewVote(
+            if (voteResult) {
+              newProposal.results.setNewVote(
                 VoteModel.create({
                   ...voteResult,
                   choice: ChoiceModel.create(voteResult.choice),
                 })
               );
+            }
           });
         self.proposals.set(proposal.key, newProposal);
         newProposal.results.generateResultSummary();
@@ -228,7 +216,7 @@ export const ProposalStore = types
     updateEffect(proposalKey: string, data: any, action: string) {
       // console.log("proposal updateEffect ", action, proposalKey, data);
       const oldProposal = self.proposals.get(proposalKey);
-      if (oldProposal) {
+      if (oldProposal != null) {
         const updated: any = oldProposal.updateEffect(data)!;
         self.proposals.set(proposalKey, updated);
       }

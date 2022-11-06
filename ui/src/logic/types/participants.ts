@@ -5,12 +5,12 @@ type ParticipantActions =
   | "joined"
   | "owner";
 
-export type ParticipantType = {
+export interface ParticipantType {
   name: string;
   status: ParticipantActions;
   metadata?: any;
   votingPower?: number;
-};
+}
 
 export type ParticipantMap = Object & {
   [key: string]: ParticipantType;

@@ -1,12 +1,12 @@
 import { ObservableMap } from "mobx";
 
-export type ChoiceType = {
+export interface ChoiceType {
   label: string;
   description?: string;
   action?: string;
-};
+}
 
-export type ProposalType = {
+export interface ProposalType {
   id?: any;
   key: string;
   owner: string;
@@ -26,18 +26,18 @@ export type ProposalType = {
   support: number;
   createdBy?: string; // potentially remove
   created?: string;
-};
+}
 
-export type VoteType = {
+export interface VoteType {
   chosenVote: ChoiceType | undefined;
   proposalId?: string | undefined;
-};
+}
 
-export type BallotType = {
+export interface BallotType {
   voter: string;
   choice: ChoiceType;
   signature?: string;
   createdAt: Date;
-};
+}
 
 export type ProposalMap = ObservableMap<string, ProposalType>;

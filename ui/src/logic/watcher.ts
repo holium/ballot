@@ -1,9 +1,8 @@
-import { toJS } from "mobx";
 import shipStore from "./stores/ship";
 shipStore.setShip(window.ship);
 const baseUrl = import.meta.env.VITE_SHIP_URL?.toString() || "";
 
-export type ActionType = {
+export interface ActionType {
   action: string;
   context:
     | {
@@ -13,20 +12,20 @@ export type ActionType = {
       }
     | undefined;
   effects: EffectType[];
-};
+}
 
-export type EffectType = {
+export interface EffectType {
   effect: "add" | "update" | "delete" | "initial";
   key: string; // ~zod, group name, etc
   resource: string;
   data: any;
-};
+}
 
-export type ChannelResponseType = {
+export interface ChannelResponseType {
   id?: number;
   json: ActionType | any;
   response: "diff";
-};
+}
 
 export class BaseWatcher {
   counter: number = 0; // ~lodlev-migdev - used to generate unique id values
@@ -63,7 +62,7 @@ export class BaseWatcher {
 
   // ~lodlev-migdev - helper to ack a message received on the channel
   ack = async (id: number) => {
-    return this.send([
+    return await this.send([
       {
         id: ++this.counter,
         action: "ack",
@@ -75,7 +74,7 @@ export class BaseWatcher {
   // ~lodlev-migdev - connect to the ship (create a channel)
   //      and open an event stream
   shconn = async (app: string, path: string, onChannel: any) => {
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       this.send([
         {
           id: ++this.counter,
@@ -100,8 +99,8 @@ export class BaseWatcher {
   //   be sure to include credentials so that cookies are included in
   //   th request. also make sure payload is an array actions.
   //  see: https://urbit.org/docs/arvo/eyre/guide#using-channels
-  send = (payload: any) => {
-    return fetch(this.channelUrl, {
+  send = async (payload: any) => {
+    return await fetch(this.channelUrl, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -134,7 +133,7 @@ export class BaseWatcher {
     });
 
     this.sse.addEventListener("message", (e) => {
-      let jon = JSON.parse(e.data);
+      const jon = JSON.parse(e.data);
 
       this.ack(jon.id)
         // .then(() => console.log(`message ${jon.id} ack'd`))
@@ -186,14 +185,14 @@ export class BaseWatcher {
     path: string,
     onChannel: (data: any) => void
   ) => {
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const payload = [
         {
           id: ++this.counter,
           action: "subscribe",
           ship: this.ship,
-          app: app,
-          path: path,
+          app,
+          path,
         },
       ];
       this.send(payload)
@@ -206,6 +205,7 @@ export class BaseWatcher {
         .catch(reject);
     });
   };
+
   unsubscribe() {
     // console.log(`Connection to channel ${this.channelUrl}`);
     this.sse?.close();
