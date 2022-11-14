@@ -15,7 +15,7 @@ export const AppModel = types
     title: types.optional(types.string, "Ballot"),
     currentUrl: types.optional(types.string, ""),
     currentPage: types.optional(types.string, "proposals"),
-    theme: types.enumeration("Theme", ["light", "dark"]),
+    theme: types.enumeration("Theme", ["light", "dark", "auto"]),
     ship: ShipModel,
   })
   .views((self) => ({
