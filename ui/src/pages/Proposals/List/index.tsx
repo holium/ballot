@@ -1,36 +1,31 @@
+import { observer } from "mobx-react-lite";
 import React, { FC, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { observer } from "mobx-react-lite";
 
 import {
-  ListHeader,
-  OptionType,
-  VirtualizedList,
-  Text,
+  Box,
+  Button,
   Flex,
   Grid2,
-  Button,
-  Select,
-  Label,
-  Box,
   IconButton,
   Icons,
+  Label,
+  ListHeader,
+  OptionType,
+  Select,
+  Text,
+  VirtualizedList,
 } from "@holium/design-system";
 
-import { ProposalType } from "../../../logic/types/proposals";
 import { appName } from "../../../app";
-import { ProposalCard } from "../../../components/ProposalCard";
 import { Participants } from "../../../components/Participants";
-import {
-  createPath,
-  getKeyFromUrl,
-  getNameFromUrl,
-} from "../../../logic/utils/path";
-import { useMst } from "../../../logic/stores/root";
+import { ProposalCard } from "../../../components/ProposalCard";
 import { ProposalModelType } from "../../../logic/stores/proposals";
 import { getProposalFilters } from "../../../logic/stores/proposals/utils";
+import { useMst } from "../../../logic/stores/root";
+import { ProposalType } from "../../../logic/types/proposals";
 import { getBoothName } from "../../../logic/utils/metadata";
-import { toJS } from "mobx";
+import { createPath, getKeyFromUrl } from "../../../logic/utils/path";
 import { useMobile } from "../../../logic/utils/useMobile";
 
 export const ProposalList: FC = observer(() => {
@@ -41,7 +36,6 @@ export const ProposalList: FC = observer(() => {
   const { store, metadata } = useMst();
   const [page, setPage] = useState(0);
 
-  const currentBoothName = getNameFromUrl(urlParams);
   const currentBoothKey = getKeyFromUrl(urlParams);
   let leftPane;
 
@@ -51,7 +45,6 @@ export const ProposalList: FC = observer(() => {
 
   const hasCreatePermission = booth?.hasCreatePermission;
   const hasDeletePermission = booth?.hasAdmin;
-  const isOwner = booth?.isOwner;
   const statusCounts = getProposalFilters(proposalsList);
   if (selectedOption === "All") {
     proposalsList = proposalsList;
@@ -88,22 +81,21 @@ export const ProposalList: FC = observer(() => {
           {
             label: "Upcoming",
             value: "Upcoming",
-            disabled: statusCounts["Upcoming"] ? false : true,
+            disabled: !statusCounts.Upcoming,
           },
           {
             label: "Active",
             value: "Active",
-            disabled: statusCounts["Active"] ? false : true,
+            disabled: !statusCounts.Active,
           },
           {
             label: "Ended",
             value: "Ended",
-            disabled: statusCounts["Ended"] ? false : true,
+            disabled: !statusCounts.Ended,
           },
         ]}
         selectedOption={selectedOption}
         rightContent={
-          // @ts-ignore
           hasCreatePermission && (
             <Button
               pt="6px"
@@ -159,7 +151,7 @@ export const ProposalList: FC = observer(() => {
           setSelectedOption(option.label);
         }}
       />
-      {pagedList.length ? (
+      {pagedList.length > 0 ? (
         <VirtualizedList
           id={`list-${currentBoothKey}-${new Date().getMilliseconds()}`}
           style={{
@@ -180,7 +172,7 @@ export const ProposalList: FC = observer(() => {
             const proposal: ProposalModelType = pagedList[index];
             const authorMetadata: any = metadata.contactsMap.get(
               proposal.owner
-            ) || {
+            ) != null || {
               color: "#000",
             };
             return (
@@ -188,7 +180,7 @@ export const ProposalList: FC = observer(() => {
                 key={key}
                 proposal={proposal}
                 onClick={(proposal: ProposalModelType) => {
-                  let newPath = createPath(
+                  const newPath = createPath(
                     booth!.key,
                     "proposals",
                     proposal.key
@@ -217,8 +209,8 @@ export const ProposalList: FC = observer(() => {
                     onClick: (event: React.MouseEvent<HTMLElement>) => {
                       event.stopPropagation();
                       const proposalStore = booth?.proposalStore!;
-                      proposalStore.setActive(proposal!);
-                      let newPath = createPath(
+                      proposalStore.setActive(proposal);
+                      const newPath = createPath(
                         booth!.key,
                         "proposals/editor",
                         proposal.key
@@ -296,8 +288,9 @@ export const ProposalList: FC = observer(() => {
   );
   // }, [currentBooth, booth?.proposals, selectedOption]);
 
-  const participants = booth ? booth.listParticipants : [];
-  const participantLoading = booth ? booth.participantStore.isLoading : false;
+  const participants = booth != null ? booth.listParticipants : [];
+  const participantLoading =
+    booth != null ? booth.participantStore.isLoading : false;
   return (
     <Grid2.Box offset={40} fluid scroll>
       <Grid2.Box {...(isMobile && { p: 0 })}>

@@ -7,24 +7,22 @@ import {
   MenuItem,
   Sigil,
   Spinner,
-  Search,
   Input,
   Icons,
 } from "@holium/design-system";
 import styled from "styled-components";
 import { BoothType } from "../../logic/types/booths";
-import { toJS } from "mobx";
 import { BoothModelType } from "../../logic/stores/booths";
 import { Observer } from "mobx-react-lite";
 import { rootStore } from "../../logic/stores/root";
 
-export type BoothDrowdownProps = {
+export interface BoothDrowdownProps {
   booths: any[];
   onNewBooth: (...args: any) => any;
   onAccept: (boothName: string) => void;
   onJoin: (boothName: string) => void;
   onContextClick: (context: Partial<BoothModelType>) => any;
-};
+}
 
 // const DropdownHeader = styled.div`
 //   padding: 8px 8px 4px 8px;
@@ -290,7 +288,7 @@ const GroupBooths = (props: {
                     Group
                   </Text>
                   <Text fontWeight={500} mt="1px" opacity={0.6} variant="hint">
-                    {group.hasAdmin && `(owner)`}
+                    {group.hasAdmin && "(owner)"}
                   </Text>
                 </Flex>
               </Box>

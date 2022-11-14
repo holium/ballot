@@ -61,7 +61,7 @@ export const ProposalDetail: FC = observer((props: any) => {
   };
 
   const onBack = () => {
-    let newPath = createPath(getKeyFromUrl(urlParams), "proposals");
+    const newPath = createPath(getKeyFromUrl(urlParams), "proposals");
     navigate(newPath);
     app.setCurrentUrl(newPath, "proposals");
   };
@@ -71,14 +71,15 @@ export const ProposalDetail: FC = observer((props: any) => {
 
   const booth = store.booth!;
   if (store.isLoaded && booth.proposalStore.isLoaded) {
-    let proposal: ProposalModelType = booth.proposalStore.proposals.get(
+    const proposal: ProposalModelType = booth.proposalStore.proposals.get(
       urlParams.proposalId!
     )!;
-    const chosenVote = proposal.results!.getMyVote;
+    const chosenVote = proposal.results.getMyVote;
 
     const isActive = proposal.status === "Active";
 
-    const authorMetadata: any = metadata.contactsMap.get(proposal.owner) || {
+    const authorMetadata: any = metadata.contactsMap.get(proposal.owner) !=
+      null || {
       color: "#000",
     };
 
@@ -114,8 +115,7 @@ export const ProposalDetail: FC = observer((props: any) => {
         (choice: ChoiceModelType) => proposal.tally?.topChoice === choice.label
       )
     );
-    const hasAction =
-      winningChoice?.action && winningChoice?.data ? true : false;
+    const hasAction = !!(winningChoice?.action && winningChoice?.data != null);
 
     content = (
       <Grid2.Row reverse={["xs"]} justify="center">
@@ -220,7 +220,7 @@ export const ProposalDetail: FC = observer((props: any) => {
               <>
                 {proposal.status === "Ended" && (
                   <Flex p={16}>
-                    <VoteResultList votes={proposal.results!.votes} />
+                    <VoteResultList votes={proposal.results.votes} />
                   </Flex>
                 )}
               </>
@@ -242,8 +242,8 @@ export const ProposalDetail: FC = observer((props: any) => {
               timeLeft={time}
               votingPower={delegateStore.getVotingPower(app.account.patp)}
               chosenOption={chosenVote && chosenVote.choice}
-              voteResults={proposal.results!.resultSummary}
-              voteSubmitted={proposal.results!.didVote}
+              voteResults={proposal.results.resultSummary}
+              voteSubmitted={proposal.results.didVote}
             />
           </Grid2.Row>
           <Grid2.Row>

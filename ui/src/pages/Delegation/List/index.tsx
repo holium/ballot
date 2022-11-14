@@ -52,7 +52,7 @@ export const DelegationList: FC = observer(() => {
         }
       />
       <Flex flexDirection="column" pb={16}>
-        <DelegationCard ship={app.account!} />
+        <DelegationCard ship={app.account} />
         <Card
           style={{ borderColor: "transparent" }}
           elevation="lifted"
@@ -63,7 +63,7 @@ export const DelegationList: FC = observer(() => {
             Top delegates
           </Text>
           {/* TODO make a standard participants list component */}
-          {participants.length ? (
+          {participants.length > 0 ? (
             participants
               .filter(
                 (participant: ParticipantModelType) =>
@@ -75,7 +75,7 @@ export const DelegationList: FC = observer(() => {
                 ); // todo implement when delegaton backend is built
                 const participantMetadata: any = metadata.contactsMap.get(
                   participant.name
-                ) || {
+                ) != null || {
                   color: "#000",
                 };
                 return (

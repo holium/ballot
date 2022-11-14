@@ -1,17 +1,11 @@
 import { ParticipantModelType } from "./../participants/participant";
-import {
-  ContactMetadataModel,
-  ContactModelType,
-  GroupModelType,
-} from "./../metadata";
+import { ContactMetadataModel } from "./../metadata";
 import {
   types,
   flow,
   Instance,
   SnapshotIn,
-  getParent,
   destroy,
-  SnapshotOut,
   IJsonPatch,
   applyPatch,
 } from "mobx-state-tree";
@@ -22,14 +16,12 @@ import { GroupMetadataModel } from "../metadata";
 import { ParticipantStore } from "../participants";
 import { ProposalModelType, ProposalStore } from "../proposals";
 import { rootStore } from "../root";
-import { toJS } from "mobx";
 import { DelegateStore } from "../delegates";
-import participants from "../../api/participants";
 
 const sortMap = {
   recent: (list: ProposalModelType[]) =>
     list.sort((a: ProposalModelType, b: ProposalModelType) => {
-      return b.created! - a.created!;
+      return b.created - a.created;
     }),
   ending: (list: ProposalModelType[]) =>
     list

@@ -9,14 +9,14 @@
 
 export function initializeShipSubscriptions(booths: any[]) {
   // ~lodlev-migdev - used to generate unique id values
-  var counter: number = 0;
+  let counter: number = 0;
 
   // ~lodlev-migdev - map of channel path to handler methods
   //   handlers are called when a message is sent from an agent (on a specific path)
-  var stores: any = {};
+  const stores: any = {};
 
   // ~lodlev-migdev - sse (server-side-events) event source
-  var sse: EventSource | null = null;
+  let sse: EventSource | null = null;
 
   // ~lodlev-migdev - React/UI will need to configure these based on needs
   const ship: string = "zod";
@@ -68,7 +68,7 @@ export function initializeShipSubscriptions(booths: any[]) {
     });
 
     sse.addEventListener("message", function (e) {
-      let jon = JSON.parse(e.data);
+      const jon = JSON.parse(e.data);
 
       console.log("message => %o", jon);
 
@@ -104,7 +104,7 @@ export function initializeShipSubscriptions(booths: any[]) {
 
   // ~lodlev-migdev - helper to ack a message received on the channel
   async function ack(id: number) {
-    return send(channelUrl, [
+    return await send(channelUrl, [
       {
         id: ++counter,
         action: "ack",
@@ -116,12 +116,12 @@ export function initializeShipSubscriptions(booths: any[]) {
   // ~lodlev-migdev - connect to the ship (create a channel)
   //      and open an event stream
   async function shconn() {
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       send(channelUrl, [
         {
           id: ++counter,
           action: "poke",
-          ship: ship,
+          ship,
           app: "ballot",
           mark: "json",
           // @lodlev-migdev - believe it or not this should be a valid
@@ -148,14 +148,14 @@ export function initializeShipSubscriptions(booths: any[]) {
     path: string,
     handler: (data: any) => void
   ) {
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const payload = [
         {
           id: ++counter,
           action: "subscribe",
-          ship: ship,
-          app: app,
-          path: path,
+          ship,
+          app,
+          path,
         },
       ];
       send(channelUrl, payload)
@@ -178,7 +178,7 @@ export function initializeShipSubscriptions(booths: any[]) {
   //   th request. also make sure payload is an array actions.
   //  see: https://urbit.org/docs/arvo/eyre/guide#using-channels
   async function send(channelUrl: string, payload: any) {
-    return fetch(channelUrl, {
+    return await fetch(channelUrl, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -200,8 +200,8 @@ export function initializeShipSubscriptions(booths: any[]) {
   //    2) subscribe to the ballot /contexts wire
   //
   shconn().then((res) => {
-    subscribe("ballot", `/booths`, onBoothUpdates)
-      .then(() => console.log(`subscribed to ballot '/booths'`))
+    subscribe("ballot", "/booths", onBoothUpdates)
+      .then(() => console.log("subscribed to ballot '/booths'"))
       .catch((e: any) => console.error(e));
     // subscribe to each booth we are a member of
     // if (booths && booths.length > 0) {

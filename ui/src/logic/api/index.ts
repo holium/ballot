@@ -8,7 +8,7 @@
 // const api = new Urbit("", "", "ballot");
 // api.ship = window.ship;
 // api.verbose = true;
-// @ts-ignore TODO window typings
+// @ts-expect-error TODO window typings
 // window.api = api;
 
 // export default ship;

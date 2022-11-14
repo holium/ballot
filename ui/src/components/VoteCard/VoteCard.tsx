@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router";
 import {
   Card,
   Ship,
   Icons,
-  KPI,
   Flex,
   Text,
   Grid,
@@ -14,7 +13,7 @@ import {
   Notification,
   Tooltip,
 } from "@holium/design-system";
-import { ChoiceType, VoteType } from "../../logic/types/proposals";
+import { VoteType } from "../../logic/types/proposals";
 import { VoteBreakdownBar } from "../VoteBreakdownBar";
 import { VoteCardButton } from "./VoteCard.styles";
 import { pluralize } from "../../logic/utils/text";
@@ -22,12 +21,10 @@ import {
   ChoiceModelType,
   ResultSummaryType,
   TallyType,
-  VoteModelType,
 } from "../../logic/stores/proposals";
-import { toJS } from "mobx";
 import { ContactModelType } from "../../logic/stores/metadata";
 
-export type VoteCardProps = {
+export interface VoteCardProps {
   style?: any;
   disabled?: boolean;
   currentUser: {
@@ -48,7 +45,7 @@ export type VoteCardProps = {
   votingPower?: number;
   onClick: (option: string) => any;
   onVote: (chosenVote: VoteType) => any;
-};
+}
 
 export const VoteCard: any = (props: VoteCardProps) => {
   const {
@@ -59,7 +56,6 @@ export const VoteCard: any = (props: VoteCardProps) => {
     castingLoading,
     currentUser,
     choices,
-    strategy,
     timeLeft,
     title,
     blurred,
@@ -68,7 +64,6 @@ export const VoteCard: any = (props: VoteCardProps) => {
     voteSubmitted,
     voteResults,
     votingPower,
-    onClick,
     onVote,
   } = props;
   const ref = React.createRef();
@@ -93,7 +88,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
 
   useEffect(() => {
     const handleClickOutside = (event: any) => {
-      // @ts-ignore
+      // @ts-expect-error
       if (ref.current && !ref.current.contains(event.target)) {
         onClickOutside && onClickOutside();
       }
@@ -111,7 +106,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
         <Spinner size={2} />
       </Flex>
     );
-  } else if (!chosenOption) {
+  } else if (chosenOption == null) {
     middleSection = choices?.map((choice: ChoiceModelType) => (
       <VoteCardButton
         variant="custom"
@@ -126,19 +121,19 @@ export const VoteCard: any = (props: VoteCardProps) => {
               label: choice.label,
               action: choice.action!,
             },
-            proposalId: proposalId,
+            proposalId,
           })
         }
       >
         {choice.label}{" "}
-        {choice.action && choice.data && (
+        {choice.action && choice.data != null && (
           <Tooltip
             style={{ position: "absolute", right: 6 }}
             content={
               <Card padding={2}>
                 <ActionDataTable
                   orientation="column"
-                  action={choice.action!}
+                  action={choice.action}
                   data={choice.data}
                 />
               </Card>
@@ -152,7 +147,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
       </VoteCardButton>
     ));
   } else if (chosenOption) {
-    middleSection = voteResults && (
+    middleSection = voteResults != null && (
       <>
         {voteResults.tallies.map((vote: TallyType) => {
           return (
@@ -172,7 +167,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
             voteResults?.voteCount
           } ${pluralize(
             "vote",
-            voteResults?.voteCount! || 0
+            voteResults?.voteCount || 0
           )} • ${timeLeft}`}</Text>
         </Flex>
       </>
@@ -274,7 +269,7 @@ export const VoteCard: any = (props: VoteCardProps) => {
           additionalVariant="submit"
           variant="custom"
           disabled={
-            (!chosenOption && chosenVote?.chosenVote?.label === "") ||
+            (chosenOption == null && chosenVote?.chosenVote?.label === "") ||
             chosenOption !== undefined ||
             loading
           }
@@ -282,8 +277,8 @@ export const VoteCard: any = (props: VoteCardProps) => {
         >
           {/* {chosenOption ? <Icons.CheckCircle /> : "Confirm"} */}
           {/* {loading && <Spinner size={0} />} */}
-          {!loading && chosenOption && "Voted"}
-          {!loading && !chosenOption && "Confirm"}
+          {!loading && chosenOption != null && "Voted"}
+          {!loading && chosenOption == null && "Confirm"}
         </VoteCardButton>
 
         {/* {chosenOption && (

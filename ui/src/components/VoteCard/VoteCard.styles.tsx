@@ -2,14 +2,14 @@ import styled, { css } from "styled-components";
 import { darken } from "polished";
 import { Flex, Button, ThemeType } from "@holium/design-system";
 
-export type StyleProps = {
+export interface StyleProps {
   theme: ThemeType;
   additionalVariant?: "submit" | "option";
   chosenOption?: boolean;
   disabledButton?: boolean;
   width?: number;
   win?: boolean;
-};
+}
 
 export const VoteCardButton = styled(Button)<StyleProps>`
   padding: 0px;

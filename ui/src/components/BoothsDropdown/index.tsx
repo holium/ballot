@@ -1,1 +1,1 @@
-export * from './BoothsDropdown'
+export * from "./BoothsDropdown";

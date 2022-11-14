@@ -1,5 +1,5 @@
 import React, { FC, useMemo } from "react";
-import { observer, Observer } from "mobx-react";
+import { observer } from "mobx-react";
 import { useParams } from "react-router";
 import { createField, createForm } from "mobx-easy-form";
 import { isValidPatp } from "urbit-ob";
@@ -9,23 +9,20 @@ import {
   Flex,
   FormControl,
   Grid,
-  Header,
-  Icons,
   Input,
   Ship,
   Text,
 } from "@holium/design-system";
 import { pluralize } from "../../logic/utils/text";
 import { ShipModelType } from "../../logic/stores/app";
-import { getKeyFromUrl, getNameFromUrl } from "../../logic/utils/path";
+import { getKeyFromUrl } from "../../logic/utils/path";
 import { useMst } from "../../logic/stores/root";
-import { toJS } from "mobx";
 import styled from "styled-components";
 
-type DelegationCardProps = {
+interface DelegationCardProps {
   delegatingFor?: any[];
   ship: ShipModelType;
-};
+}
 
 const OurDelegateInput = styled.div`
   background: ${(props: any) => props.theme.colors.ui.tertiary};
@@ -155,7 +152,7 @@ export const DelegationCard: FC<DelegationCardProps> = observer(
                 variant="minimal"
                 type="submit"
                 isLoading={isDelegateLoading}
-                disabled={ourDelegate ? false : error ? true : false}
+                disabled={ourDelegate ? false : !!error}
                 onClick={() => {
                   if (ourDelegate) {
                     delegateStore.undelegate(ourDelegate);
@@ -170,7 +167,7 @@ export const DelegationCard: FC<DelegationCardProps> = observer(
               </Button>
             </Grid>
 
-            {delegateStore?.delegateLoader.error && (
+            {delegateStore?.delegateLoader.error != null && (
               <FormControl.Error>
                 {delegateStore?.delegateLoader.errorMessage}
               </FormControl.Error>

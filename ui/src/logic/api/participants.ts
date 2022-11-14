@@ -42,7 +42,7 @@ export class ParticipantsApi extends BaseAPI {
           resource: "booth",
           context: {
             booth: boothKey,
-            participant: participant,
+            participant,
           },
         }),
       });

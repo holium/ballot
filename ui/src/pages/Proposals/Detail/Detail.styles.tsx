@@ -2,9 +2,9 @@ import { Flex, ThemeType } from "@holium/design-system";
 import styled from "styled-components";
 import { darken } from "polished";
 
-type SignalCardProps = {
+interface SignalCardProps {
   theme: ThemeType;
-};
+}
 
 export const DetailHeader = styled.header`
   border-bottom: 1px solid

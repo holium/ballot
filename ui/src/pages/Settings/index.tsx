@@ -20,9 +20,7 @@ import {
 } from "@holium/design-system";
 import { getKeyFromUrl, getNameFromUrl } from "../../logic/utils/path";
 import { useMst } from "../../logic/stores/root";
-import { toJS } from "mobx";
 import { useMobile } from "../../logic/utils/useMobile";
-import { BoothsApi } from "../../logic/api/booths";
 
 const createSettingsForm = (defaults: any = {}) => {
   const form = createForm({
@@ -294,6 +292,7 @@ export const Settings: FC = observer(() => {
               <a
                 target="_blank"
                 href="https://docs.holium.com/ballot/custom-actions"
+                rel="noreferrer"
               >
                 here
               </a>

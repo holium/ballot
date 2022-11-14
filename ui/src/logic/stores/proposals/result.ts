@@ -7,7 +7,6 @@ import {
   VoteModel,
   VoteModelType,
 } from ".";
-import votes from "../../api/votes";
 import { BoothModelType } from "../booths";
 import { rootStore } from "../root";
 
@@ -76,7 +75,7 @@ export const ResultModel = types
     },
     generateResultSummary() {
       const parent: ProposalModelType = getParent(self, 1);
-      const initialTally = parent.choices!.reduce(
+      const initialTally = parent.choices.reduce(
         (initial: any, choice: ChoiceModelType) => {
           initial[choice.label] = 0;
           return initial;
@@ -105,7 +104,7 @@ export const ResultModel = types
             percentage: Math.round((count / participantCount) * 1000) / 10,
           });
         })
-        .sort((a: TallyType, b: TallyType) => b!.count - a!.count);
+        .sort((a: TallyType, b: TallyType) => b.count - a.count);
       self.resultSummary = ResultSummaryModel.create({
         voteCount: self.voteCount,
         participantCount,

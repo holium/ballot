@@ -35,6 +35,7 @@ export class ProposalsApi extends BaseAPI {
       return [null, this.handleErrors(error)];
     }
   }
+
   /**
    *
    * update
@@ -72,6 +73,7 @@ export class ProposalsApi extends BaseAPI {
       return [null, this.handleErrors(error)];
     }
   }
+
   /**
    *
    * getAll
@@ -94,6 +96,7 @@ export class ProposalsApi extends BaseAPI {
       return [null, this.handleErrors(error)];
     }
   }
+
   /**
    *
    * delete

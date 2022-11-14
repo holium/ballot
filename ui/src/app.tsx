@@ -16,9 +16,7 @@ import {
   Flex,
 } from "@holium/design-system";
 import { BoothsDropdown } from "./components/BoothsDropdown";
-import { NewBoothDialog } from "./components";
 import { createPath, getKeyFromUrl } from "./logic/utils/path";
-import { toJS } from "mobx";
 import { useMst } from "./logic/stores/root";
 import { BoothModelType } from "./logic/stores/booths";
 import { useMobile } from "./logic/utils/useMobile";
@@ -42,15 +40,14 @@ export const App: FC = observer(() => {
     Promise.all([
       store.getBooths().then(() => {
         const urlBooth = store.booths.get(getKeyFromUrl(urlParams));
-        if (urlBooth) {
+        if (urlBooth != null) {
           store.setBooth(urlBooth.key);
         } else {
           // use your current ship booth since we didnt find the url booth
           store.setBooth(app.ship.patp);
-          let newPath = createPath(store.booth!.key, app.currentPage);
+          const newPath = createPath(store.booth!.key, app.currentPage);
           navigate(newPath);
           app.setCurrentUrl(newPath, app.currentPage);
-          return;
         }
       }),
       metadata.getMetadata(),
@@ -97,7 +94,7 @@ export const App: FC = observer(() => {
 
   const onContextClick = useCallback(
     (selectedBooth: Partial<BoothModelType>) => {
-      let newPath = createPath(selectedBooth.key!, app.currentPage);
+      const newPath = createPath(selectedBooth.key!, app.currentPage);
       navigate(newPath);
       app.setCurrentUrl(newPath, app.currentPage);
       store.setBooth(selectedBooth.key!);
@@ -131,7 +128,6 @@ export const App: FC = observer(() => {
     metadata.contactsLoader.isLoading;
   const ship = app.account;
   return (
-    // @ts-ignore
     <ThemeProvider theme={getTheme()}>
       <Helmet defer={false}>
         <title>{`${app.title} | ${app.ship.patp}`}</title>
@@ -197,7 +193,7 @@ export const App: FC = observer(() => {
           selectedRouteUri={app.currentPage} // proposals or delegation
           selectedContext={store.booth}
           onHomeClick={() => {
-            let newPath = createPath(store.booth!.key, app.currentPage);
+            const newPath = createPath(store.booth!.key, app.currentPage);
             navigate(newPath);
             app.setCurrentUrl(newPath, app.currentPage);
           }}
@@ -208,7 +204,7 @@ export const App: FC = observer(() => {
           subRoutes={routes}
           contexts={store.list}
         >
-          {store.booth && store.booth.isLoaded && <Outlet />}
+          {store.booth != null && store.booth.isLoaded && <Outlet />}
         </AppWindow>
       </OSViewPort>
     </ThemeProvider>

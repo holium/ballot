@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { Observer } from "mobx-react";
 import { Grid, Text, Button, Input, FormControl } from "@holium/design-system";
 import { createParticipantForm } from "./ParticipantForm";
-import { toJS } from "mobx";
 
 export const ParticipantModal = (props: {
   participants?: any;
@@ -40,7 +39,7 @@ export const ParticipantModal = (props: {
                   tabIndex={0}
                   variant="minimal"
                   type="submit"
-                  disabled={error ? true : false}
+                  disabled={!!error}
                   onClick={() => {
                     const formData = form.actions.submit();
                     onAdd(formData.invitee);

@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 
-type useFetchState<T = any> = {
+interface useFetchState<T = any> {
   result: T;
   error: any;
   loading: boolean;
   fetched: boolean;
-};
+}
 
-type useFetchArgs<T> = {
+interface useFetchArgs<T> {
   fetchFn: (...args: any[]) => Promise<T>;
   fnArgs?: any[];
   immediate?: boolean;
-};
+}
 
 const emptyArgs: any[] = [];
 
@@ -44,7 +44,8 @@ export const useFetch = <T>({
     [fetchFn, fnArgs]
   );
 
-  const makeRequest = (...extraArgs: any[]) => fetchRequest(...extraArgs);
+  const makeRequest = async (...extraArgs: any[]) =>
+    await fetchRequest(...extraArgs);
 
   useEffect(() => {
     if (!state.fetched && immediate) {

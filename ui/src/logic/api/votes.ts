@@ -15,6 +15,7 @@ export class VotesApi extends BaseAPI {
       return [this.handleErrors(error), null];
     }
   };
+
   /**
    *
    * @param boothKey - booth key value
@@ -48,6 +49,7 @@ export class VotesApi extends BaseAPI {
       return [null, this.handleErrors(error)];
     }
   };
+
   /**
    *
    * @returns - array of booth objects

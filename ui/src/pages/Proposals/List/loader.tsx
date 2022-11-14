@@ -1,53 +1,38 @@
-import React, { FC, useState } from "react";
-import { useNavigate, useParams } from "react-router";
 import { observer } from "mobx-react-lite";
+import React, { FC, useState } from "react";
+import { useParams } from "react-router";
 
 import {
-  ListHeader,
-  OptionType,
-  VirtualizedList,
-  Text,
+  Button,
   Flex,
   Grid2,
-  Button,
-  Select,
   Label,
-  Box,
-  IconButton,
-  Icons,
+  ListHeader,
+  OptionType,
+  Select,
   Skeleton,
+  VirtualizedList,
 } from "@holium/design-system";
 
-import { ProposalType } from "../../../logic/types/proposals";
-import { appName } from "../../../app";
-import { ProposalCard } from "../../../components/ProposalCard";
 import { Participants } from "../../../components/Participants";
-import {
-  createPath,
-  getKeyFromUrl,
-  getNameFromUrl,
-} from "../../../logic/utils/path";
-import { useMst } from "../../../logic/stores/root";
-import { ProposalModelType } from "../../../logic/stores/proposals";
 import { getProposalFilters } from "../../../logic/stores/proposals/utils";
+import { useMst } from "../../../logic/stores/root";
+import { ProposalType } from "../../../logic/types/proposals";
 import { getBoothName } from "../../../logic/utils/metadata";
-import { toJS } from "mobx";
+import { getKeyFromUrl } from "../../../logic/utils/path";
 import { useMobile } from "../../../logic/utils/useMobile";
 
 export const ProposalListLoader: FC = observer(() => {
   const [selectedOption, setSelectedOption] = useState("All");
-  const navigate = useNavigate();
   const urlParams = useParams();
   const isMobile = useMobile();
-  const { store, metadata } = useMst();
+  const { store } = useMst();
 
   const currentBoothKey = getKeyFromUrl(urlParams);
   let leftPane;
 
   const booth = store.booth;
   let proposalsList: any[] = booth?.listProposals!;
-
-  const hasCreatePermission = booth?.hasCreatePermission;
 
   const statusCounts = getProposalFilters(proposalsList);
   if (selectedOption === "All") {
@@ -76,22 +61,22 @@ export const ProposalListLoader: FC = observer(() => {
           {
             label: "Upcoming",
             value: "Upcoming",
-            disabled: statusCounts["Upcoming"] ? false : true,
+            disabled: !statusCounts.Upcoming,
           },
           {
             label: "Active",
             value: "Active",
-            disabled: statusCounts["Active"] ? false : true,
+            disabled: !statusCounts.Active,
           },
           {
             label: "Ended",
             value: "Ended",
-            disabled: statusCounts["Ended"] ? false : true,
+            disabled: !statusCounts.Ended,
           },
         ]}
         selectedOption={selectedOption}
         rightContent={
-          <Button pt="6px" pb="6px" variant="transparent" onClick={() => {}}>
+          <Button pt="6px" pb="6px" variant="transparent">
             Create proposal
           </Button>
         }

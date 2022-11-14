@@ -1,9 +1,9 @@
 import styled, { css } from "styled-components";
 import type { ThemeType } from "@holium/design-system";
 
-export type MarkdownEditorProps = {
+export interface MarkdownEditorProps {
   theme: ThemeType;
-};
+}
 
 export const MarkdownEditor = styled.div`
   ${(props: MarkdownEditorProps) => css`

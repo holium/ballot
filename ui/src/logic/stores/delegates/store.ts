@@ -31,7 +31,6 @@ export const DelegateStore = types
         (delegate: DelegateModelType) => {
           if (delegate.sig?.voter === ship) {
             ourDelegate = delegate.delegate;
-            return;
           }
         }
       );
@@ -41,7 +40,7 @@ export const DelegateStore = types
       let votingPower: number = 0;
       const memberDelegate = self.delegates.get(ship);
 
-      if (memberDelegate) {
+      if (memberDelegate != null) {
         votingPower = 0;
       } else {
         votingPower = Array.from(self.delegates.values()).reduce(

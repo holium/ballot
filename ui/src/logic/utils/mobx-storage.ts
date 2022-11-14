@@ -3,7 +3,7 @@ import { VoteType } from "../types/proposals";
 
 export const mapStorageAdapter = {
   setItem: (name: string, content: Object) => {
-    let result = JSON.stringify(content);
+    const result = JSON.stringify(content);
     localStorage.setItem(name, result);
   },
   removeItem: window.localStorage.removeItem,
@@ -24,7 +24,7 @@ export const mapStorageAdapter = {
                 const proposalName = proposalArr[0];
                 const proposalVoter = proposalArr[1];
                 const voterMap = observable.map(
-                  proposalVoter!.reduce(
+                  proposalVoter.reduce(
                     (
                       map: { [key: string]: VoteType },
                       voterArr: [string, VoteType]

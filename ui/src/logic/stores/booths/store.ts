@@ -3,26 +3,13 @@ import {
   ContactModelType,
   GroupMetadataModel,
 } from "./../metadata";
-import {
-  types,
-  flow,
-  Instance,
-  SnapshotIn,
-  getParent,
-  destroy,
-  SnapshotOut,
-  IJsonPatch,
-  applyPatch,
-  clone,
-} from "mobx-state-tree";
+import { types, flow, SnapshotIn, destroy, clone } from "mobx-state-tree";
 import boothApi from "../../api/booths";
-import { timeout } from "../../utils/dev";
 import { BoothModel, BoothModelType } from "./";
 import { EffectModelType } from "../common/effects";
 import { LoaderModel } from "../common/loader";
 import { ParticipantStore } from "../participants";
 import { ProposalStore } from "../proposals";
-import { toJS } from "mobx";
 import { GroupModelType } from "../metadata";
 import { rootStore } from "../root";
 import { DelegateStore } from "../delegates";
@@ -139,10 +126,10 @@ export const BoothStore = types
       let metadata = { ...booth.meta, color: "#000000" };
       if (booth.type === "group") {
         const groupMetadata = rootStore.metadata.groupsMap.get(booth.key);
-        if (groupMetadata) metadata = clone(groupMetadata);
+        if (groupMetadata != null) metadata = clone(groupMetadata);
       } else {
         const contactMetadata = rootStore.metadata.contactsMap.get(booth.key);
-        if (contactMetadata) metadata = clone(contactMetadata);
+        if (contactMetadata != null) metadata = clone(contactMetadata);
       }
       self.booths.set(
         booth.key,
@@ -173,10 +160,10 @@ export const BoothStore = types
       let metadata = { ...booth.meta, color: "#000000" };
       if (booth.type === "group") {
         const groupMetadata = rootStore.metadata.groupsMap.get(booth.key);
-        if (groupMetadata) metadata = clone(groupMetadata);
+        if (groupMetadata != null) metadata = clone(groupMetadata);
       } else {
         const contactMetadata = rootStore.metadata.contactsMap.get(booth.key);
-        if (contactMetadata) metadata = clone(contactMetadata);
+        if (contactMetadata != null) metadata = clone(contactMetadata);
       }
       self.booths.set(
         booth.key,

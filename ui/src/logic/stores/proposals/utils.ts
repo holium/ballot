@@ -5,9 +5,9 @@ export const getProposalFilters = (proposals: ProposalModelType[]) => {
   const countedStatuses = proposals.reduce<{ [key: string]: number }>(
     (counted, currentProposal, currentIndex) => {
       const status = currentProposal.status;
-      // @ts-ignore
+      // @ts-expect-error
       counted[status] = counted[status] || 0;
-      // @ts-ignore
+      // @ts-expect-error
       counted[status] += 1;
       return counted;
     },

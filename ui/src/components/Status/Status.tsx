@@ -1,9 +1,9 @@
 import React from "react";
-import { Tag, Icons } from "@holium/design-system";
+import { Tag } from "@holium/design-system";
 
-export type StatusProps = {
+export interface StatusProps {
   status: "Active" | "Ended" | "Failed" | "Upcoming" | string;
-};
+}
 export const Status = (props: StatusProps) => {
   const { status } = props;
   return (
